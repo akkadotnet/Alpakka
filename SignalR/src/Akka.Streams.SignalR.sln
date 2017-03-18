@@ -1,0 +1,34 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 14
+VisualStudioVersion = 14.0.25420.1
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{E00CECB0-8E8D-4799-AA1C-DC8588EAB2A7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Akka.Streams.SignalR", "Akka.Streams.SignalR\Akka.Streams.SignalR.csproj", "{E5D54C96-85E7-4608-95CA-9C2B4F110E0B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Akka.Streams.SignalR.Tests", "Akka.Streams.SignalR.Tests\Akka.Streams.SignalR.Tests.csproj", "{F49AF862-23E0-479F-BD1F-7EDD1EB4D5B7}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{E5D54C96-85E7-4608-95CA-9C2B4F110E0B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E5D54C96-85E7-4608-95CA-9C2B4F110E0B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E5D54C96-85E7-4608-95CA-9C2B4F110E0B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E5D54C96-85E7-4608-95CA-9C2B4F110E0B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F49AF862-23E0-479F-BD1F-7EDD1EB4D5B7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F49AF862-23E0-479F-BD1F-7EDD1EB4D5B7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F49AF862-23E0-479F-BD1F-7EDD1EB4D5B7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F49AF862-23E0-479F-BD1F-7EDD1EB4D5B7}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{E5D54C96-85E7-4608-95CA-9C2B4F110E0B} = {E00CECB0-8E8D-4799-AA1C-DC8588EAB2A7}
+		{F49AF862-23E0-479F-BD1F-7EDD1EB4D5B7} = {E00CECB0-8E8D-4799-AA1C-DC8588EAB2A7}
+	EndGlobalSection
+EndGlobal

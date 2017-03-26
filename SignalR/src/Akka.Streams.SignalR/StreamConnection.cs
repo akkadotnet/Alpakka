@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Akka.Streams.Dsl;
 using Akka.Streams.SignalR.Internals;
@@ -8,6 +9,18 @@ namespace Akka.Streams.SignalR
 {
     public abstract class StreamConnection : PersistentConnection
     {
+        private readonly IBuffer<ReceivedMessage> buffer;
+
+        protected StreamConnection()
+        {
+            this.buffer = new FixedSizeBuffer<ReceivedMessage>(128);
+            this.Sink = Dsl.Sink.FromGraph(new SignalRSinkStage(this));
+            this.Source = Dsl.Source.FromGraph(new SignalRSourceStage(this, buffer));
+        }
+
+        public Sink<Result, NotUsed> Sink { get; }
+        public Source<ReceivedMessage, NotUsed> Source { get; }
+        
         #region lifecycle
 
         protected override Task OnConnected(IRequest request, string connectionId)
@@ -22,6 +35,7 @@ namespace Akka.Streams.SignalR
 
         protected override Task OnReceived(IRequest request, string connectionId, string data)
         {
+            buffer.TryEnqueue(new ReceivedMessage(request, connectionId, data));
             return base.OnReceived(request, connectionId, data);
         }
 
@@ -37,21 +51,5 @@ namespace Akka.Streams.SignalR
 
         #endregion
 
-        /// <summary>
-        /// Creates a sink from the current <see cref="StreamConnection"/>. 
-        /// Sinks can be used by Akka.Streams <see cref="Source{TOut,TMat}"/> 
-        /// and <see cref="Flow{TIn,TOut,TMat}"/> to consume incoming messages 
-        /// and push them down the SignalR web sockets.
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="settings"></param>
-        /// <returns></returns>
-        public Sink<T, NotUsed> AsSink<T>(ConnectionSinkSettings<T> settings = null)
-        {
-            settings = settings ?? ConnectionSinkSettings<T>.Default;
-            var sink = Sink.FromGraph(new SignalRConnectionStage<T>(this, Role.Sink))
-                .AddAttributes(ActorAttributes.CreateDispatcher(settings.DispatcherId));
-            return sink;
-        }
     }
 }

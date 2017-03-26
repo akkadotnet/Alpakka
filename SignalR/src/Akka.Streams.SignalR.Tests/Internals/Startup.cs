@@ -7,7 +7,7 @@ namespace Akka.Streams.SignalR.Tests.Internals
     {
         public void Configuration(IAppBuilder app)
         {
-            app.MapSignalR<TestConnection>("/test");
+            //app.MapSignalR<TestConnection>("/test");
         }
     }
 }

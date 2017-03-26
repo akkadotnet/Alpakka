@@ -120,7 +120,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Internals\TestConnection.cs" />
+    <Compile Include="FixedSizeBufferTests.cs" />
     <Compile Include="ServerIntegrationSpec.cs" />
     <Compile Include="Internals\Startup.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

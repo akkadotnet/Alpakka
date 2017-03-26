@@ -1,6 +1,9 @@
 ﻿using System;
+using System.Collections.Generic;
+using Akka.Streams.Dsl;
 using Akka.Streams.SignalR.Tests.Internals;
 using Microsoft.AspNet.SignalR;
+using Microsoft.AspNet.SignalR.Hosting;
 using Microsoft.Owin.Testing;
 using Xunit;
 using Xunit.Abstractions;
@@ -17,10 +20,20 @@ namespace Akka.Streams.SignalR.Tests
         {
             materializer = Sys.Materializer();
             server = TestHelpers.CreateServer();
+            //var connectionContext = GlobalHost.ConnectionManager.GetConnectionContext<TestConnection>();
+            //var factory = new PersistentConnectionFactory(GlobalHost.DependencyResolver);
+            //connection = (TestConnection)factory.CreateInstance(typeof(TestConnection));
+            //connection.Initialize(GlobalHost.DependencyResolver);
         }
 
         [Fact]
-        public void Websocket_connection_should_be_able_to_send_and_receive_bytes()
+        public void Websocket_connection_should_be_able_to_receive_data()
+        {
+            throw new NotImplementedException();
+        }
+
+        [Fact]
+        public void Websocket_connection_should_be_able_to_send_data()
         {
             throw new NotImplementedException();
         }

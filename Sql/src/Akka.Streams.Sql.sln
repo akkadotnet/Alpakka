@@ -1,0 +1,34 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 14
+VisualStudioVersion = 14.0.25420.1
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{0596BBAF-C27D-43E9-AB66-1886630B8DA6}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Akka.Streams.Sql", "Akka.Streams.Sql\Akka.Streams.Sql\Akka.Streams.Sql.csproj", "{763EB487-15AF-4BAD-A272-5A9AEB95F9F4}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Akka.Streams.Sql.Tests", "Akka.Streams.Sql.Tests\Akka.Streams.Sql.Tests.csproj", "{81C7A17D-6A96-41A1-A8C5-3735CFA3C640}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{763EB487-15AF-4BAD-A272-5A9AEB95F9F4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{763EB487-15AF-4BAD-A272-5A9AEB95F9F4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{763EB487-15AF-4BAD-A272-5A9AEB95F9F4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{763EB487-15AF-4BAD-A272-5A9AEB95F9F4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{81C7A17D-6A96-41A1-A8C5-3735CFA3C640}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{81C7A17D-6A96-41A1-A8C5-3735CFA3C640}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{81C7A17D-6A96-41A1-A8C5-3735CFA3C640}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{81C7A17D-6A96-41A1-A8C5-3735CFA3C640}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{763EB487-15AF-4BAD-A272-5A9AEB95F9F4} = {0596BBAF-C27D-43E9-AB66-1886630B8DA6}
+		{81C7A17D-6A96-41A1-A8C5-3735CFA3C640} = {0596BBAF-C27D-43E9-AB66-1886630B8DA6}
+	EndGlobalSection
+EndGlobal

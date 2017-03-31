@@ -8,6 +8,7 @@ namespace SignalRSample
         public EchoConnection()
         {
             this.Source
+                .Collect(x => x as Received)
                 .Select(x => Signals.Broadcast(x.Data))
                 .To(this.Sink)
                 .Run(App.Materializer);

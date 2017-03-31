@@ -3,39 +3,33 @@ using Microsoft.AspNet.SignalR;
 
 namespace Akka.Streams.SignalR
 {
-    public sealed class ReceivedMessage
-    {
-        public IRequest Request { get; }
-        public string ConnectionId { get; }
-        public string Data { get; }
-
-        public ReceivedMessage(IRequest request, string connectionId, string data)
-        {
-            Request = request;
-            ConnectionId = connectionId;
-            Data = data;
-        }
-
-        public override string ToString()
-            => $"ReceivedMessage(connectionId: {ConnectionId}, data: {Data}, request: {Request})";
-    }
-
+    /// <summary>
+    /// A common static class for building messages returned to SignalR clients.
+    /// </summary>
     public static class Signals
     {
         public static ISignalRResult Send(IList<string> signals, object data, IList<string> excluded = null)
-            => new SendSignal(signals, data, excluded);
+            => new Send(signals, data, excluded);
 
         public static ISignalRResult Send(string signal, object data)
-            => new SendSignal(signal, data);
+            => new Send(signal, data);
 
         public static ISignalRResult Broadcast(object data, string[] excluded = null)
-            => new BroadcastSignal(data, excluded);
-
+            => new Broadcast(data, excluded);
     }
 
-    public interface ISignalRResult { }
+    /// <summary>
+    /// Common interface for a messages returned to SignalR clients.
+    /// </summary>
+    public interface ISignalRResult
+    {
+        /// <summary>
+        /// Payload sent to the client.
+        /// </summary>
+        object Data { get; }
+    }
 
-    internal sealed class SendSignal : ISignalRResult
+    internal sealed class Send : ISignalRResult
     {
         private static string[] empty = new string[0];
 
@@ -43,14 +37,14 @@ namespace Akka.Streams.SignalR
         public IList<string> Excluded { get; }
         public object Data { get; }
 
-        public SendSignal(IList<string> signals, object data, IList<string> excluded = null)
+        public Send(IList<string> signals, object data, IList<string> excluded = null)
         {
             Signals = signals;
             Excluded = excluded ?? empty;
             Data = data;
         }
 
-        public SendSignal(string signal, object data)
+        public Send(string signal, object data)
         {
             Signals = new[] { signal };
             Data = data;
@@ -62,14 +56,14 @@ namespace Akka.Streams.SignalR
         }
     }
 
-    internal sealed class BroadcastSignal : ISignalRResult
+    internal sealed class Broadcast : ISignalRResult
     {
         private static string[] empty = new string[0];
 
         public object Data { get; }
         public string[] Excluded { get; }
 
-        public BroadcastSignal(object data, string[] excluded = null)
+        public Broadcast(object data, string[] excluded = null)
         {
             Data = data;
             Excluded = excluded ?? empty;

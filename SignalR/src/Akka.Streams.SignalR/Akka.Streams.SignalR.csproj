@@ -77,10 +77,10 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ConnectionSettings.cs" />
+    <Compile Include="Events.cs" />
     <Compile Include="Internals\SignalRSinkStage.cs" />
     <Compile Include="Internals\SignalRSourceStage.cs" />
     <Compile Include="Messages.cs" />
-    <Compile Include="SignalRExtensions.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="StreamConnection.cs" />
   </ItemGroup>

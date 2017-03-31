@@ -57,7 +57,7 @@ namespace Akka.Streams.SignalR.Internals
                 var element = Grab(stage.inlet);
                 isOperationInProgress = true;
 
-                var send = element as SendSignal;
+                var send = element as Send;
                 if (send != null)
                 {
                     stage.connection.Connection
@@ -72,7 +72,7 @@ namespace Akka.Streams.SignalR.Internals
                 }
                 else
                 {
-                    var broadcast = (BroadcastSignal) element;
+                    var broadcast = (Broadcast) element;
                     stage.connection.Connection
                         .Broadcast(broadcast.Data, broadcast.Excluded)
                         .ContinueWith(task =>

@@ -4,20 +4,20 @@ using Akka.Streams.Stage;
 
 namespace Akka.Streams.SignalR.Internals
 {
-    internal sealed class SignalRSourceStage : GraphStage<SourceShape<ReceivedMessage>>
+    internal sealed class SignalRSourceStage : GraphStage<SourceShape<ISignalREvent>>
     {
         private readonly StreamConnection connection;
         private readonly ConnectionSourceSettings settings;
-        private readonly Outlet<ReceivedMessage> outlet = new Outlet<ReceivedMessage>("signalr.out");
+        private readonly Outlet<ISignalREvent> outlet = new Outlet<ISignalREvent>("signalr.out");
 
         public SignalRSourceStage(StreamConnection connection, ConnectionSourceSettings settings)
         {
             this.connection = connection;
             this.settings = settings;
-            this.Shape = new SourceShape<ReceivedMessage>(outlet);
+            this.Shape = new SourceShape<ISignalREvent>(outlet);
         }
 
-        public override SourceShape<ReceivedMessage> Shape { get; }
+        public override SourceShape<ISignalREvent> Shape { get; }
         protected override GraphStageLogic CreateLogic(Attributes inheritedAttributes) => new Logic(this);
 
         #region logic
@@ -25,9 +25,9 @@ namespace Akka.Streams.SignalR.Internals
         private sealed class Logic : OutGraphStageLogic
         {
             private readonly int bufferCapacity;
-            private readonly LinkedList<ReceivedMessage> buffer;
-            private readonly Action<ReceivedMessage> onMessage;
-            private readonly Action<ReceivedMessage> onOverflow;
+            private readonly LinkedList<ISignalREvent> buffer;
+            private readonly Action<ISignalREvent> onMessage;
+            private readonly Action<ISignalREvent> onOverflow;
 
             private SignalRSourceStage stage;
 
@@ -35,8 +35,8 @@ namespace Akka.Streams.SignalR.Internals
             {
                 this.stage = stage;
                 this.bufferCapacity = stage.settings.BufferCapacity;
-                this.buffer = new LinkedList<ReceivedMessage>();
-                this.onMessage = GetAsyncCallback<ReceivedMessage>(e =>
+                this.buffer = new LinkedList<ISignalREvent>();
+                this.onMessage = GetAsyncCallback<ISignalREvent>(e =>
                 {
                     if (IsAvailable(this.stage.outlet))
                     {
@@ -56,16 +56,16 @@ namespace Akka.Streams.SignalR.Internals
                 SetHandler(stage.outlet, this);
             }
 
-            private void Enqueue(ReceivedMessage message) => buffer.AddLast(message);
+            private void Enqueue(ISignalREvent message) => buffer.AddLast(message);
 
-            private ReceivedMessage Dequeue()
+            private ISignalREvent Dequeue()
             {
                 var element = buffer.First.Value;
                 buffer.RemoveFirst();
                 return element;
             }
 
-            private void HandleReceived(object sender, ReceivedMessage e)
+            private void HandleReceived(object sender, ISignalREvent e)
             {
                 this.onMessage(e);
             }
@@ -82,17 +82,17 @@ namespace Akka.Streams.SignalR.Internals
             public override void PreStart()
             {
                 base.PreStart();
-                stage.connection.Received += HandleReceived;
+                stage.connection.Events += HandleReceived;
             }
 
             public override void PostStop()
             {
-                stage.connection.Received -= HandleReceived;
+                stage.connection.Events -= HandleReceived;
                 buffer.Clear();
                 base.PostStop();
             }
 
-            private Action<ReceivedMessage> SetupOverflowStrategy(OverflowStrategy overflowStrategy)
+            private Action<ISignalREvent> SetupOverflowStrategy(OverflowStrategy overflowStrategy)
             {
                 switch (overflowStrategy)
                 {

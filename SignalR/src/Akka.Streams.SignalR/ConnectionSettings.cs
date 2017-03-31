@@ -71,7 +71,7 @@ namespace Akka.Streams.SignalR
             BufferCapacity = bufferCapacity;
             OverflowStrategy = overflowStrategy;
         }
-
+        
         public ConnectionSourceSettings WithBufferSize(int bufferSize) => Copy(bufferSize: bufferSize);
         public ConnectionSourceSettings WithOverflowStrategy(OverflowStrategy overflowStrategy) => Copy(overflowStrategy: overflowStrategy);
 

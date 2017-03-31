@@ -77,7 +77,6 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ConnectionSettings.cs" />
-    <Compile Include="Internals\IBuffer.cs" />
     <Compile Include="Internals\SignalRSinkStage.cs" />
     <Compile Include="Internals\SignalRSourceStage.cs" />
     <Compile Include="Messages.cs" />
@@ -88,6 +87,7 @@
   <ItemGroup>
     <None Include="app.config" />
     <None Include="packages.config" />
+    <EmbeddedResource Include="reference.conf" />
   </ItemGroup>
   <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

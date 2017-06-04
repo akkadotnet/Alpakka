@@ -35,6 +35,7 @@ namespace Akka.Streams.SignalR.Tests
             val.Item1.SendNext("sns-message").SendComplete();
             var task =val.Item2.Wait(TimeSpan.FromSeconds(1)).Should().BeTrue();
             val.Item2.Result.ShouldBeEquivalentTo(ImmutableList.Create(response));
+            snsService.Received(1).PublishAsync(request);
         }
         
         protected override void Dispose(bool disposing)

@@ -77,8 +77,22 @@ namespace Akka.Streams.SignalR.Tests
             var val = TestSource.SourceProbe<string>(this).Via(SnsPublisher.PublishToSNSFlow("topic-Arn", snsService)).ToMaterialized(Sink.Seq<PublishResponse>(), Keep.Both).Run(this.materializer);
             val.Item1.SendNext("sns-message").SendComplete();
             var task = val.Item2.Should().BeOfType<AmazonSimpleNotificationServiceException>();
-        }    
+        }
 
-      
+        [Fact]
+        public void ItShouldFailTheStageIfAnUpstreamFailureOccurs()
+        {
+            var snsService = Substitute.For<IAmazonSimpleNotificationService>();
+            var val = TestSource.SourceProbe<string>(this).Via(SnsPublisher.PublishToSNSFlow("topic-Arn", snsService)).ToMaterialized(Sink.Seq<PublishResponse>(), Keep.Both).Run(this.materializer);
+            val.Item1.SendError(new Exception("test"));
+            var task = val.Item2.Should().BeOfType<Exception>();
+            snsService.DidNotReceive().PublishAsync(Arg.Any<PublishRequest>());
+        }
+        
+        protected override void Dispose(bool disposing)
+        {
+            this.materializer.Dispose();
+            base.Dispose(disposing);
+        }
         }
 }

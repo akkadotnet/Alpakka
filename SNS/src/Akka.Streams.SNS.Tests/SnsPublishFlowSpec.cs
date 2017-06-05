@@ -65,11 +65,20 @@ namespace Akka.Streams.SignalR.Tests
             val.Item2.Result.ShouldBeEquivalentTo(expectedResponseMessages);
             snsService.ReceivedWithAnyArgs(3);
         }
-            
-        protected override void Dispose(bool disposing)
+        
+        [Fact]
+        public void ItShouldFailTheStageIfTheAmazonSNSAsyncClientRequestFails()
         {
-            base.Dispose(disposing);
-            materializer.Dispose();
-        }
+            PublishRequest request = new PublishRequest("topic-arn", "sns-message");
+            var snsService = Substitute.For<IAmazonSimpleNotificationService>();
+            snsService.When(x => x.PublishAsync(request)).Do(x =>
+                {
+                    throw new AmazonSimpleNotificationServiceException("test");});
+            var val = TestSource.SourceProbe<string>(this).Via(SnsPublisher.PublishToSNSFlow("topic-Arn", snsService)).ToMaterialized(Sink.Seq<PublishResponse>(), Keep.Both).Run(this.materializer);
+            val.Item1.SendNext("sns-message").SendComplete();
+            var task = val.Item2.Should().BeOfType<AmazonSimpleNotificationServiceException>();
+        }    
+
+      
         }
 }

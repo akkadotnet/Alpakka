@@ -25,7 +25,7 @@ namespace Akka.Streams.SignalR.Tests
         }
 
         [Fact]
-        public void ItShouldSendASingleMessageToSNS()
+        public void ItShouldPublishASingleMessageToSNS()
         {
             PublishRequest request = new PublishRequest("topic-arn", "sns-message");
             var response = CreatePublishResponse("message-id");

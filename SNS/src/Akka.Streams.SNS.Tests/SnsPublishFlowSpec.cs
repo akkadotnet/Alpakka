@@ -77,6 +77,7 @@ namespace Akka.Streams.SignalR.Tests
             var val = TestSource.SourceProbe<string>(this).Via(SnsPublisher.PublishToSNSFlow("topic-Arn", snsService)).ToMaterialized(Sink.Seq<PublishResponse>(), Keep.Both).Run(this.materializer);
             val.Item1.SendNext("sns-message").SendComplete();
             var task = val.Item2.Should().BeOfType<AmazonSimpleNotificationServiceException>();
+            snsService.Received(1).PublishAsync(request);
         }
 
         [Fact]

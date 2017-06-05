@@ -1,16 +1,16 @@
 ﻿using Akka.Streams.Dsl;
+using Akka.Streams.SNS;
 using Akka.Streams.TestKit;
 using Amazon.SimpleNotificationService;
 using Amazon.SimpleNotificationService.Model;
-using NSubstitute;
-using Xunit;
-using Xunit.Abstractions;
-using Akka.Streams.SNS;
-using System;
-using System.Threading.Tasks;
 using FluentAssertions;
+using NSubstitute;
+using System;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Threading.Tasks;
+using Xunit;
+using Xunit.Abstractions;
 
 namespace Akka.Streams.SignalR.Tests
 {

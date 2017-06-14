@@ -56,8 +56,11 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="CsvFormatter.cs" />
+    <Compile Include="CsvParser.cs" />
+    <Compile Include="CsvParsingStage.cs" />
     <Compile Include="Dsl\ByteOrderMark.cs" />
     <Compile Include="Dsl\CsvFormatting.cs" />
+    <Compile Include="Dsl\CsvParsing.cs" />
     <Compile Include="Dsl\CsvQuotingStyle.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

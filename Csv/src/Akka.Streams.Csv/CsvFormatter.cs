@@ -1,9 +1,5 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
+﻿using System.Collections;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
-using System.Runtime.InteropServices;
 using System.Text;
 using Akka.IO;
 using Akka.Streams.Csv.Dsl;
@@ -20,7 +16,6 @@ namespace Akka.Streams.Csv
         private readonly char _quoteChar;
         private readonly string _duplicatedQuote;
 
-        private readonly char _escapeChar;
         private readonly string _duplicatedEscape;
 
         private readonly char[] _quoteOrEscapechar;
@@ -41,7 +36,6 @@ namespace Akka.Streams.Csv
             _quoteChar = quoteChar;
             _duplicatedQuote = new string(quoteChar, 2);
 
-            _escapeChar = escapeChar;
             _duplicatedEscape = new string(escapeChar, 2);
 
             _quoteOrEscapechar = new[] {quoteChar, escapeChar};

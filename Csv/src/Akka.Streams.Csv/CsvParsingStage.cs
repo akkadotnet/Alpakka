@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using Akka.IO;
 using Akka.Streams.Stage;
 
@@ -8,7 +9,7 @@ namespace Akka.Streams.Csv
     /// <summary>
     /// Internal API: Use <see cref="Akka.Streams.Csv.Dsl.CsvParsing"/> instead.
     /// </summary>
-    internal sealed class CsvParsingStage: GraphStage<FlowShape<ByteString, List<ByteString>>>
+    internal sealed class CsvParsingStage: GraphStage<FlowShape<ByteString, ImmutableList<ByteString>>>
     {
         #region Logic
         private sealed class Logic:InAndOutGraphStageLogic
@@ -49,7 +50,7 @@ namespace Akka.Streams.Csv
                     var csvLine = _buffer.Poll(requireLineEnd: true);
                     if (csvLine != null)
                     {
-                        Push(_stage.Out, csvLine);
+                        Push(_stage.Out, csvLine.ToImmutableList());
                         return;
                     }
 
@@ -72,7 +73,7 @@ namespace Akka.Streams.Csv
                 var csvLine = _buffer.Poll(requireLineEnd: false);
                 while (csvLine != null)
                 {
-                    Emit(_stage.Out, csvLine);
+                    Emit(_stage.Out, csvLine.ToImmutableList());
                     csvLine = _buffer.Poll(requireLineEnd: false);
                 }
             }
@@ -83,21 +84,21 @@ namespace Akka.Streams.Csv
         private readonly byte _quoteChar;
         private readonly byte _escapeChar;
 
-        public CsvParsingStage(byte delimiter, byte quoteChar, byte escapeChar)
+        internal CsvParsingStage(byte delimiter, byte quoteChar, byte escapeChar)
         {
             _delimiter = delimiter;
             _quoteChar = quoteChar;
             _escapeChar = escapeChar;
 
-            Shape = new FlowShape<ByteString, List<ByteString>>(In, Out);
+            Shape = new FlowShape<ByteString, ImmutableList<ByteString>>(In, Out);
         }
 
         protected override Attributes InitialAttributes { get; } = Attributes.CreateName("CsvParsing");
 
-        public Inlet<ByteString> In { get; } = new Inlet<ByteString>("CsvParsing.in");
-        public Outlet<List<ByteString>> Out { get; } = new Outlet<List<ByteString>>("CsvParsing.out");
+        internal Inlet<ByteString> In { get; } = new Inlet<ByteString>("CsvParsing.in");
+        internal Outlet<ImmutableList<ByteString>> Out { get; } = new Outlet<ImmutableList<ByteString>>("CsvParsing.out");
 
-        public override FlowShape<ByteString, List<ByteString>> Shape { get; }
+        public override FlowShape<ByteString, ImmutableList<ByteString>> Shape { get; }
 
         protected override GraphStageLogic CreateLogic(Attributes inheritedAttributes)
             => new Logic(this, _delimiter, _quoteChar, _escapeChar);

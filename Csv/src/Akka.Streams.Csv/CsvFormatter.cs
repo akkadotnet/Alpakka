@@ -9,7 +9,7 @@ namespace Akka.Streams.Csv
     /// <summary>
     /// INTERNAL API
     /// </summary>
-    public class CsvFormatter
+    internal class CsvFormatter
     {
         private readonly char _delimiter;
 

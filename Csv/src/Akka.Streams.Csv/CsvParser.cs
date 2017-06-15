@@ -8,7 +8,7 @@ namespace Akka.Streams.Csv
     /// <summary>
     /// INTERNAL API: Use <see cref="Akka.Streams.Csv.Dsl.CsvParsing"/> instead.
     /// </summary>
-    public sealed class CsvParser
+    internal sealed class CsvParser
     {
         private enum State
         {
@@ -88,8 +88,8 @@ namespace Akka.Streams.Csv
         // as long as non escaping is used.
         private sealed class FieldBuilder
         {
-            private CsvParser _parser;
-            private ByteString _buf;
+            private readonly CsvParser _parser;
+            private readonly ByteString _buf;
             private bool _useBuilder;
             private ByteStringBuilder _builder;
 

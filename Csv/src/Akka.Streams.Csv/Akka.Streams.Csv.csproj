@@ -58,10 +58,12 @@
     <Compile Include="CsvFormatter.cs" />
     <Compile Include="CsvParser.cs" />
     <Compile Include="CsvParsingStage.cs" />
+    <Compile Include="CsvToDictionaryStage.cs" />
     <Compile Include="Dsl\ByteOrderMark.cs" />
     <Compile Include="Dsl\CsvFormatting.cs" />
     <Compile Include="Dsl\CsvParsing.cs" />
     <Compile Include="Dsl\CsvQuotingStyle.cs" />
+    <Compile Include="Dsl\CsvToDictionary.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

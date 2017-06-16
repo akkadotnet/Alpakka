@@ -13,11 +13,8 @@ namespace Akka.Streams.Csv.Tests
 {
     public class CsvFormatterSpec: Akka.TestKit.Xunit.TestKit
     {
-        private readonly ActorMaterializer _materializer;
-        
         public CsvFormatterSpec(ITestOutputHelper output) : base(output: output)
         {
-            _materializer = Sys.Materializer();
         }
 
         [Fact]

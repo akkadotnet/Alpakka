@@ -8,7 +8,7 @@ namespace Akka.Streams.Csv
     /// <summary>
     /// INTERNAL API: Use <see cref="Akka.Streams.Csv.Dsl.CsvParsing"/> instead.
     /// </summary>
-    internal sealed class CsvParser
+    public sealed class CsvParser
     {
         private enum State
         {
@@ -21,8 +21,8 @@ namespace Akka.Streams.Csv
             WithinQuotedField
         }
 
-        private const byte Lf = 0x0c; // '\n'
-        private const byte Cr = 0x0f; // '\r'
+        private const byte Lf = 0x0a; // '\n'
+        private const byte Cr = 0x0d; // '\r'
 
         private readonly byte _delimiter;
         private readonly byte _quoteChar;
@@ -30,7 +30,7 @@ namespace Akka.Streams.Csv
 
         private ByteString _buffer = ByteString.Empty;
         private bool _firstData = true;
-        private long _currentLineNo;
+        private long _currentLineNo = 1l;
 
         public int Pos { get; private set; }
         public int FieldStart { get; private set; }
@@ -61,6 +61,10 @@ namespace Akka.Streams.Csv
                 var prePos = Pos;
                 var preSieldStart = FieldStart;
                 var line = ParseLine(requireLineEnd);
+                if (line == null)
+                {
+                    return null;
+                }
                 if (line.Count > 0)
                 {
                     _currentLineNo++;
@@ -79,7 +83,7 @@ namespace Akka.Streams.Csv
 
         private void DropReadBuffer()
         {
-            _buffer.Drop(Pos);
+            _buffer = _buffer.Drop(Pos);
             Pos = 0;
             FieldStart = 0;
         }
@@ -140,17 +144,17 @@ namespace Akka.Streams.Csv
 
             void WrongCharEscaped()
             {
-                throw new MalformedCsvException($"wrong escaping at {_currentLineNo}:{Pos}, only escape or delimiter may be escaped.");
+                throw new MalformedCsvException($"wrong escaping at {_currentLineNo}:{Pos}, only escape or delimiter may be escaped");
             }
 
             void WrongCharEscapedWithinQuotes()
             {
-                throw new MalformedCsvException($"wrong escaping at {_currentLineNo}:{Pos}, only escape or quote may be escaped within quotes.");
+                throw new MalformedCsvException($"wrong escaping at {_currentLineNo}:{Pos}, only escape or quote may be escaped within quotes");
             }
 
             void NoCharEscaped()
             {
-                throw new MalformedCsvException($"wrong escaping at {_currentLineNo}:{Pos}, no character after escape.");
+                throw new MalformedCsvException($"wrong escaping at {_currentLineNo}:{Pos}, no character after escape");
             }
 
             void ReadPastLf()

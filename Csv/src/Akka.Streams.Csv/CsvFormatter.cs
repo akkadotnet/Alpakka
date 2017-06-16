@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using Akka.IO;
@@ -9,7 +10,7 @@ namespace Akka.Streams.Csv
     /// <summary>
     /// INTERNAL API
     /// </summary>
-    internal class CsvFormatter
+    public class CsvFormatter
     {
         private readonly char _delimiter;
 
@@ -29,7 +30,7 @@ namespace Akka.Streams.Csv
 
         public string CharsetName => _encoding.EncodingName;
 
-        public CsvFormatter(char delimiter, char quoteChar, char escapeChar, string endOfLine, CsvQuotingStyle quotingStyle, Encoding encoding)
+        public CsvFormatter(char delimiter, char quoteChar, char escapeChar, string endOfLine, CsvQuotingStyle quotingStyle, Encoding encoding = null)
         {
             _delimiter = delimiter;
 
@@ -45,7 +46,8 @@ namespace Akka.Streams.Csv
             _endOfLineBs = ByteString.FromString(_endOfLine);
 
             _quotingStyle = quotingStyle;
-            _encoding = encoding;
+
+            _encoding = encoding ?? Encoding.UTF8;
         }
 
         
@@ -59,10 +61,6 @@ namespace Akka.Streams.Csv
 
             if (fields.GetEnumerator().MoveNext())
             {
-                if (_encoding == null)
-                {
-                    return ByteString.FromString(NonEmptyToCsv(fields));
-                }
                 return ByteString.FromString(NonEmptyToCsv(fields), _encoding);
             }
 
@@ -122,6 +120,7 @@ namespace Akka.Streams.Csv
                 if (hasNext)
                 {
                     builder.Append(_delimiter);
+                    value = iterator.Current;
                 }
             }
             builder.Append(_endOfLine);

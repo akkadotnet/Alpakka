@@ -12,7 +12,7 @@ namespace Akka.Streams.SNS
             return Flow.FromGraph(new SNSPublishFlowStage(topicArn, snsService));
         }
 
-        public static Sink<string, Task> PublishToSNS(string topicArn, IAmazonSimpleNotificationService snsService)
+        public static Sink<string, Task> PublishToSNSSink(string topicArn, IAmazonSimpleNotificationService snsService)
         {
             return PublishToSNSFlow(topicArn, snsService).ToMaterialized(Sink.Ignore<PublishResponse>(), Keep.Right);
         }

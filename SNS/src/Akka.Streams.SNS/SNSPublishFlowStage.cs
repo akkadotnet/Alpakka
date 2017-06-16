@@ -42,6 +42,8 @@ private readonly Inlet<string> inlet =new Inlet<string>("SnsPublishFlow.in");
                 this.snsService = snsService;
                 this.onSuccess = GetAsyncCallback<PublishResponse>(HandleSuccess);
                 this.onFailure = GetAsyncCallback<Exception>(HandleFailure);
+                SetHandler(stage.inlet, this);
+                SetHandler(stage.outlet, this);
             }
 
             private void HandleFailure(Exception ex)
@@ -84,10 +86,7 @@ private readonly Inlet<string> inlet =new Inlet<string>("SnsPublishFlow.in");
             public override void OnUpstreamFinish()
             {
                 if (!isMessageInFlight) CompleteStage();
-
-                SetHandler(stage.inlet, this);
-                SetHandler(stage.outlet, this);
-            }
+                }
         }
         #endregion
 

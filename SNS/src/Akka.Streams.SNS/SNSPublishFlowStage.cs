@@ -12,11 +12,13 @@ namespace Akka.Streams.SNS
         private IAmazonSimpleNotificationService snsService;
 private readonly Inlet<string> inlet =new Inlet<string>("SnsPublishFlow.in");
         private readonly Outlet<PublishResponse> outlet =new Outlet<PublishResponse>("SnsPublishFlow.out");
-
+        private readonly FlowShape<string, PublishResponse> shape;
+        
         public SNSPublishFlowStage(string topicArn, IAmazonSimpleNotificationService snsService)
         {
             this.topicArn = topicArn;
             this.snsService = snsService;
+            this.shape = new FlowShape<string, PublishResponse>(inlet, outlet);
         }
         
         protected override GraphStageLogic CreateLogic(Attributes inheritedAttributes)
@@ -92,7 +94,7 @@ private readonly Inlet<string> inlet =new Inlet<string>("SnsPublishFlow.in");
 
         public override FlowShape<string, PublishResponse> Shape
         {
-            get { return new FlowShape<string,PublishResponse>(inlet, outlet); }
+            get { return this.shape; }
         }
     }
 }

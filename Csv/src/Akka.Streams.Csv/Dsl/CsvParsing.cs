@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Collections.Immutable;
 using Akka.Streams.Dsl;
 using Akka.IO;
 
@@ -20,7 +21,7 @@ namespace Akka.Streams.Csv.Dsl
         /// <param name="quoteChar"></param>
         /// <param name="escapeChar"></param>
         /// <returns></returns>
-        public static Flow<ByteString, List<ByteString>, NotUsed> LineScanner(
+        public static Flow<ByteString, ImmutableList<ByteString>, NotUsed> LineScanner(
             byte delimiter = Comma,
             byte quoteChar = DoubleQuote,
             byte escapeChar = Backslash

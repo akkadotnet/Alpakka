@@ -28,7 +28,7 @@ namespace Akka.Streams.Csv.Dsl
         /// <param name="quotingStyle"></param>
         /// <param name="encoding"></param>
         /// <param name="byteOrderMark"></param>
-        public static Flow<IImmutableList<string>, ByteString, NotUsed> Format(
+        public static Flow<ImmutableList<string>, ByteString, NotUsed> Format(
             char delimiter = Comma, 
             char quoteChar = DoubleQuote, 
             char escapeChar = Backslash, 
@@ -41,11 +41,11 @@ namespace Akka.Streams.Csv.Dsl
 
             if (byteOrderMark == null)
             {
-                return Flow.FromFunction<IImmutableList<string>, ByteString>(list => formatter.ToCsv(list))
+                return Flow.FromFunction<ImmutableList<string>, ByteString>(list => formatter.ToCsv(list))
                     .Named("CsvFormatting");
             }
 
-            return Flow.FromFunction<IImmutableList<string>, ByteString>(list => formatter.ToCsv(list))
+            return Flow.FromFunction<ImmutableList<string>, ByteString>(list => formatter.ToCsv(list))
                 .Prepend(Source.Single(byteOrderMark))
                 .Named("CsvFormatting");
         }

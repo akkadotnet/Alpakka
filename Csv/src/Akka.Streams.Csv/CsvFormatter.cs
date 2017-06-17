@@ -54,17 +54,12 @@ namespace Akka.Streams.Csv
         [SuppressMessage("ReSharper", "PossibleMultipleEnumeration")]
         public ByteString ToCsv(IEnumerable fields)
         {
-            if (fields == null)
+            if (fields == null || !fields.GetEnumerator().MoveNext())
             {
                 return _endOfLineBs;
             }
 
-            if (fields.GetEnumerator().MoveNext())
-            {
-                return ByteString.FromString(NonEmptyToCsv(fields), _encoding);
-            }
-
-            return _endOfLineBs;
+            return ByteString.FromString(NonEmptyToCsv(fields), _encoding);
         }
 
         private string NonEmptyToCsv(IEnumerable fields)

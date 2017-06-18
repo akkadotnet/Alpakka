@@ -15,13 +15,10 @@ using Xunit.Abstractions;
 
 namespace Akka.Streams.Csv.Tests.dsl
 {
-    public class CsvParsingSpec : Akka.TestKit.Xunit.TestKit
+    public class CsvParsingSpec : CsvSpec
     {
-        private readonly ActorMaterializer _materializer;
-
         public CsvParsingSpec(ITestOutputHelper output) : base(output: output)
         {
-            _materializer = Sys.Materializer();
         }
 
         [Fact]
@@ -30,7 +27,7 @@ namespace Akka.Streams.Csv.Tests.dsl
             var fut = Source
                 .Single(ByteString.FromString("eins,zwei,drei\n"))
                 .Via(CsvParsing.LineScanner())
-                .RunWith(Sink.First<ImmutableList<ByteString>>(), _materializer);
+                .RunWith(Sink.First<ImmutableList<ByteString>>(), Materializer);
 
             fut.Wait(TimeSpan.FromSeconds(3));
             fut.Result.ShouldAllBeEquivalentTo(new[] { ByteString.FromString("eins"), ByteString.FromString("zwei"), ByteString.FromString("drei") });
@@ -42,7 +39,7 @@ namespace Akka.Streams.Csv.Tests.dsl
             var fut = Source
                 .Single(ByteString.FromString("eins,zwei,drei\nuno,dos,tres\n"))
                 .Via(CsvParsing.LineScanner())
-                .RunWith(Sink.Seq<ImmutableList<ByteString>>(), _materializer);
+                .RunWith(Sink.Seq<ImmutableList<ByteString>>(), Materializer);
 
             fut.Wait(TimeSpan.FromSeconds(3));
             var res = fut.Result;
@@ -56,7 +53,7 @@ namespace Akka.Streams.Csv.Tests.dsl
             var fut = Source
                 .Single(ByteString.FromString("eins,zwei,drei\nuno,dos,tres"))
                 .Via(CsvParsing.LineScanner())
-                .RunWith(Sink.Seq<ImmutableList<ByteString>>(), _materializer);
+                .RunWith(Sink.Seq<ImmutableList<ByteString>>(), Materializer);
 
             fut.Wait(TimeSpan.FromSeconds(3));
             var res = fut.Result;
@@ -79,7 +76,7 @@ namespace Akka.Streams.Csv.Tests.dsl
                     }
                     return outList.ToArray();
                 })
-                .RunWith(Sink.Seq<string[]>(), _materializer);
+                .RunWith(Sink.Seq<string[]>(), Materializer);
 
             fut.Wait(TimeSpan.FromSeconds(3));
             var res = fut.Result;
@@ -108,7 +105,7 @@ namespace Akka.Streams.Csv.Tests.dsl
                     }
                     return outList.ToArray();
                 })
-                .RunWith(Sink.Seq<string[]>(), _materializer);
+                .RunWith(Sink.Seq<string[]>(), Materializer);
             fut.Wait(TimeSpan.FromSeconds(3));
             var res = fut.Result;
             res[0].ShouldAllBeEquivalentTo(new[] { "eins", "zwei", "drei" });
@@ -130,7 +127,7 @@ namespace Akka.Streams.Csv.Tests.dsl
                     return outList.ToArray();
                 })
                 .ToMaterialized(this.SinkProbe<string[]>(), Keep.Both)
-                .Run(_materializer);
+                .Run(Materializer);
             var source = t.Item1;
             var sink = t.Item2;
 
@@ -158,7 +155,7 @@ namespace Akka.Streams.Csv.Tests.dsl
                     }
                     return outList.ToArray();
                 })
-                .RunWith(Sink.Seq<string[]>(), _materializer);
+                .RunWith(Sink.Seq<string[]>(), Materializer);
 
             var res = fut.Result;
             res[0].ShouldAllBeEquivalentTo(new[] { "abc", "def", "ghi", "", "", "", "" });
@@ -179,7 +176,7 @@ namespace Akka.Streams.Csv.Tests.dsl
                 }
                 return outList.ToArray();
             })
-            .RunWith(Sink.Seq<string[]>(), _materializer);
+            .RunWith(Sink.Seq<string[]>(), Materializer);
 
             var res = fut.Result;
             res[0].ShouldAllBeEquivalentTo(new[] { "abc", "def", "ghi" });
@@ -202,7 +199,7 @@ namespace Akka.Streams.Csv.Tests.dsl
                     }
                     return outDict;
                 })
-                .RunWith(Sink.Seq<Dictionary<string, string>>(), _materializer);
+                .RunWith(Sink.Seq<Dictionary<string, string>>(), Materializer);
 
             var res = fut.Result;
             res[0].ShouldAllBeEquivalentTo(new Dictionary<string, string>()

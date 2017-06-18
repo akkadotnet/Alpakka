@@ -10,24 +10,19 @@ using Xunit.Abstractions;
 
 namespace Akka.Streams.Csv.Tests.dsl
 {
-    public class CsvFormattingSpec: Akka.TestKit.Xunit.TestKit
+    public class CsvFormattingSpec: CsvSpec
     {
-        private readonly ActorMaterializer _materializer;
-
         public CsvFormattingSpec(ITestOutputHelper output) : base(output: output)
         {
-            _materializer = Sys.Materializer();
         }
-
 
         [Fact]
         public void CsvFormatting_should_format_simple_value()
         {
-            
             var fut = Source
                 .Single(new[] {"eins", "zwei", "drei"}.ToImmutableList())
                 .Via(CsvFormatting.Format())
-                .RunWith(Sink.First<ByteString>(), _materializer);
+                .RunWith(Sink.First<ByteString>(), Materializer);
 
             fut.Wait(TimeSpan.FromSeconds(3));
             fut.Result.ShouldBeEquivalentTo(ByteString.FromString("eins,zwei,drei\r\n"));
@@ -43,7 +38,7 @@ namespace Akka.Streams.Csv.Tests.dsl
                     new[] {"uno", "dos", "tres"}.ToImmutableList()
                 })
                 .Via(CsvFormatting.Format(byteOrderMark: ByteOrderMark.UTF8))
-                .RunWith(Sink.Seq<ByteString>(), _materializer);
+                .RunWith(Sink.Seq<ByteString>(), Materializer);
 
             fut.Wait(TimeSpan.FromSeconds(3));
             var res = fut.Result;

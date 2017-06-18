@@ -93,6 +93,8 @@
     <Compile Include="CsvParserSpec.cs" />
     <Compile Include="dsl\CsvFormattingSpec.cs" />
     <Compile Include="dsl\CsvParsingSpec.cs" />
+    <Compile Include="dsl\CsvSpec.cs" />
+    <Compile Include="dsl\CsvToDisctionarySpec.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

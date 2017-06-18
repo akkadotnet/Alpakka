@@ -51,16 +51,17 @@ namespace Akka.Streams.Csv
                     if (csvLine != null)
                     {
                         Push(_stage.Out, csvLine.ToImmutableList());
-                        return;
-                    }
-
-                    if (IsClosed(_stage.In))
-                    {
-                        EmitRemaining();
-                        CompleteStage();
                     }
                     else
-                        Pull(_stage.In);
+                    {
+                        if (IsClosed(_stage.In))
+                        {
+                            EmitRemaining();
+                            CompleteStage();
+                        }
+                        else
+                            Pull(_stage.In);
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -71,10 +72,10 @@ namespace Akka.Streams.Csv
             private void EmitRemaining()
             {
                 var csvLine = _buffer.Poll(requireLineEnd: false);
-                while (csvLine != null)
+                if (csvLine != null)
                 {
                     Emit(_stage.Out, csvLine.ToImmutableList());
-                    csvLine = _buffer.Poll(requireLineEnd: false);
+                    EmitRemaining();
                 }
             }
         }

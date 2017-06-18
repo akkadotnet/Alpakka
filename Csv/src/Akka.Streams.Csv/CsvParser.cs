@@ -30,7 +30,7 @@ namespace Akka.Streams.Csv
 
         private ByteString _buffer = ByteString.Empty;
         private bool _firstData = true;
-        private long _currentLineNo = 1l;
+        private long _currentLineNo = 1L;
 
         public int Pos { get; private set; }
         public int FieldStart { get; private set; }
@@ -61,11 +61,7 @@ namespace Akka.Streams.Csv
                 var prePos = Pos;
                 var preSieldStart = FieldStart;
                 var line = ParseLine(requireLineEnd);
-                if (line == null)
-                {
-                    return null;
-                }
-                if (line.Count > 0)
+                if (line!= null && line.Count > 0)
                 {
                     _currentLineNo++;
                     DropReadBuffer();

@@ -4,16 +4,11 @@ using Akka.IO;
 using Akka.Streams.Csv.Dsl;
 using FluentAssertions;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace Akka.Streams.Csv.Tests
 {
-    public class CsvParserSpec : Akka.TestKit.Xunit.TestKit
+    public class CsvParserSpec
     {
-        public CsvParserSpec(ITestOutputHelper output) : base(output: output)
-        {
-        }
-
         [Fact]
         public void CsvParser_should_read_comma_separated_values_into_a_list()
         {

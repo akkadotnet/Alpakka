@@ -1,22 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Text;
 using Akka.IO;
 using Akka.Streams.Csv.Dsl;
 using FluentAssertions;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace Akka.Streams.Csv.Tests
 {
-    public class CsvFormatterSpec: Akka.TestKit.Xunit.TestKit
+    public class CsvFormatterSpec
     {
-        public CsvFormatterSpec(ITestOutputHelper output) : base(output: output)
-        {
-        }
-
         [Fact]
         public void CsvFormatter_with_comma_delimiter_should_format_strings()
         {

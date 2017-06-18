@@ -17,7 +17,7 @@ namespace Akka.Streams.Csv.Dsl
         /// </summary>
         /// <param name="encoding">the encoding to decode <see cref="ByteString"/> to <see cref="string"/>, defaults to <see cref="Encoding.UTF8"/></param>
         /// <returns></returns>
-        public static Flow<ImmutableList<ByteString>, Dictionary<string, ByteString>, NotUsed> ToMap(Encoding encoding = null)
+        public static Flow<ImmutableList<ByteString>, Dictionary<string, ByteString>, NotUsed> ToDictionary(Encoding encoding = null)
         {
             if (encoding == null)
             {

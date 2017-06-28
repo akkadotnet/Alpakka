@@ -4,6 +4,7 @@ using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Xml;
 using Akka.IO;
@@ -103,25 +104,26 @@ namespace Akka.Streams.Xml
         #region Logic
         private class Logic:InAndOutGraphStageLogic
         {
-            private readonly MemoryStream _feeder;
+            private readonly BlockingStream _feeder;
             private readonly XmlReader _parser;
 
-            private bool _started;
-            private bool _stopped;
-
             private readonly StreamingXmlParser _stage;
+
+            private IParseEvent _pendingEvent = null;
+            private bool _hasNext = false;
 
             public Logic(StreamingXmlParser stage) : base(stage.Shape)
             {
                 _stage = stage;
 
-                _feeder = new MemoryStream();
+                _feeder = new BlockingStream();
                 _parser = XmlReader.Create(_feeder, new XmlReaderSettings
                 {
                     IgnoreComments = false,
                     IgnoreProcessingInstructions = false,
                     IgnoreWhitespace = true,
-                    CloseInput = true
+                    CloseInput = false,
+                    Async = true
                 });
 
                 SetHandler(stage.In, this);
@@ -132,18 +134,24 @@ namespace Akka.Streams.Xml
             {
                 var array = Grab(_stage.In).ToArray();
                 _feeder.Write(array, 0, array.Length);
-                _feeder.Flush();
                 AdvanceParser();
             }
 
             public override void OnPull()
             {
+                // Check for empty buffer
+                if (_feeder.Length == 0 && !IsClosed(_stage.In))
+                {
+                    Pull(_stage.In);
+                    return;
+                }
                 AdvanceParser();
             }
 
             public override void OnUpstreamFinish()
             {
-                if (_parser.ReadState == ReadState.EndOfFile)
+                _feeder.EndOfInput();
+                if (!_hasNext)
                     CompleteStage();
                 else if (IsAvailable(_stage.Out))
                     AdvanceParser();
@@ -151,55 +159,75 @@ namespace Akka.Streams.Xml
 
             private void AdvanceParser()
             {
-                if (_stopped)
-                    return;
-
-                // START_DOCUMENT
-                if (!_started) 
+                // Check for pending events
+                if (_pendingEvent != null)
                 {
-                    _started = true;
-                    Push(_stage.Out, new StartDocument());
+                    Push(_stage.Out, _pendingEvent);
+                    if (_pendingEvent is EndDocument)
+                    {
+                        CompleteStage();
+                    }
+                    _pendingEvent = null;
                     return;
                 }
 
-                if (!_parser.Read())
+                try
                 {
-                    // EVENT_INCOMPLETE
-                    if (_parser.ReadState != ReadState.EndOfFile) 
+                    _hasNext = _parser.Read();
+                }
+                catch (XmlException e)
+                {
+                    FailStage(e);
+                }
+
+                if (!_hasNext)
+                {
+                    if (!_parser.EOF)
                     {
                         if (!IsClosed(_stage.In))
-                            Pull(_stage.In);
+                        {
+                            // EVENT_INCOMPLETE not supported, if this happens, the world blew up
+                            _parser.Close();
+                            FailStage(new IllegalStateException("Buffer underrun or multiple document exist inside the stream."));
+                        }
                         else
+                        {
+                            _parser.Close();
                             FailStage(new IllegalStateException("Stream finished before event was fully parsed."));
-                        return;
+                        }
                     }
-
-                    // END_DOCUMENT
-                    // There is no "end document" event in .net, so we have to rely on EOF to detect "end document"
-                    _stopped = true;
-                    _parser.Close();
-                    // in Java, EndDocument aren't supposed to fire on EOF, but we really have no choice?
-                    Push(_stage.Out, new EndDocument()); 
-                    CompleteStage();
                     return;
                 }
 
                 switch (_parser.NodeType)
                 {
                     // START_ELEMENT
-                    case XmlNodeType.Element:               
+                    case XmlNodeType.Element:
                         var attributes = new Dictionary<string, string>();
                         while (_parser.MoveToNextAttribute())
                         {
                             attributes.Add(_parser.LocalName, _parser.Value);
                         }
                         _parser.MoveToElement();
+
+                        if (_parser.Depth == 0)
+                        {
+                            // START_DOCUMENT
+                            Push(_stage.Out, new StartDocument());
+                            _pendingEvent = new StartElement(_parser.LocalName, attributes);
+                            return;
+                        }
                         Push(_stage.Out, new StartElement(_parser.LocalName, attributes));
                         break;
 
                     // END_ELEMENT
                     case XmlNodeType.EndElement:            
                         Push(_stage.Out, _parser.LocalName);
+                        if (_parser.Depth == 0)
+                        {
+                            // END_DOCUMENT
+                            _pendingEvent = new EndDocument();
+                        }
                         break;
 
                     // CHARACTERS
@@ -225,19 +253,10 @@ namespace Akka.Streams.Xml
                     // Do not support DTD, SPACE, NAMESPACE, NOTATION_DECLARATION, ENTITY_DECLARATION, PROCESSING_INSTRUCTION
                     // ATTRIBUTE is handled in START_ELEMENT implicitly
                     default:
-                        if (_parser.ReadState != ReadState.EndOfFile)
-                            AdvanceParser();
-                        else
-                        {
-                            _stopped = true;
-                            _parser.Close();
-                            CompleteStage();
-                        }
+                        AdvanceParser();
                         break;
                 }
-
             }
-
         }
         #endregion
 
@@ -255,6 +274,45 @@ namespace Akka.Streams.Xml
 
         protected override GraphStageLogic CreateLogic(Attributes inheritedAttributes)
             => new Logic(this);
+
+        private class BlockingStream : MemoryStream
+        {
+            private readonly ManualResetEvent _dataReady = new ManualResetEvent(false);
+
+            private bool _eoi;
+
+            public void EndOfInput()
+            {
+                _eoi = true;
+            }
+
+            public override void Write(byte[] buffer, int offset, int count)
+            {
+                if (_eoi)
+                {
+                    throw new Exception("");
+                }
+
+                var oldPos = Position;
+                Position = Length;
+                base.Write(buffer, offset, count);
+                Flush();
+                Position = oldPos;
+
+                _dataReady.Set();
+            }
+
+            public override int Read(byte[] buffer, int offset, int count)
+            {
+                if (Length - Position <= 4 && !_eoi)
+                {
+                    _dataReady.Reset();
+                    _dataReady.WaitOne();
+                }
+
+                return base.Read(buffer, offset, count);
+            }
+        }
     }
 
     /// <summary>

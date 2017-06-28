@@ -80,16 +80,16 @@ namespace Akka.Streams.Csv
             Shape = new FlowShape<ImmutableList<ByteString>, Dictionary<string, ByteString>>(In, Out);
         }
 
-        protected override Attributes InitialAttributes { get; } = Attributes.CreateName("CsvToMap");
+        protected override Attributes InitialAttributes { get; } = Attributes.CreateName("CsvToDictionary");
 
-        internal Inlet<ImmutableList<ByteString>> In { get; } = new Inlet<ImmutableList<ByteString>>("CsvToMap.in");
-        internal Outlet<Dictionary<string, ByteString>> Out { get; } = new Outlet<Dictionary<string, ByteString>>("CsvToMap.out");
+        internal Inlet<ImmutableList<ByteString>> In { get; } = new Inlet<ImmutableList<ByteString>>("CsvToDictionary.in");
+        internal Outlet<Dictionary<string, ByteString>> Out { get; } = new Outlet<Dictionary<string, ByteString>>("CsvToDictionary.out");
 
         public override FlowShape<ImmutableList<ByteString>, Dictionary<string, ByteString>> Shape { get; }
 
         protected override GraphStageLogic CreateLogic(Attributes inheritedAttributes)
             => new Logic(this, _columnNames, _encoding);
 
-        public override string ToString() => nameof(CsvParsingStage);
+        public override string ToString() => nameof(CsvToDictionaryStage);
     }
 }

@@ -19,15 +19,15 @@ namespace Akka.Streams.Csv.Dsl
         public const char DoubleQuote = '"';
 
         /// <summary>
-        /// Create a Flow for converting IImmutableList&lt;string&gt; to ByteString.
+        /// Create a Flow for converting <see cref="IImmutableList{string}"/> to ByteString.
         /// </summary>
-        /// <param name="delimiter"></param>
-        /// <param name="quoteChar"></param>
-        /// <param name="escapeChar"></param>
-        /// <param name="endOfLine"></param>
-        /// <param name="quotingStyle"></param>
-        /// <param name="encoding"></param>
-        /// <param name="byteOrderMark"></param>
+        /// <param name="delimiter">Value delimiter, defaults to comma</param>
+        /// <param name="quoteChar">Quote character, defaults to double quote</param>
+        /// <param name="escapeChar">Escape character, defaults to backslash</param>
+        /// <param name="endOfLine">Line ending (default CR, LF)</param>
+        /// <param name="quotingStyle">Quote all fields, or only fields requiring quotes (default)</param>
+        /// <param name="encoding">Character encoding, defaults to UTF-8</param>
+        /// <param name="byteOrderMark">Certain CSV readers (namely Microsoft Excel) require a Byte Order mark, defaults to None</param>
         public static Flow<ImmutableList<string>, ByteString, NotUsed> Format(
             char delimiter = Comma, 
             char quoteChar = DoubleQuote, 
@@ -46,8 +46,8 @@ namespace Akka.Streams.Csv.Dsl
             }
 
             return Flow.FromFunction<ImmutableList<string>, ByteString>(list => formatter.ToCsv(list))
-                .Prepend(Source.Single(byteOrderMark))
-                .Named("CsvFormatting");
+                .Named("CsvFormatting")
+                .Prepend(Source.Single(byteOrderMark));
         }
     }
 }

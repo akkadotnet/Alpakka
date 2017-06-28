@@ -32,7 +32,7 @@ namespace Akka.Streams.Csv
         private bool _firstData = true;
         private long _currentLineNo = 1L;
 
-        private int _pos;
+        private int _position;
         private int _fieldStart;
 
         /// <summary>
@@ -58,7 +58,7 @@ namespace Akka.Streams.Csv
             if (_buffer.NonEmpty)
             {
                 var preFirstData = _firstData;
-                var prePos = _pos;
+                var prePos = _position;
                 var preSieldStart = _fieldStart;
                 var line = ParseLine(requireLineEnd);
                 if (line!= null && line.Count > 0)
@@ -69,7 +69,7 @@ namespace Akka.Streams.Csv
                 else
                 {
                     _firstData = preFirstData;
-                    _pos = prePos;
+                    _position = prePos;
                     _fieldStart = preSieldStart;
                 }
                 return line;
@@ -79,8 +79,8 @@ namespace Akka.Streams.Csv
 
         private void DropReadBuffer()
         {
-            _buffer = _buffer.Drop(_pos);
-            _pos = 0;
+            _buffer = _buffer.Drop(_position);
+            _position = 0;
             _fieldStart = 0;
         }
 
@@ -89,13 +89,13 @@ namespace Akka.Streams.Csv
         private sealed class FieldBuilder
         {
             private readonly CsvParser _parser;
-            private readonly ByteString _buf;
+            private readonly ByteString _buffer;
             private bool _useBuilder;
             private ByteStringBuilder _builder;
 
-            public FieldBuilder(ByteString buf, CsvParser parser)
+            public FieldBuilder(ByteString buffer, CsvParser parser)
             {
-                _buf = buf;
+                _buffer = buffer;
                 _parser = parser;
             }
 
@@ -104,7 +104,7 @@ namespace Akka.Streams.Csv
             {
                 if (!_useBuilder)
                 {
-                    _builder = ByteString.NewBuilder().Append(_buf.Slice(_parser._fieldStart, _parser._pos)) + x;
+                    _builder = ByteString.NewBuilder().Append(_buffer.Slice(_parser._fieldStart, _parser._position)) + x;
                     _useBuilder = true;
                 }
                 else
@@ -126,57 +126,57 @@ namespace Akka.Streams.Csv
                     _useBuilder = false;
                     return _builder.Result();
                 }
-                return _buf.Slice(_parser._fieldStart, pos);
+                return _buffer.Slice(_parser._fieldStart, pos);
             }
         }
 
         // TODO: Check exception handling. Original scala exception handling might be faulty?, it returns exceptions when it is parsing, but disregards any csv errors when doing return checks at the end.
         private List<ByteString> ParseLine(bool requireLineEnd)
         {
-            var buf = _buffer;
+            var buffer = _buffer;
             var columns = new List<ByteString>();
             var state = State.LineStart;
-            var fieldBuilder = new FieldBuilder(buf, this);
+            var fieldBuilder = new FieldBuilder(buffer, this);
 
             void WrongCharEscaped()
             {
-                throw new MalformedCsvException($"wrong escaping at {_currentLineNo}:{_pos}, only escape or delimiter may be escaped");
+                throw new MalformedCsvException($"wrong escaping at {_currentLineNo}:{_position}, only escape or delimiter may be escaped");
             }
 
             void WrongCharEscapedWithinQuotes()
             {
-                throw new MalformedCsvException($"wrong escaping at {_currentLineNo}:{_pos}, only escape or quote may be escaped within quotes");
+                throw new MalformedCsvException($"wrong escaping at {_currentLineNo}:{_position}, only escape or quote may be escaped within quotes");
             }
 
             void NoCharEscaped()
             {
-                throw new MalformedCsvException($"wrong escaping at {_currentLineNo}:{_pos}, no character after escape");
+                throw new MalformedCsvException($"wrong escaping at {_currentLineNo}:{_position}, no character after escape");
             }
 
             void ReadPastLf()
             {
-                if (_pos < buf.Count && buf[_pos] == Lf)
+                if (_position < buffer.Count && buffer[_position] == Lf)
                 {
-                    _pos++;
+                    _position++;
                 }
             }
 
             void CheckForByteOrderMark()
             {
-                if (buf.Count >= 2)
+                if (buffer.Count >= 2)
                 {
-                    if (buf.StartsWith(ByteOrderMark.UTF8))
+                    if (buffer.StartsWith(ByteOrderMark.UTF8))
                     {
-                        _pos = 3;
+                        _position = 3;
                         _fieldStart = 3;
                     }
                     else
                     {
-                        if (buf.StartsWith(ByteOrderMark.UTF16_LE))
+                        if (buffer.StartsWith(ByteOrderMark.UTF16_LE))
                             throw new UnsupportedCharsetException("UTF-16 LE and UTF-32 LE");
-                        if (buf.StartsWith(ByteOrderMark.UTF16_BE))
+                        if (buffer.StartsWith(ByteOrderMark.UTF16_BE))
                             throw new UnsupportedCharsetException("UTF-16 BE");
-                        if (buf.StartsWith(ByteOrderMark.UTF32_BE))
+                        if (buffer.StartsWith(ByteOrderMark.UTF32_BE))
                             throw new UnsupportedCharsetException("UTF-32 BE");
                     }
                 }
@@ -188,17 +188,17 @@ namespace Akka.Streams.Csv
                 _firstData = false;
             }
 
-            while (state != State.LineEnd && _pos < buf.Count)
+            while (state != State.LineEnd && _position < buffer.Count)
             {
-                var b = buf[_pos];
+                var b = buffer[_position];
                 switch (state)
                 {
                     case State.LineStart:
                         if (b == _quoteChar)
                         {
                             state = State.QuoteStarted;
-                            _pos++;
-                            _fieldStart = _pos;
+                            _position++;
+                            _fieldStart = _position;
                             continue;
                         }
 
@@ -206,8 +206,8 @@ namespace Akka.Streams.Csv
                         {
                             columns.Add(ByteString.Empty);
                             state = State.AfterDelimiter;
-                            _pos++;
-                            _fieldStart = _pos;
+                            _position++;
+                            _fieldStart = _position;
                             continue;
                         }
 
@@ -216,20 +216,20 @@ namespace Akka.Streams.Csv
                             case Lf:
                                 columns.Add(ByteString.Empty);
                                 state = State.LineEnd;
-                                _pos++;
-                                _fieldStart = _pos;
+                                _position++;
+                                _fieldStart = _position;
                                 break;
                             case Cr:
                                 columns.Add(ByteString.Empty);
                                 state = State.LineEnd;
-                                _pos++;
+                                _position++;
                                 ReadPastLf();
-                                _fieldStart = _pos;
+                                _fieldStart = _position;
                                 break;
                             default:
                                 fieldBuilder.Add(b);
                                 state = State.WithinField;
-                                _pos++;
+                                _position++;
                                 break;
                         }
                         break;
@@ -238,22 +238,22 @@ namespace Akka.Streams.Csv
                         if (b == _quoteChar)
                         {
                             state = State.QuoteStarted;
-                            _pos++;
-                            _fieldStart = _pos;
+                            _position++;
+                            _fieldStart = _position;
                             continue;
                         }
 
                         if (b == _escapeChar)
                         {
-                            if (_pos + 1 >= buf.Count)
+                            if (_position + 1 >= buffer.Count)
                                 NoCharEscaped();
 
-                            if (buf[_pos + 1] != _escapeChar && buf[_pos + 1] != _delimiter)
+                            if (buffer[_position + 1] != _escapeChar && buffer[_position + 1] != _delimiter)
                                 WrongCharEscaped();
 
-                            fieldBuilder.Init(buf[_pos + 1]);
+                            fieldBuilder.Init(buffer[_position + 1]);
                             state = State.WithinField;
-                            _pos += 2;
+                            _position += 2;
                             continue;
                         }
 
@@ -261,8 +261,8 @@ namespace Akka.Streams.Csv
                         {
                             columns.Add(ByteString.Empty);
                             state = State.AfterDelimiter;
-                            _pos++;
-                            _fieldStart = _pos;
+                            _position++;
+                            _fieldStart = _position;
                             continue;
                         }
 
@@ -271,20 +271,20 @@ namespace Akka.Streams.Csv
                             case Lf:
                                 columns.Add(ByteString.Empty);
                                 state = State.LineEnd;
-                                _pos++;
-                                _fieldStart = _pos;
+                                _position++;
+                                _fieldStart = _position;
                                 break;
                             case Cr:
                                 columns.Add(ByteString.Empty);
                                 state = State.LineEnd;
-                                _pos++;
+                                _position++;
                                 ReadPastLf();
-                                _fieldStart = _pos;
+                                _fieldStart = _position;
                                 break;
                             default:
                                 fieldBuilder.Add(b);
                                 state = State.WithinField;
-                                _pos++;
+                                _position++;
                                 break;
                         }
                         break;
@@ -292,46 +292,46 @@ namespace Akka.Streams.Csv
                     case State.WithinField:
                         if (b == _escapeChar)
                         {
-                            if (_pos + 1 >= buf.Count)
+                            if (_position + 1 >= buffer.Count)
                                 NoCharEscaped();
 
-                            if (buf[_pos + 1] != _escapeChar && buf[_pos + 1] != _delimiter)
+                            if (buffer[_position + 1] != _escapeChar && buffer[_position + 1] != _delimiter)
                                 WrongCharEscaped();
 
-                            fieldBuilder.Init(buf[_pos + 1]);
+                            fieldBuilder.Init(buffer[_position + 1]);
                             state = State.WithinField;
-                            _pos += 2;
+                            _position += 2;
                             continue;
                         }
 
                         if (b == _delimiter)
                         {
-                            columns.Add(fieldBuilder.Result(_pos));
+                            columns.Add(fieldBuilder.Result(_position));
                             state = State.AfterDelimiter;
-                            _pos++;
-                            _fieldStart = _pos;
+                            _position++;
+                            _fieldStart = _position;
                             continue;
                         }
 
                         switch (b)
                         {
                             case Lf:
-                                columns.Add(fieldBuilder.Result(_pos));
+                                columns.Add(fieldBuilder.Result(_position));
                                 state = State.LineEnd;
-                                _pos++;
-                                _fieldStart = _pos;
+                                _position++;
+                                _fieldStart = _position;
                                 break;
                             case Cr:
-                                columns.Add(fieldBuilder.Result(_pos));
+                                columns.Add(fieldBuilder.Result(_position));
                                 state = State.LineEnd;
-                                _pos++;
+                                _position++;
                                 ReadPastLf();
-                                _fieldStart = _pos;
+                                _fieldStart = _position;
                                 break;
                             default:
                                 fieldBuilder.Add(b);
                                 state = State.WithinField;
-                                _pos++;
+                                _position++;
                                 break;
                         }
                         break;
@@ -339,99 +339,99 @@ namespace Akka.Streams.Csv
                     case State.QuoteStarted:
                         if (b == _escapeChar && _escapeChar != _quoteChar)
                         {
-                            if (_pos + 1 >= buf.Count)
+                            if (_position + 1 >= buffer.Count)
                                 NoCharEscaped();
 
-                            if (buf[_pos + 1] != _escapeChar && buf[_pos + 1] != _quoteChar)
+                            if (buffer[_position + 1] != _escapeChar && buffer[_position + 1] != _quoteChar)
                                 WrongCharEscapedWithinQuotes();
 
-                            fieldBuilder.Init(buf[_pos + 1]);
+                            fieldBuilder.Init(buffer[_position + 1]);
                             state = State.WithinQuotedField;
-                            _pos += 2;
+                            _position += 2;
                             continue;
                         }
 
                         if (b == _quoteChar)
                         {
-                            if (_pos + 1 < buf.Count && buf[_pos + 1] == _quoteChar)
+                            if (_position + 1 < buffer.Count && buffer[_position + 1] == _quoteChar)
                             {
                                 fieldBuilder.Init(b);
                                 state = State.WithinQuotedField;
-                                _pos += 2;
+                                _position += 2;
                                 continue;
                             }
                             state = State.QuoteEnd;
-                            _pos++;
+                            _position++;
                             continue;
                         }
 
                         fieldBuilder.Add(b);
                         state = State.WithinQuotedField;
-                        _pos++;
+                        _position++;
                         break;
 
                     case State.QuoteEnd:
                         if (b == _delimiter)
                         {
-                            columns.Add(fieldBuilder.Result(_pos - 1));
+                            columns.Add(fieldBuilder.Result(_position - 1));
                             state = State.AfterDelimiter;
-                            _pos++;
-                            _fieldStart = _pos;
+                            _position++;
+                            _fieldStart = _position;
                             continue;
                         }
 
                         switch (b)
                         {
                             case Lf:
-                                columns.Add(fieldBuilder.Result(_pos - 1));
+                                columns.Add(fieldBuilder.Result(_position - 1));
                                 state = State.LineEnd;
-                                _pos++;
-                                _fieldStart = _pos;
+                                _position++;
+                                _fieldStart = _position;
                                 break;
                             case Cr:
-                                columns.Add(fieldBuilder.Result(_pos - 1));
+                                columns.Add(fieldBuilder.Result(_position - 1));
                                 state = State.LineEnd;
-                                _pos++;
+                                _position++;
                                 ReadPastLf();
-                                _fieldStart = _pos;
+                                _fieldStart = _position;
                                 break;
                             default:
-                                throw new MalformedCsvException($"Expected delimiter or end of line at {_currentLineNo}:{_pos}");
+                                throw new MalformedCsvException($"Expected delimiter or end of line at {_currentLineNo}:{_position}");
                         }
                         break;
 
                     case State.WithinQuotedField:
                         if (b == _escapeChar && _escapeChar != _quoteChar)
                         {
-                            if (_pos + 1 >= buf.Count)
+                            if (_position + 1 >= buffer.Count)
                                 NoCharEscaped();
 
-                            if (buf[_pos + 1] != _escapeChar && buf[_pos + 1] != _quoteChar)
+                            if (buffer[_position + 1] != _escapeChar && buffer[_position + 1] != _quoteChar)
                                 WrongCharEscapedWithinQuotes();
 
-                            fieldBuilder.Init(buf[_pos + 1]);
+                            fieldBuilder.Init(buffer[_position + 1]);
                             state = State.WithinQuotedField;
-                            _pos += 2;
+                            _position += 2;
                             continue;
                         }
 
                         if (b == _quoteChar)
                         {
-                            if (_pos + 1 < buf.Count && buf[_pos + 1] == _quoteChar)
+                            if (_position + 1 < buffer.Count && buffer[_position + 1] == _quoteChar)
                             {
                                 fieldBuilder.Init(b);
                                 state = State.WithinQuotedField;
-                                _pos += 2;
+                                _position += 2;
                                 continue;
                             }
                             state = State.QuoteEnd;
-                            _pos++;
+                            _position++;
                             continue;
                         }
 
                         fieldBuilder.Add(b);
                         state = State.WithinQuotedField;
-                        _pos++;
+                        _position++;
                         break;
                 }
             }
@@ -446,14 +446,15 @@ namespace Akka.Streams.Csv
             switch (state)
             {
                 case State.AfterDelimiter:
+                    columns.Add(ByteString.Empty);
                     return columns;
                 case State.WithinQuotedField:
                     return null;
                 case State.WithinField:
-                    columns.Add(fieldBuilder.Result(_pos));
+                    columns.Add(fieldBuilder.Result(_position));
                     return columns;
                 case State.QuoteEnd:
-                    columns.Add(fieldBuilder.Result(_pos - 1));
+                    columns.Add(fieldBuilder.Result(_position - 1));
                     return columns;
             }
 

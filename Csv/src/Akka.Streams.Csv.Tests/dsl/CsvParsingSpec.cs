@@ -9,6 +9,7 @@ using Akka.IO;
 using Akka.Streams.Csv.Dsl;
 using Akka.Streams.Dsl;
 using Akka.Streams.TestKit;
+using Akka.TestKit;
 using FluentAssertions;
 using Xunit;
 using Xunit.Abstractions;
@@ -67,15 +68,7 @@ namespace Akka.Streams.Csv.Tests.dsl
             var fut = Source
                 .Single(ByteString.FromString("eins;zwei;drei\nein”s;zw ei;dr\\ei\nun’o;dos;tres\n"))
                 .Via(CsvParsing.LineScanner(delimiter: CsvParsing.SemiColon, escapeChar: 0x2a/*'*'*/))
-                .Select(list =>
-                {
-                    var outList = new List<string>();
-                    foreach (var bs in list)
-                    {
-                        outList.Add(bs.DecodeString());
-                    }
-                    return outList.ToArray();
-                })
+                .Select(list => list.Select(bs => bs.DecodeString()).ToArray())
                 .RunWith(Sink.Seq<string[]>(), Materializer);
 
             fut.Wait(TimeSpan.FromSeconds(3));
@@ -96,15 +89,7 @@ namespace Akka.Streams.Csv.Tests.dsl
             var fut = Source
                 .From(input)
                 .Via(CsvParsing.LineScanner())
-                .Select(list =>
-                {
-                    var outList = new List<string>();
-                    foreach (var bs in list)
-                    {
-                        outList.Add(bs.DecodeString());
-                    }
-                    return outList.ToArray();
-                })
+                .Select(list => list.Select(bs => bs.DecodeString()).ToArray())
                 .RunWith(Sink.Seq<string[]>(), Materializer);
             fut.Wait(TimeSpan.FromSeconds(3));
             var res = fut.Result;
@@ -117,15 +102,7 @@ namespace Akka.Streams.Csv.Tests.dsl
         {
             var t = this.SourceProbe<ByteString>()
                 .Via(CsvParsing.LineScanner())
-                .Select(list =>
-                {
-                    var outList = new List<string>();
-                    foreach (var bs in list)
-                    {
-                        outList.Add(bs.DecodeString(Encoding.UTF8));
-                    }
-                    return outList.ToArray();
-                })
+                .Select(list => list.Select(bs => bs.DecodeString(Encoding.UTF8)).ToArray())
                 .ToMaterialized(this.SinkProbe<string[]>(), Keep.Both)
                 .Run(Materializer);
             var source = t.Item1;
@@ -146,15 +123,7 @@ namespace Akka.Streams.Csv.Tests.dsl
         {
             var fut = FileIO.FromFile(new FileInfo("resources/numbers-utf-8.csv"))
                 .Via(CsvParsing.LineScanner(delimiter: CsvParsing.SemiColon, escapeChar: 0x01))
-                .Select(list =>
-                {
-                    var outList = new List<string>();
-                    foreach (var bs in list)
-                    {
-                        outList.Add(bs.DecodeString(Encoding.UTF8));
-                    }
-                    return outList.ToArray();
-                })
+                .Select(list => list.Select(bs => bs.DecodeString(Encoding.UTF8)).ToArray())
                 .RunWith(Sink.Seq<string[]>(), Materializer);
 
             var res = fut.Result;
@@ -167,15 +136,7 @@ namespace Akka.Streams.Csv.Tests.dsl
         {
             var fut = FileIO.FromFile(new FileInfo("resources/google-docs.csv"))
             .Via(CsvParsing.LineScanner(escapeChar: 0x01))
-            .Select(list =>
-            {
-                var outList = new List<string>();
-                foreach (var bs in list)
-                {
-                    outList.Add(bs.DecodeString(Encoding.UTF8));
-                }
-                return outList.ToArray();
-            })
+            .Select(list => list.Select(bs => bs.DecodeString(Encoding.UTF8)).ToArray())
             .RunWith(Sink.Seq<string[]>(), Materializer);
 
             var res = fut.Result;

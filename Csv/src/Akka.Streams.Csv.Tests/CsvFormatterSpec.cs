@@ -133,7 +133,7 @@ namespace Akka.Streams.Csv.Tests
 
         private void ExpectInOut(CsvFormatter formatter, string[] strIn, string strOut)
         {
-            formatter.ToCsv(strIn).ShouldBeEquivalentTo(ByteString.FromString(strOut));
+            formatter.ToCsv(strIn).DecodeString().Should().Be(strOut);
         }
     }
 }

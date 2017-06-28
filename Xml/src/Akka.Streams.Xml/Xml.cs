@@ -109,8 +109,9 @@ namespace Akka.Streams.Xml
 
             private readonly StreamingXmlParser _stage;
 
-            private IParseEvent _pendingEvent = null;
-            private bool _hasNext = false;
+            private IParseEvent _pendingEvent;
+            private bool _hasNext;
+            private bool _documentStarted;
 
             public Logic(StreamingXmlParser stage) : base(stage.Shape)
             {
@@ -159,14 +160,21 @@ namespace Akka.Streams.Xml
 
             private void AdvanceParser()
             {
+                // Check for document start
+                if (!_documentStarted && _parser.ReadState == ReadState.Initial)
+                {
+                    // START_DOCUMENT
+                    _documentStarted = true;
+                    Push(_stage.Out, new StartDocument());
+                    return;
+                }
+
                 // Check for pending events
                 if (_pendingEvent != null)
                 {
                     Push(_stage.Out, _pendingEvent);
                     if (_pendingEvent is EndDocument)
-                    {
                         CompleteStage();
-                    }
                     _pendingEvent = null;
                     return;
                 }
@@ -177,7 +185,7 @@ namespace Akka.Streams.Xml
                 }
                 catch (XmlException e)
                 {
-                    FailStage(e);
+                    //FailStage(e);
                 }
 
                 if (!_hasNext)
@@ -186,9 +194,12 @@ namespace Akka.Streams.Xml
                     {
                         if (!IsClosed(_stage.In))
                         {
-                            // EVENT_INCOMPLETE not supported, if this happens, the world blew up
+                            // EVENT_INCOMPLETE not supported, if this happens, the world blew up.
+                            // How can we do a new pull if we can't detect that XmlReader needs more data?
+                            // The only way I could think of is to put a hook in the stream read and trigger a pull from there
+                            // but that is so hackish.
                             _parser.Close();
-                            FailStage(new IllegalStateException("Buffer underrun or multiple document exist inside the stream."));
+                            FailStage(new IllegalStateException("EVENT_INCOMPLETE is not supported."));
                         }
                         else
                         {
@@ -209,20 +220,12 @@ namespace Akka.Streams.Xml
                             attributes.Add(_parser.LocalName, _parser.Value);
                         }
                         _parser.MoveToElement();
-
-                        if (_parser.Depth == 0)
-                        {
-                            // START_DOCUMENT
-                            Push(_stage.Out, new StartDocument());
-                            _pendingEvent = new StartElement(_parser.LocalName, attributes);
-                            return;
-                        }
                         Push(_stage.Out, new StartElement(_parser.LocalName, attributes));
                         break;
 
                     // END_ELEMENT
                     case XmlNodeType.EndElement:            
-                        Push(_stage.Out, _parser.LocalName);
+                        Push(_stage.Out, new EndElement(_parser.LocalName));
                         if (_parser.Depth == 0)
                         {
                             // END_DOCUMENT
@@ -306,7 +309,6 @@ namespace Akka.Streams.Xml
             {
                 if (Length - Position <= 4 && !_eoi)
                 {
-                    _dataReady.Reset();
                     _dataReady.WaitOne();
                 }
 

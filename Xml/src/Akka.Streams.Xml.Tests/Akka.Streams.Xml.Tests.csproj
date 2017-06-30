@@ -90,6 +90,7 @@
   <ItemGroup>
     <Compile Include="Dsl\XmlCoalesceTest.cs" />
     <Compile Include="Dsl\XmlProcessingTest.cs" />
+    <Compile Include="Dsl\XmlSubsliceTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

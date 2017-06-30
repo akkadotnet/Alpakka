@@ -132,6 +132,7 @@ namespace Akka.Streams.Xml.Tests.Dsl
             result[4].Should().BeOfType<EndDocument>();
         }
 
+        // I'm not sure what the original very convoluted code does
         [Fact]
         public void XmlParser_must_properly_parse_large_XML()
         {

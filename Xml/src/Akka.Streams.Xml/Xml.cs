@@ -138,6 +138,7 @@ namespace Akka.Streams.Xml
 
             public override void OnPull()
             {
+                // Fix for janky condition where XMLParser requires initial seed data inside the stream in order to work at all
                 if (!_hasBeenPushed)
                 {
                     if(!HasBeenPulled(_stage.In))
@@ -176,6 +177,7 @@ namespace Akka.Streams.Xml
             {
                 if (!_overflowBuffer.IsEmpty)
                 {
+                    // Overflow buffer isn't empty, so copy it into the buffer instead of asking for more upstream data
                     var sliceLen = Math.Min(_overflowBuffer.Count, _bufferSize);
                     var bytes = _overflowBuffer.Slice(0, sliceLen);
                     _overflowBuffer = _overflowBuffer.Drop(sliceLen);
@@ -196,6 +198,9 @@ namespace Akka.Streams.Xml
                     bytes = bytes.Slice(0, _bufferSize);
                 }
 
+                // Copy the data to the memory stream. 
+                // XmlParser reads data from buffer position to the end,
+                // thats why we offset the data so it fits into the right side of the buffer.
                 var offset = _bufferSize - bytes.Count;
                 _feeder.Position = offset;
                 _feeder.Write(bytes.ToArray(), 0, bytes.Count);
@@ -204,8 +209,11 @@ namespace Akka.Streams.Xml
 
             public override void OnUpstreamFinish()
             {
-                if(_hasNext)
-                    AdvanceParser();
+                if (_hasNext)
+                {
+                    if(_pendingEvent == null)
+                        AdvanceParser();
+                }
                 else
                     CompleteStage();
             }
@@ -217,20 +225,15 @@ namespace Akka.Streams.Xml
                 {
                     Push(_stage.Out, _pendingEvent);
                     if (_pendingEvent is EndDocument)
-                        CompleteStage();
+                        _documentStarted = false;
                     _pendingEvent = null;
                     return;
                 }
 
-                // Check for document start
-                if (!_documentStarted)
-                {
-                    // START_DOCUMENT
-                    _documentStarted = true;
-                    Push(_stage.Out, new StartDocument());
-                    return;
-                }
-
+                // Check for empty buffer condition. 
+                // XmlParser requires that there are at least 6 characters in the stream, 
+                // or it will read the stream multiple times to get more data,
+                // which will result in premature EOF in our case.
                 if (_feeder.Length - _feeder.Position < 7 && DataAvailable)
                 {
                     GetNextStreamBuffer();
@@ -261,17 +264,18 @@ namespace Akka.Streams.Xml
                 {
                     if (!_parser.EOF)
                     {
-                        if (!IsClosed(_stage.In))
-                        {
-                            _parser.Close();
-                            FailStage(new IllegalStateException("Multiple documents in a single stream is not supported."));
-                        }
-                        else
+                        if (IsClosed(_stage.In))
                         {
                             _parser.Close();
                             FailStage(new IllegalStateException("Stream finished before event was fully parsed."));
                         }
+                        else
+                        {
+                            _parser.Close();
+                            FailStage(new IllegalStateException("Unknown error occured. Parsing finished before stream was finished."));
+                        }
                     }
+                    CompleteStage();
                     return;
                 }
 
@@ -285,7 +289,16 @@ namespace Akka.Streams.Xml
                             attributes.Add(_parser.LocalName, _parser.Value);
                         }
                         _parser.MoveToElement();
-                        Push(_stage.Out, new StartElement(_parser.LocalName, attributes));
+
+                        if (_parser.Depth == 0 && !_documentStarted)
+                        {
+                            // START_DOCUMENT
+                            _documentStarted = true;
+                            Push(_stage.Out, new StartDocument());
+                            _pendingEvent = new StartElement(_parser.LocalName, attributes);
+                        }
+                        else
+                            Push(_stage.Out, new StartElement(_parser.LocalName, attributes));
                         break;
 
                     // END_ELEMENT
@@ -305,7 +318,15 @@ namespace Akka.Streams.Xml
 
                     // PROCESSING_INSTRUCTION
                     case XmlNodeType.ProcessingInstruction:
-                        Push(_stage.Out, new ProcessingInstruction(_parser.Name, _parser.Value));
+                        if (_parser.Depth == 0 && !_documentStarted)
+                        {
+                            // START_DOCUMENT
+                            _documentStarted = true;
+                            Push(_stage.Out, new StartDocument());
+                            _pendingEvent = new ProcessingInstruction(_parser.Name, _parser.Value);
+                        }
+                        else
+                            Push(_stage.Out, new ProcessingInstruction(_parser.Name, _parser.Value));
                         break;
 
                     // COMMENT

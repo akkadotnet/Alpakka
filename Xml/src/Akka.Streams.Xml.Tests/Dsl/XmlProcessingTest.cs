@@ -50,6 +50,34 @@ namespace Akka.Streams.Xml.Tests.Dsl
         }
 
         [Fact]
+        public void XmlParser_must_properly_parse_multiple_XML_in_a_single_stream()
+        {
+            var doc = "<doc><elem>elem1</elem></doc>";
+            var fut = Source
+                .Single(doc)
+                .Concat(Source.Single(doc))
+                .RunWith(_parser, _materializer);
+
+            fut.Wait(TimeSpan.FromSeconds(3));
+            var result = fut.Result;
+
+            result[0].Should().BeOfType<StartDocument>();
+            (result[1] as StartElement).ShouldBeEquivalentTo(new StartElement("doc", new Dictionary<string, string>()));
+            (result[2] as StartElement).ShouldBeEquivalentTo(new StartElement("elem", new Dictionary<string, string>()));
+            (result[3] as Characters).ShouldBeEquivalentTo(new Characters("elem1"));
+            (result[4] as EndElement).ShouldBeEquivalentTo(new EndElement("elem"));
+            (result[5] as EndElement).ShouldBeEquivalentTo(new EndElement("doc"));
+            result[6].Should().BeOfType<EndDocument>();
+            result[7].Should().BeOfType<StartDocument>();
+            (result[8] as StartElement).ShouldBeEquivalentTo(new StartElement("doc", new Dictionary<string, string>()));
+            (result[9] as StartElement).ShouldBeEquivalentTo(new StartElement("elem", new Dictionary<string, string>()));
+            (result[10] as Characters).ShouldBeEquivalentTo(new Characters("elem1"));
+            (result[11] as EndElement).ShouldBeEquivalentTo(new EndElement("elem"));
+            (result[12] as EndElement).ShouldBeEquivalentTo(new EndElement("doc"));
+            result[13].Should().BeOfType<EndDocument>();
+        }
+
+        [Fact]
         public void XmlParser_must_properly_process_a_comment()
         {
             var doc = "<doc><!--comment--></doc>";
@@ -165,9 +193,7 @@ namespace Akka.Streams.Xml.Tests.Dsl
                 .Via(XmlParsing.Parser(bufferSize:64))
                 .RunWith(Sink.Seq<IParseEvent>(), _materializer);
 
-            fut.Wait(TimeSpan.FromSeconds(3));
-            var res = fut.Result;
-            //fut.Invoking(f => f.Wait(TimeSpan.FromSeconds(3))).ShouldNotThrow();
+            fut.Invoking(f => f.Wait(TimeSpan.FromSeconds(3))).ShouldNotThrow();
         }
     }
 }

@@ -30,20 +30,20 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Akka, Version=1.2.1.37, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Akka.1.2.1\lib\net45\Akka.dll</HintPath>
+    <Reference Include="Akka, Version=1.2.0.33, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Akka.1.2.0\lib\net45\Akka.dll</HintPath>
     </Reference>
-    <Reference Include="Akka.Streams, Version=1.2.1.37, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Akka.Streams.1.2.1\lib\net45\Akka.Streams.dll</HintPath>
+    <Reference Include="Akka.Streams, Version=1.2.0.33, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Akka.Streams.1.2.0\lib\net45\Akka.Streams.dll</HintPath>
     </Reference>
     <Reference Include="Akka.Streams.TestKit, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Akka.Streams.TestKit.1.2.1\lib\net45\Akka.Streams.TestKit.dll</HintPath>
+      <HintPath>..\packages\Akka.Streams.TestKit.1.2.0\lib\net45\Akka.Streams.TestKit.dll</HintPath>
     </Reference>
-    <Reference Include="Akka.TestKit, Version=1.2.1.37, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Akka.TestKit.1.2.1\lib\net45\Akka.TestKit.dll</HintPath>
+    <Reference Include="Akka.TestKit, Version=1.2.0.33, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Akka.TestKit.1.2.0\lib\net45\Akka.TestKit.dll</HintPath>
     </Reference>
-    <Reference Include="Akka.TestKit.Xunit, Version=1.2.1.37, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Akka.TestKit.Xunit.1.2.1\lib\net45\Akka.TestKit.Xunit.dll</HintPath>
+    <Reference Include="Akka.TestKit.Xunit, Version=1.2.0.33, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Akka.TestKit.Xunit.1.2.0\lib\net45\Akka.TestKit.Xunit.dll</HintPath>
     </Reference>
     <Reference Include="FluentAssertions, Version=4.19.2.0, Culture=neutral, PublicKeyToken=33f2691a05b67b6a, processorArchitecture=MSIL">
       <HintPath>..\packages\FluentAssertions.4.19.2\lib\net45\FluentAssertions.dll</HintPath>

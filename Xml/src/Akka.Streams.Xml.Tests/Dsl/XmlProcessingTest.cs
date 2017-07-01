@@ -47,23 +47,6 @@ namespace Akka.Streams.Xml.Tests.Dsl
             (result[7] as EndElement).ShouldBeEquivalentTo(new EndElement("elem"));
             (result[8] as EndElement).ShouldBeEquivalentTo(new EndElement("doc"));
             result[9].Should().BeOfType<EndDocument>();
-
-            // TODO: is there a way to make this work?
-            /*
-            fut.Result.ShouldAllBeEquivalentTo(new List<IParseEvent>
-            {
-                new StartDocument(),
-                new StartElement("doc", new Dictionary<string, string>()),
-                new StartElement("elem", new Dictionary<string, string>()),
-                new Characters("elem1"),
-                new EndElement("elem"),
-                new StartElement("elem", new Dictionary<string, string>()),
-                new Characters("elem2"),
-                new EndElement("elem"),
-                new EndElement("doc"),
-                new EndDocument()
-            });
-            */
         }
 
         [Fact]
@@ -152,6 +135,39 @@ namespace Akka.Streams.Xml.Tests.Dsl
 
             fut.Wait(TimeSpan.FromSeconds(3));
             fut.Result.ShouldAllBeEquivalentTo(elements);
+        }
+
+        [Fact]
+        public void XmlParser_must_properly_parse_chunks_bigger_than_its_buffer_size()
+        {
+            var documentStream = Source
+                .Single("<doc>")
+                .Concat(Source.Single(
+@"  <elem>
+    <item>i1</item>
+    <item>i2</item>
+    <item>i3</item>
+    <item>i1</item>
+    <item>i2</item>
+    <item>i3</item>
+    <item>i1</item>
+    <item>i2</item>
+    <item>i3</item>
+    <item>i1</item>
+    <item>i2</item>
+    <item>i3</item>
+  </elem>"
+                ))
+                .Concat(Source.Single("</doc>"));
+
+            var fut = documentStream
+                .Select(ByteString.FromString)
+                .Via(XmlParsing.Parser(bufferSize:64))
+                .RunWith(Sink.Seq<IParseEvent>(), _materializer);
+
+            fut.Wait(TimeSpan.FromSeconds(3));
+            var res = fut.Result;
+            //fut.Invoking(f => f.Wait(TimeSpan.FromSeconds(3))).ShouldNotThrow();
         }
     }
 }

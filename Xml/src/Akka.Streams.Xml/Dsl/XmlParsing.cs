@@ -14,9 +14,10 @@ namespace Akka.Streams.Xml.Dsl
         /// <summary>
         /// Parser Flow that takes a stream of ByteStrings and parses them to XML events similar to SAX.
         /// </summary>
+        /// <param name="bufferSize">The read buffer size for the XML parser. Minimum 64 bytes, defaults to 1024 bytes.</param>
         /// <returns></returns>
-        public static Flow<ByteString, IParseEvent, NotUsed> Parser()
-            => Flow.FromGraph(new StreamingXmlParser());
+        public static Flow<ByteString, IParseEvent, NotUsed> Parser(int bufferSize = 1024)
+            => Flow.FromGraph(new StreamingXmlParser(bufferSize));
 
         /// <summary>
         /// A Flow that transforms a stream of XML ParseEvents. This stage coalesces consequitive CData

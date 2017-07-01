@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Xml;
 using System.Xml.Linq;
+using Akka.Event;
 using Akka.IO;
 using Akka.Pattern;
 using Akka.Streams.Stage;
@@ -111,52 +112,106 @@ namespace Akka.Streams.Xml
         #region Logic
         private class Logic : InAndOutGraphStageLogic
         {
-            private readonly AsyncXmlStream _feeder;
-            private readonly XmlReader _parser;
+            private readonly MemoryStream _feeder;
             private readonly StreamingXmlParser _stage;
+            private readonly int _bufferSize;
 
+            private XmlReader _parser;
             private IParseEvent _pendingEvent;
             private bool _hasNext = true;
             private bool _documentStarted;
+            private bool _hasBeenPushed;
+            private ByteString _overflowBuffer = ByteString.Empty;
 
-            public Logic(StreamingXmlParser stage) : base(stage.Shape)
+            private bool DataAvailable => !_overflowBuffer.IsEmpty || !IsClosed(_stage.In);
+
+            public Logic(StreamingXmlParser stage, int bufferSize) : base(stage.Shape)
             {
                 _stage = stage;
-                _feeder = new AsyncXmlStream(stage, this);
-                _parser = XmlReader.Create(_feeder, new XmlReaderSettings
-                {
-                    IgnoreComments = false,
-                    IgnoreProcessingInstructions = false,
-                    IgnoreWhitespace = true,
-                    CloseInput = false,
-                    Async = true
-                });
+                _bufferSize = bufferSize;
+                _feeder = new MemoryStream(new byte[_bufferSize], true);
+                _feeder.Position = _feeder.Length;
 
-                SetHandler(stage.In, _feeder);
+                SetHandler(stage.In, this);
                 SetHandler(stage.Out, this);
             }
 
             public override void OnPull()
             {
-                Task.WhenAll(AdvanceParser());
+                if (!_hasBeenPushed)
+                {
+                    if(!HasBeenPulled(_stage.In))
+                        Pull(_stage.In);
+                    return;
+                }
+                AdvanceParser();
             }
 
             public override void OnPush()
             {
-                throw new NotImplementedException("Execution should never reach this execution path, ever.");
+                _hasBeenPushed = true;
+
+                var bytes = Grab(_stage.In);
+
+                if (!_overflowBuffer.IsEmpty)
+                {
+                    // There's overflown data leftover from previous operations, append it to the current data
+                    bytes = _overflowBuffer.Concat(bytes);
+                    _overflowBuffer = ByteString.Empty;
+                }
+
+                if (_feeder.Position != _feeder.Length)
+                {
+                    // There's data in the buffer, so append the new data to the old data
+                    var oldBytes = new byte[_feeder.Length - _feeder.Position];
+                    _feeder.Read(oldBytes, 0, oldBytes.Length);
+                    bytes = ByteString.FromByteBuffer(new ByteBuffer(oldBytes)).Concat(bytes);
+                }
+
+                FillStreamBuffer(bytes);
+                AdvanceParser();
             }
 
-            private async Task AdvanceParser()
+            private void GetNextStreamBuffer()
             {
-                // Check for document start
-                if (!_documentStarted)
+                if (!_overflowBuffer.IsEmpty)
                 {
-                    // START_DOCUMENT
-                    _documentStarted = true;
-                    Push(_stage.Out, new StartDocument());
+                    var sliceLen = Math.Min(_overflowBuffer.Count, _bufferSize);
+                    var bytes = _overflowBuffer.Slice(0, sliceLen);
+                    _overflowBuffer = _overflowBuffer.Drop(sliceLen);
+                    FillStreamBuffer(bytes);
+                    AdvanceParser();
                     return;
                 }
 
+                Pull(_stage.In);
+            }
+
+            private void FillStreamBuffer(ByteString bytes)
+            {
+                if (bytes.Count > _bufferSize)
+                {
+                    // Incoming data is too big for the current buffer size, truncate and save the overflow.
+                    _overflowBuffer = bytes.Drop(_bufferSize);
+                    bytes = bytes.Slice(0, _bufferSize);
+                }
+
+                var offset = _bufferSize - bytes.Count;
+                _feeder.Position = offset;
+                _feeder.Write(bytes.ToArray(), 0, bytes.Count);
+                _feeder.Position = offset;
+            }
+
+            public override void OnUpstreamFinish()
+            {
+                if(_hasNext)
+                    AdvanceParser();
+                else
+                    CompleteStage();
+            }
+
+            private void AdvanceParser()
+            {
                 // Check for pending events
                 if (_pendingEvent != null)
                 {
@@ -167,9 +222,34 @@ namespace Akka.Streams.Xml
                     return;
                 }
 
+                // Check for document start
+                if (!_documentStarted)
+                {
+                    // START_DOCUMENT
+                    _documentStarted = true;
+                    Push(_stage.Out, new StartDocument());
+                    return;
+                }
+
+                if (_feeder.Length - _feeder.Position < 7 && DataAvailable)
+                {
+                    GetNextStreamBuffer();
+                    return;
+                }
+
+                if (_parser == null)
+                    _parser = XmlReader.Create(_feeder, new XmlReaderSettings
+                    {
+                        IgnoreComments = false,
+                        IgnoreProcessingInstructions = false,
+                        IgnoreWhitespace = true,
+                        CloseInput = false,
+                        ConformanceLevel = ConformanceLevel.Fragment
+                    });
+
                 try
                 {
-                    _hasNext = await _parser.ReadAsync();
+                    _hasNext = _parser.Read();
                 }
                 catch (Exception e)
                 {
@@ -242,143 +322,28 @@ namespace Akka.Streams.Xml
                     // ATTRIBUTE is handled in START_ELEMENT implicitly
                     // EVENT_INCOMPLETE is handled directly in AsyncXmlStream
                     default:
-                        await AdvanceParser();
+                        if (_feeder.Length - _feeder.Position < 7 && DataAvailable)
+                        {
+                            GetNextStreamBuffer();
+                            return;
+                        }
+                        AdvanceParser();
                         return;
-                }
-            }
-
-            private class AsyncXmlStream : Stream, IInHandler
-            {
-                private readonly Logic _logic;
-                private readonly StreamingXmlParser _stage;
-                private TaskCompletionSource<object> _dataReady;
-
-                private byte[] _buffer;
-
-                public AsyncXmlStream(StreamingXmlParser stage, Logic logic)
-                {
-                    _stage = stage;
-                    _logic = logic;
-                }
-
-                public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-                {
-                    if (_dataReady != null)
-                        throw new Exception("Can not start a new ReadAsync because there is an older operation pending.");
-
-                    if (_buffer == null && !_logic.IsClosed(_stage.In))
-                    {
-                        _logic.Pull(_stage.In);
-                        _dataReady = new TaskCompletionSource<object>();
-                        await _dataReady.Task;
-                    }
-
-                    _dataReady = null;
-                    return Read(buffer, offset, count);
-                }
-
-                public override int Read(byte[] buffer, int offset, int count)
-                {
-                    _dataReady?.Task.Wait();
-
-                    if (_buffer == null)
-                    {
-                        return 0;
-                    }
-
-                    if (count > _buffer.Length)
-                    {
-                        var len = _buffer.Length;
-                        Buffer.BlockCopy(_buffer, 0, buffer, offset, len);
-                        _buffer = null;
-                        return len;
-                    }
-
-                    Buffer.BlockCopy(_buffer, 0, buffer, offset, count);
-                    var newBuffer = new byte[_buffer.Length - count];
-                    Buffer.BlockCopy(_buffer, _buffer.Length, newBuffer, 0, count);
-                    _buffer = newBuffer;
-                    return count;
-                }
-
-                public void OnPush()
-                {
-                    var array = _logic.Grab(_stage.In).ToArray();
-
-                    if (_buffer == null)
-                    {
-                        _buffer = array;
-                    }
-                    else
-                    {
-                        var newBuffer = new byte[_buffer.Length + array.Length];
-                        Buffer.BlockCopy(_buffer, 0, newBuffer, 0, _buffer.Length);
-                        Buffer.BlockCopy(array, 0, newBuffer, _buffer.Length, array.Length);
-                        _buffer = newBuffer;
-                    }
-
-                    _dataReady?.SetResult(null);
-                }
-
-                public void OnUpstreamFinish()
-                {
-                    _dataReady?.SetResult(null);
-                }
-
-                public void OnUpstreamFailure(Exception e)
-                {
-                    _dataReady?.SetResult(null);
-                    _logic.FailStage(e);
-                }
-
-                public override long Length => _buffer?.Length ?? 0;
-
-                public override void Flush()
-                {
-                }
-
-                public override void Close()
-                {
-                }
-
-
-                public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-                {
-                    throw new NotSupportedException();
-                }
-
-                public override void Write(byte[] buffer, int offset, int count)
-                {
-                    throw new NotSupportedException();
-                }
-
-                public override long Seek(long offset, SeekOrigin origin)
-                {
-                    throw new NotSupportedException();
-                }
-
-                public override void SetLength(long value)
-                {
-                    throw new NotSupportedException();
-                }
-
-                public override bool CanRead => true;
-                public override bool CanSeek => false;
-                public override bool CanWrite => false;
-
-                public override long Position
-                {
-                    get { throw new NotSupportedException(); }
-                    set { throw new NotSupportedException(); }
                 }
             }
         }
         #endregion
 
-        public StreamingXmlParser()
+        public StreamingXmlParser(int bufferSize)
         {
+            if (bufferSize < 64)
+                throw new ArgumentException($"Buffer size must be greater than 64 (was:{bufferSize})");
+
             Shape = new FlowShape<ByteString, IParseEvent>(In, Out);
+            _bufferSize = bufferSize;
         }
+
+        private readonly int _bufferSize;
 
         protected override Attributes InitialAttributes { get; } = Attributes.CreateName("XmlParser");
 
@@ -388,7 +353,7 @@ namespace Akka.Streams.Xml
         public override FlowShape<ByteString, IParseEvent> Shape { get; }
 
         protected override GraphStageLogic CreateLogic(Attributes inheritedAttributes)
-            => new Logic(this);
+            => new Logic(this, _bufferSize);
 
         public override string ToString() => nameof(StreamingXmlParser);
     }

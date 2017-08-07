@@ -94,11 +94,5 @@ namespace Akka.Streams.Xml.Tests.Dsl
 
             fut.Invoking(f => f.Wait(TimeSpan.FromSeconds(3))).ShouldThrow<IllegalStateException>();
         }
-
-        protected override void AfterAll()
-        {
-            base.AfterAll();
-            Sys.Terminate();
-        }
     }
 }

@@ -111,7 +111,7 @@ namespace Akka.Streams.Xml.Tests.Dsl
         [Fact]
         public void XmlSubslice_support_must_properly_filter_from_the_combination_of_the_above()
         {
-                        var doc =
+            var doc =
 @"<doc>
   <elem>
     <notanitem>ignore me</notanitem>
@@ -138,12 +138,6 @@ namespace Akka.Streams.Xml.Tests.Dsl
             ((Characters)result[4]).ShouldBeEquivalentTo(new Characters("i3"));
             ((Characters)result[5]).ShouldBeEquivalentTo(new Characters("i4"));
 
-        }
-
-        protected override void AfterAll()
-        {
-            base.AfterAll();
-            Sys.Terminate();
         }
     }
 }

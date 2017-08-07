@@ -3,18 +3,13 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Xml;
-using System.Xml.Linq;
-using Akka.Event;
 using Akka.IO;
 using Akka.Pattern;
+using Akka.Streams.Implementation.Fusing;
 using Akka.Streams.Stage;
 using Akka.Util.Internal;
-using AsyncCallback = System.AsyncCallback;
 
 namespace Akka.Streams.Xml
 {
@@ -26,6 +21,9 @@ namespace Akka.Streams.Xml
     {
     }
 
+    /// <summary>
+    /// Abstract base class for <see cref="Characters"/> and <see cref="CData"/> class
+    /// </summary>
     public abstract class TextEvent : IParseEvent
     {
         public string Text { get; }
@@ -38,21 +36,33 @@ namespace Akka.Streams.Xml
 
     public sealed class StartDocument : IParseEvent
     {
+        private StartDocument() { }
+
+        /// <summary>
+        /// The singleton instance of <see cref="StartDocument"/>.
+        /// </summary>
+        public static StartDocument Instance { get; } = new StartDocument();
     }
 
     public sealed class EndDocument : IParseEvent
     {
+        private EndDocument() { }
+
+        /// <summary>
+        /// The singleton instance of <see cref="EndDocument"/>.
+        /// </summary>
+        public static EndDocument Instance { get; } = new EndDocument();
     }
 
     public sealed class StartElement : IParseEvent
     {
         public string LocalName { get; }
-        public Dictionary<string, string> Attributes { get; }
+        public ImmutableDictionary<string, string> Attributes { get; }
 
         public StartElement(string localName, Dictionary<string, string> attributes)
         {
             LocalName = localName;
-            Attributes = attributes;
+            Attributes = attributes.ToImmutableDictionary();
         }
     }
 
@@ -104,8 +114,9 @@ namespace Akka.Streams.Xml
     #endregion
 
     #region StreamingXmlParser
+    /// <inheritdoc />
     /// <summary>
-    /// Internal API. Use <see cref="Akka.Streams.Xml.Dsl.XmlParsing"/> instead.
+    /// Internal API. Use <see cref="T:Akka.Streams.Xml.Dsl.XmlParsing" /> instead.
     /// </summary>
     public sealed class StreamingXmlParser : GraphStage<FlowShape<ByteString, IParseEvent>>
     {
@@ -141,7 +152,7 @@ namespace Akka.Streams.Xml
                 // Fix for janky condition where XMLParser requires initial seed data inside the stream in order to work at all
                 if (!_hasBeenPushed)
                 {
-                    if(!HasBeenPulled(_stage.In))
+                    if (!HasBeenPulled(_stage.In))
                         Pull(_stage.In);
                     return;
                 }
@@ -210,10 +221,7 @@ namespace Akka.Streams.Xml
             public override void OnUpstreamFinish()
             {
                 if (_hasNext)
-                {
-                    if(_pendingEvent == null)
-                        AdvanceParser();
-                }
+                    AdvanceParser();
                 else
                     CompleteStage();
             }
@@ -294,7 +302,7 @@ namespace Akka.Streams.Xml
                         {
                             // START_DOCUMENT
                             _documentStarted = true;
-                            Push(_stage.Out, new StartDocument());
+                            Push(_stage.Out, StartDocument.Instance);
                             _pendingEvent = new StartElement(_parser.LocalName, attributes);
                         }
                         else
@@ -307,7 +315,7 @@ namespace Akka.Streams.Xml
                         if (_parser.Depth == 0)
                         {
                             // END_DOCUMENT
-                            _pendingEvent = new EndDocument();
+                            _pendingEvent = EndDocument.Instance;
                         }
                         break;
 
@@ -322,7 +330,7 @@ namespace Akka.Streams.Xml
                         {
                             // START_DOCUMENT
                             _documentStarted = true;
-                            Push(_stage.Out, new StartDocument());
+                            Push(_stage.Out, StartDocument.Instance);
                             _pendingEvent = new ProcessingInstruction(_parser.Name, _parser.Value);
                         }
                         else
@@ -339,7 +347,7 @@ namespace Akka.Streams.Xml
                         Push(_stage.Out, new CData(_parser.Value));
                         break;
 
-                    // Do not support DTD, SPACE, NAMESPACE, NOTATION_DECLARATION, ENTITY_DECLARATION, PROCESSING_INSTRUCTION
+                    // Do not support DTD, SPACE, NAMESPACE, NOTATION_DECLARATION, ENTITY_DECLARATION
                     // ATTRIBUTE is handled in START_ELEMENT implicitly
                     // EVENT_INCOMPLETE is handled directly in AsyncXmlStream
                     default:
@@ -381,16 +389,17 @@ namespace Akka.Streams.Xml
     #endregion
 
     #region Coalesce
+    /// <inheritdoc />
     /// <summary>
-    /// Internal API. Use <see cref="Akka.Streams.Xml.Dsl.XmlParsing"/> instead.
+    /// Internal API. Use <see cref="T:Akka.Streams.Xml.Dsl.XmlParsing" /> instead.
     /// </summary>
-    public sealed class Coalesce : GraphStage<FlowShape<IParseEvent, IParseEvent>>
+    public sealed class Coalesce : SimpleLinearGraphStage<IParseEvent>
     {
         #region Logic
         private class Logic : InAndOutGraphStageLogic
         {
             private readonly Coalesce _stage;
-            private bool _isBuffering = false;
+            private bool _isBuffering;
             private readonly StringBuilder _buffer = new StringBuilder();
 
             public Logic(Coalesce stage) : base(stage.Shape)
@@ -409,27 +418,28 @@ namespace Akka.Streams.Xml
             public override void OnPush()
             {
                 var parseEvent = Grab(_stage.In);
-
-                var t = parseEvent as TextEvent;
-                if (t != null)
+                switch (parseEvent)
                 {
-                    if (t.Text.Length + _buffer.Length > _stage.MaximumTextLength)
-                        FailStage(new IllegalStateException($"Too long character sequence, maximum is {_stage.MaximumTextLength} but got {t.Text.Length + _buffer.Length - _stage.MaximumTextLength} more "));
-                    else
-                    {
+                    case TextEvent t:
+                        if (t.Text.Length + _buffer.Length > _stage.MaximumTextLength)
+                        {
+                            FailStage(new IllegalStateException($"Too long character sequence, maximum is {_stage.MaximumTextLength} but got {t.Text.Length + _buffer.Length - _stage.MaximumTextLength} more "));
+                            break;
+                        }
+                        
                         _buffer.Append(t.Text);
                         _isBuffering = true;
                         Pull(_stage.In);
-                    }
-                }
-                else
-                {
-                    if (_isBuffering)
-                    {
+                        break;
+                    default:
+                        if (!_isBuffering)
+                        {
+                            Push(_stage.Out, parseEvent);
+                            break;
+                        }
+
                         _isBuffering = false;
-                        var coalesced = _buffer.ToString();
-                        _buffer.Clear();
-                        Emit(_stage.Out, new Characters(coalesced), () =>
+                        Emit(_stage.Out, new Characters(_buffer.ToString()), () =>
                         {
                             Emit(_stage.Out, parseEvent, () =>
                             {
@@ -437,9 +447,8 @@ namespace Akka.Streams.Xml
                                     CompleteStage();
                             });
                         });
-                    }
-                    else
-                        Push(_stage.Out, parseEvent);
+                        _buffer.Clear();
+                        break;
                 }
             }
 
@@ -475,10 +484,11 @@ namespace Akka.Streams.Xml
     #endregion
 
     #region Subslice
+    /// <inheritdoc />
     /// <summary>
-    /// Internal API. Use <see cref="Akka.Streams.Xml.Dsl.XmlParsing"/> instead.
+    /// Internal API. Use <see cref="T:Akka.Streams.Xml.Dsl.XmlParsing" /> instead.
     /// </summary>
-    public sealed class Subslice : GraphStage<FlowShape<IParseEvent, IParseEvent>>
+    public sealed class Subslice : SimpleLinearGraphStage<IParseEvent>
     {
         #region Logic
         private class Logic : InAndOutGraphStageLogic
@@ -495,47 +505,36 @@ namespace Akka.Streams.Xml
             private readonly Lazy<PartialMatch> _partialMatch;
             private readonly Lazy<NoMatch> _noMatch;
 
-            private MatchState State
-            {
-                set
-                {
-                    switch (value)
-                    {
-                        case MatchState.Passthrough:
-                            SetHandler(_stage.In, _passThrough.Value);
-                            break;
-                        case MatchState.PartialMatch:
-                            SetHandler(_stage.In, _partialMatch.Value);
-                            break;
-                        case MatchState.NoMatch:
-                            SetHandler(_stage.In, _noMatch.Value);
-                            break;
-                    }
-                }
-            }
-            private Stack<string> Expected { get; set; }
-            private Stack<string> MatchedSoFar { get; } = new Stack<string>();
+            private readonly Stack<string> _expected;
+            private readonly Stack<string> _matchedSoFar = new Stack<string>();
 
-            public Logic(Subslice stage, List<string> path) : base(stage.Shape)
+            public Logic(Subslice stage, IImmutableList<string> path) : base(stage.Shape)
             {
                 _stage = stage;
                 _passThrough = new Lazy<PassThrough>(() => new PassThrough(stage, this));
                 _partialMatch = new Lazy<PartialMatch>(() => new PartialMatch(stage, this));
                 _noMatch = new Lazy<NoMatch>(() => new NoMatch(stage, this));
 
-                if (path != null)
-                {
-                    path.Reverse();
-                    Expected = new Stack<string>(path);
-                }
-                else
-                {
-                    Expected = new Stack<string>();
-                }
-
-                State = Expected.Count == 0 ? MatchState.Passthrough : MatchState.PartialMatch;
-
+                _expected = path != null ? new Stack<string>(path.Reverse()) : new Stack<string>();
+                
+                SetState(_expected.Count == 0 ? MatchState.Passthrough : MatchState.PartialMatch);
                 SetHandler(stage.Out, this);
+            }
+
+            private void SetState(MatchState state)
+            {
+                switch (state)
+                {
+                    case MatchState.Passthrough:
+                        SetHandler(_stage.In, _passThrough.Value);
+                        break;
+                    case MatchState.PartialMatch:
+                        SetHandler(_stage.In, _partialMatch.Value);
+                        break;
+                    case MatchState.NoMatch:
+                        SetHandler(_stage.In, _noMatch.Value);
+                        break;
+                }
             }
 
             public override void OnPull()
@@ -545,7 +544,7 @@ namespace Akka.Streams.Xml
 
             public override void OnPush()
             {
-                throw new NotImplementedException("Execution should never reach this execution path, ever.");
+                throw new Exception("Execution should never reach this execution path, ever.");
             }
 
             private class PassThrough : InHandler
@@ -563,32 +562,22 @@ namespace Akka.Streams.Xml
                 public override void OnPush()
                 {
                     var inEvent = _logic.Grab(_stage.In);
-
-                    var start = inEvent as StartElement;
-                    if (start != null)
+                    switch (inEvent)
                     {
-                        _depth++;
-                        _logic.Push(_stage.Out, start);
-                        return;
-                    }
-
-                    var end = inEvent as EndElement;
-                    if (end != null)
-                    {
-                        if (_depth == 0)
-                        {
-                            _logic.Expected.Push(_logic.MatchedSoFar.Pop());
-                            _logic.State = MatchState.PartialMatch;
-                            _logic.Pull(_stage.In);
-                        }
-                        else
-                        {
+                        case StartElement _:
+                            _depth++;
+                            break;
+                        case EndElement _:
+                            if (_depth == 0)
+                            {
+                                _logic._expected.Push(_logic._matchedSoFar.Pop());
+                                _logic.SetState(MatchState.PartialMatch);
+                                _logic.Pull(_stage.In);
+                                return;
+                            }
                             _depth--;
-                            _logic.Push(_stage.Out, end);
-                        }
-                        return;
+                            break;
                     }
-
                     _logic.Push(_stage.Out, inEvent);
                 }
             }
@@ -607,34 +596,22 @@ namespace Akka.Streams.Xml
                 public override void OnPush()
                 {
                     var inEvent = _logic.Grab(_stage.In);
-
-                    var start = inEvent as StartElement;
-                    if (start != null)
+                    switch (inEvent)
                     {
-                        if (start.LocalName == _logic.Expected.Head())
-                        {
-                            _logic.MatchedSoFar.Push(_logic.Expected.Pop());
-                            if (_logic.Expected.Count == 0)
+                        case StartElement start:
+                            if (start.LocalName == _logic._expected.Head())
                             {
-                                _logic.State = MatchState.Passthrough;
+                                _logic._matchedSoFar.Push(_logic._expected.Pop());
+                                if (_logic._expected.Count == 0)
+                                    _logic.SetState(MatchState.Passthrough);
                             }
-                        }
-                        else
-                        {
-                            _logic.State = MatchState.NoMatch;
-                        }
-                        _logic.Pull(_stage.In);
-                        return;
+                            else
+                                _logic.SetState(MatchState.NoMatch);
+                            break;
+                        case EndElement _:
+                            _logic._expected.Push(_logic._matchedSoFar.Pop());
+                            break;
                     }
-
-                    var end = inEvent as EndElement;
-                    if (end != null)
-                    {
-                        _logic.Expected.Push(_logic.MatchedSoFar.Pop());
-                        _logic.Pull(_stage.In);
-                        return;
-                    }
-
                     _logic.Pull(_stage.In);
                 }
             }
@@ -654,27 +631,18 @@ namespace Akka.Streams.Xml
                 public override void OnPush()
                 {
                     var inEvent = _logic.Grab(_stage.In);
-
-                    var start = inEvent as StartElement;
-                    if (start != null)
+                    switch (inEvent)
                     {
-                        _depth++;
-                        _logic.Pull(_stage.In);
-                        return;
+                        case StartElement _:
+                            _depth++;
+                            break;
+                        case EndElement _:
+                            if (_depth == 0)
+                                _logic.SetState(MatchState.PartialMatch);
+                            else
+                                _depth--;
+                            break;
                     }
-
-                    var end = inEvent as EndElement;
-                    if (end != null)
-                    {
-                        if(_depth == 0)
-                            _logic.State = MatchState.PartialMatch;
-                        else
-                            _depth--;
-
-                        _logic.Pull(_stage.In);
-                        return;
-                    }
-
                     _logic.Pull(_stage.In);
                 }
             }
@@ -685,12 +653,12 @@ namespace Akka.Streams.Xml
         public Subslice(IImmutableList<string> path)
         {
             Shape = new FlowShape<IParseEvent, IParseEvent>(In, Out);
-            Path = path.ToList();
+            Path = path;
         }
 
         protected override Attributes InitialAttributes { get; } = Attributes.CreateName("XMLSubslice");
 
-        public List<string> Path { get; }
+        public IImmutableList<string> Path { get; }
         public Inlet<IParseEvent> In { get; } = new Inlet<IParseEvent>("XMLSubslice.In");
         public Outlet<IParseEvent> Out { get; } = new Outlet<IParseEvent>("XMLSubslice.out");
 

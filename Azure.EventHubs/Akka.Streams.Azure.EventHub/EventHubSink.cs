@@ -6,7 +6,7 @@ using Akka.Streams.Azure.Utils;
 using Akka.Streams.Dsl;
 using Akka.Streams.Stage;
 using Akka.Streams.Supervision;
-using Microsoft.ServiceBus.Messaging;
+using Microsoft.Azure.EventHubs;
 
 namespace Akka.Streams.Azure.EventHub
 {
@@ -122,16 +122,6 @@ namespace Akka.Streams.Azure.EventHub
             return Sink.FromGraph(new EventHubSink(client));
         }
 
-        /// <summary>
-        /// Creates a <see cref="Sink{TIn,TMat}"/> for the Azure EventHub
-        /// </summary>
-        /// <param name="sender">The <see cref="EventHubSender"/> that sends the events to the EventHub</param>
-        /// <returns>The <see cref="Sink{TIn,TMat}"/> for the Azure EventHub</returns>
-        public static Sink<IEnumerable<EventData>, Task> Create(EventHubSender sender)
-        {
-            return Sink.FromGraph(new EventHubSink(sender));
-        }
-
         private readonly IHubClient _client;
 
         private EventHubSink(IHubClient client)
@@ -149,14 +139,6 @@ namespace Akka.Streams.Azure.EventHub
             
         }
 
-        /// <summary>
-        /// Create a new instance of the <see cref="EventHubSink"/>
-        /// </summary>
-        /// <param name="sender">The <see cref="EventHubSender"/> that sends the events to the EventHub</param>
-        public EventHubSink(EventHubSender sender) : this(new HubSenderWrapper(sender))
-        {
-            
-        }
 
         public Inlet<IEnumerable<EventData>> In { get; } = new Inlet<IEnumerable<EventData>>("EventHubSink.In");
 

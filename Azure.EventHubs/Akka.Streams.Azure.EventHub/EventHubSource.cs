@@ -5,7 +5,8 @@ using System.Threading.Tasks;
 using Akka.Streams.Dsl;
 using Akka.Streams.Stage;
 using Akka.Util;
-using Microsoft.ServiceBus.Messaging;
+using Microsoft.Azure.EventHubs;
+using Microsoft.Azure.EventHubs.Processor;
 
 namespace Akka.Streams.Azure.EventHub
 {
@@ -105,6 +106,11 @@ namespace Akka.Streams.Azure.EventHub
                 return _source._createCheckpointForEveryBatch
                     ? Task.WhenAll(completion.Task, context.CheckpointAsync())
                     : completion.Task;
+            }
+
+            public Task ProcessErrorAsync(PartitionContext context, Exception error)
+            {
+                return Task.CompletedTask;
             }
 
             private void OnProcessEvents(ProcessContext context)

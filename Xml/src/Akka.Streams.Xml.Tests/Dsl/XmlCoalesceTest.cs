@@ -14,7 +14,7 @@ using Xunit.Abstractions;
 
 namespace Akka.Streams.Xml.Tests.Dsl
 {
-    public class XmlCoalesceTest:Akka.TestKit.Xunit.TestKit
+    public class XmlCoalesceTest : Akka.TestKit.Xunit2.TestKit
     {
         private readonly ActorMaterializer _materializer;
         private readonly Sink<string, Task<IImmutableList<IParseEvent>>> _parser;

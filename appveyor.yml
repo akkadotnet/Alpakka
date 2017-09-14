@@ -9,6 +9,7 @@
   build_script:
   - ps: ./build.ps1 Build
   test_script:
+  - ps: ./build.ps1 RunTests
   - ps: ./build.ps1 CreateNuget
   artifacts:
   - path: build/nuget/*.nupkg
@@ -31,6 +32,7 @@
   build_script:
   - ps: ./build.ps1 Build
   test_script:
+  - ps: ./build.ps1 RunTests
   - ps: ./build.ps1 CreateNuget
   artifacts:
   - path: build/nuget/*.nupkg

@@ -40,6 +40,8 @@ Target "RestorePackages" (fun _ ->
                    ++ "./**/Akka.Streams.Xml.Tests.csproj"
                    ++ "./**/Akka.Streams.Csv.csproj"
                    ++ "./**/Akka.Streams.Csv.Tests.csproj"
+                   ++ "./**/Akka.Streams.SignalR.csproj"
+                   ++ "./**/Akka.Streams.SignalR.Tests.csproj"
 
     let runSingleProject project =
         DotNetCli.Restore
@@ -56,6 +58,8 @@ Target "Build" (fun _ ->
                    ++ "./**/Akka.Streams.Xml.Tests.csproj"
                    ++ "./**/Akka.Streams.Csv.csproj"
                    ++ "./**/Akka.Streams.Csv.Tests.csproj"
+                   ++ "./**/Akka.Streams.SignalR.csproj"
+                   ++ "./**/Akka.Streams.SignalR.Tests.csproj"
 
     let runSingleProject project =
         DotNetCli.Build
@@ -74,6 +78,7 @@ Target "Build" (fun _ ->
 Target "RunTests" (fun _ ->
     let projects = !! "./**/Akka.Streams.Xml.Tests.csproj"
                    ++ "./**/Akka.Streams.Csv.Tests.csproj"
+                   //++ "./**/Akka.Streams.SignalR.Tests.csproj"
 
     let runSingleProject project =
         DotNetCli.RunCommand
@@ -97,6 +102,7 @@ Target "CreateNuget" (fun _ ->
 
     let projects = !! "./**/Akka.Streams.Xml.csproj"
                    ++ "./**/Akka.Streams.Csv.csproj"
+                   ++ "./**/Akka.Streams.SignalR.csproj"
 
     let runSingleProject project =
         DotNetCli.Pack

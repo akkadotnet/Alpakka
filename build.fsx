@@ -38,6 +38,8 @@ Target "Clean" (fun _ ->
 Target "RestorePackages" (fun _ ->
     let projects = !! "./**/Akka.Streams.Xml.csproj"
                    ++ "./**/Akka.Streams.Xml.Tests.csproj"
+                   ++ "./**/Akka.Streams.Csv.csproj"
+                   ++ "./**/Akka.Streams.Csv.Tests.csproj"
 
     let runSingleProject project =
         DotNetCli.Restore
@@ -52,6 +54,8 @@ Target "RestorePackages" (fun _ ->
 Target "Build" (fun _ ->
     let projects = !! "./**/Akka.Streams.Xml.csproj"
                    ++ "./**/Akka.Streams.Xml.Tests.csproj"
+                   ++ "./**/Akka.Streams.Csv.csproj"
+                   ++ "./**/Akka.Streams.Csv.Tests.csproj"
 
     let runSingleProject project =
         DotNetCli.Build
@@ -69,6 +73,7 @@ Target "Build" (fun _ ->
 
 Target "RunTests" (fun _ ->
     let projects = !! "./**/Akka.Streams.Xml.Tests.csproj"
+                   ++ "./**/Akka.Streams.Csv.Tests.csproj"
 
     let runSingleProject project =
         DotNetCli.RunCommand
@@ -91,6 +96,7 @@ Target "CreateNuget" (fun _ ->
     let versionSuffix = if branch.Equals("dev") then (sprintf "beta%s" envBuildNumber) else ""
 
     let projects = !! "./**/Akka.Streams.Xml.csproj"
+                   ++ "./**/Akka.Streams.Csv.csproj"
 
     let runSingleProject project =
         DotNetCli.Pack

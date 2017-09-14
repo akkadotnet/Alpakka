@@ -9,7 +9,7 @@ using Xunit.Sdk;
 
 namespace Akka.Streams.Csv.Tests.dsl
 {
-    public abstract class CsvSpec:Akka.TestKit.Xunit.TestKit
+    public abstract class CsvSpec : Akka.TestKit.Xunit2.TestKit
     {
         protected ActorMaterializer Materializer { get; }
 

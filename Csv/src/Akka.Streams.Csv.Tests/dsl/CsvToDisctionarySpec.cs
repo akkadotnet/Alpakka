@@ -13,7 +13,7 @@ using Xunit.Abstractions;
 
 namespace Akka.Streams.Csv.Tests.dsl
 {
-    public class CsvToDisctionarySpec:CsvSpec
+    public class CsvToDisctionarySpec : CsvSpec
     {
         public CsvToDisctionarySpec(ITestOutputHelper output) : base(output)
         {}

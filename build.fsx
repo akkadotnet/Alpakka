@@ -44,6 +44,7 @@ Target "RestorePackages" (fun _ ->
                    ++ "./**/Akka.Streams.SignalR.Tests.csproj"
                    ++ "./**/Akka.Streams.Azure.EventHub.csproj"
                    ++ "./**/Akka.Streams.Azure.ServiceBus.csproj"
+                   ++ "./**/Akka.Streams.Azure.StorageQueue.csproj"
 
     let runSingleProject project =
         DotNetCli.Restore
@@ -64,6 +65,7 @@ Target "Build" (fun _ ->
                    ++ "./**/Akka.Streams.SignalR.Tests.csproj"
                    ++ "./**/Akka.Streams.Azure.EventHub.csproj"
                    ++ "./**/Akka.Streams.Azure.ServiceBus.csproj"
+                   ++ "./**/Akka.Streams.Azure.StorageQueue.csproj"
 
     let runSingleProject project =
         DotNetCli.Build
@@ -109,6 +111,7 @@ Target "CreateNuget" (fun _ ->
                    ++ "./**/Akka.Streams.SignalR.csproj"
                    ++ "./**/Akka.Streams.Azure.EventHub.csproj"
                    ++ "./**/Akka.Streams.Azure.ServiceBus.csproj"
+                   ++ "./**/Akka.Streams.Azure.StorageQueue.csproj"
 
     let runSingleProject project =
         DotNetCli.Pack

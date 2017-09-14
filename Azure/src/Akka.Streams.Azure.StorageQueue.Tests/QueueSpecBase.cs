@@ -3,7 +3,7 @@ using Microsoft.WindowsAzure.Storage.Queue;
 
 namespace Akka.Streams.Azure.StorageQueue.Tests
 {
-    public abstract class QueueSpecBase : Akka.TestKit.Xunit.TestKit
+    public abstract class QueueSpecBase : Akka.TestKit.Xunit2.TestKit
     {
         protected QueueSpecBase()
         {

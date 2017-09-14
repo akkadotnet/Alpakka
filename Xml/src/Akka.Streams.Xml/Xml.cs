@@ -132,6 +132,7 @@ namespace Akka.Streams.Xml
             private bool _hasNext = true;
             private bool _documentStarted;
             private bool _hasBeenPushed;
+            private bool _canPush;
             private ByteString _overflowBuffer = ByteString.Empty;
 
             private bool DataAvailable => !_overflowBuffer.IsEmpty || !IsClosed(_stage.In);
@@ -149,6 +150,7 @@ namespace Akka.Streams.Xml
 
             public override void OnPull()
             {
+                _canPush = true;
                 // Fix for janky condition where XMLParser requires initial seed data inside the stream in order to work at all
                 if (!_hasBeenPushed)
                 {
@@ -177,7 +179,7 @@ namespace Akka.Streams.Xml
                     // There's data in the buffer, so append the new data to the old data
                     var oldBytes = new byte[_feeder.Length - _feeder.Position];
                     _feeder.Read(oldBytes, 0, oldBytes.Length);
-                    bytes = ByteString.FromByteBuffer(new ByteBuffer(oldBytes)).Concat(bytes);
+                    bytes = ByteString.FromBytes(oldBytes).Concat(bytes);
                 }
 
                 FillStreamBuffer(bytes);
@@ -191,7 +193,7 @@ namespace Akka.Streams.Xml
                     // Overflow buffer isn't empty, so copy it into the buffer instead of asking for more upstream data
                     var sliceLen = Math.Min(_overflowBuffer.Count, _bufferSize);
                     var bytes = _overflowBuffer.Slice(0, sliceLen);
-                    _overflowBuffer = _overflowBuffer.Drop(sliceLen);
+                    _overflowBuffer = _overflowBuffer.Slice(sliceLen);
                     FillStreamBuffer(bytes);
                     AdvanceParser();
                     return;
@@ -205,7 +207,7 @@ namespace Akka.Streams.Xml
                 if (bytes.Count > _bufferSize)
                 {
                     // Incoming data is too big for the current buffer size, truncate and save the overflow.
-                    _overflowBuffer = bytes.Drop(_bufferSize);
+                    _overflowBuffer = bytes.Slice(_bufferSize);
                     bytes = bytes.Slice(0, _bufferSize);
                 }
 
@@ -228,10 +230,13 @@ namespace Akka.Streams.Xml
 
             private void AdvanceParser()
             {
+                if (!_canPush)
+                    return;
+
                 // Check for pending events
                 if (_pendingEvent != null)
                 {
-                    Push(_stage.Out, _pendingEvent);
+                    Push(_pendingEvent);
                     if (_pendingEvent is EndDocument)
                         _documentStarted = false;
                     _pendingEvent = null;
@@ -302,27 +307,27 @@ namespace Akka.Streams.Xml
                         {
                             // START_DOCUMENT
                             _documentStarted = true;
-                            Push(_stage.Out, StartDocument.Instance);
+                            Push(StartDocument.Instance);
                             _pendingEvent = new StartElement(_parser.LocalName, attributes);
                         }
                         else
-                            Push(_stage.Out, new StartElement(_parser.LocalName, attributes));
-                        break;
+                            Push(new StartElement(_parser.LocalName, attributes));
+                        return;
 
                     // END_ELEMENT
                     case XmlNodeType.EndElement:
-                        Push(_stage.Out, new EndElement(_parser.LocalName));
+                        Push(new EndElement(_parser.LocalName));
                         if (_parser.Depth == 0)
                         {
                             // END_DOCUMENT
                             _pendingEvent = EndDocument.Instance;
                         }
-                        break;
+                        return;
 
                     // CHARACTERS
                     case XmlNodeType.Text:
-                        Push(_stage.Out, new Characters(_parser.Value));
-                        break;
+                        Push(new Characters(_parser.Value));
+                        return;
 
                     // PROCESSING_INSTRUCTION
                     case XmlNodeType.ProcessingInstruction:
@@ -330,22 +335,22 @@ namespace Akka.Streams.Xml
                         {
                             // START_DOCUMENT
                             _documentStarted = true;
-                            Push(_stage.Out, StartDocument.Instance);
+                            Push(StartDocument.Instance);
                             _pendingEvent = new ProcessingInstruction(_parser.Name, _parser.Value);
                         }
                         else
-                            Push(_stage.Out, new ProcessingInstruction(_parser.Name, _parser.Value));
-                        break;
+                            Push(new ProcessingInstruction(_parser.Name, _parser.Value));
+                        return;
 
                     // COMMENT
                     case XmlNodeType.Comment:
-                        Push(_stage.Out, new Comment(_parser.Value));
-                        break;
+                        Push(new Comment(_parser.Value));
+                        return;
 
                     // CDATA
                     case XmlNodeType.CDATA:
-                        Push(_stage.Out, new CData(_parser.Value));
-                        break;
+                        Push(new CData(_parser.Value));
+                        return;
 
                     // Do not support DTD, SPACE, NAMESPACE, NOTATION_DECLARATION, ENTITY_DECLARATION
                     // ATTRIBUTE is handled in START_ELEMENT implicitly
@@ -359,6 +364,12 @@ namespace Akka.Streams.Xml
                         AdvanceParser();
                         return;
                 }
+            }
+
+            private void Push<T>(T message)
+            {
+                _canPush = false;
+                Push(_stage.Out, message);
             }
         }
         #endregion

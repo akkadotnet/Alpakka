@@ -1,0 +1,47 @@
+# configuration for "master" branch
+- 
+  branches:
+    only:
+      - master
+  image: Visual Studio 2017
+  platform: Any CPU
+  configuration: Release
+  build_script:
+  - ps: ./build.ps1 Build
+  test_script:
+  - ps: ./build.ps1 RunTests
+  - ps: ./build.ps1 CreateNuget
+  artifacts:
+  - path: build/nuget/*.nupkg
+    name: nuget
+  deploy:
+    provider: NuGet
+    api_key:
+      secure: MDy+BPQGSr14yFXozwVy+08y1RbLv35gL9I/5Ao5nLfYrnj7zX+cJLXfeb8ajyHh
+    skip_symbols: false
+    artifact: /.*\.nupkg/
+
+# configuration for all branches starting from "dev"
+- 
+  branches:
+    only:
+      - addci
+  image: Visual Studio 2017
+  platform: Any CPU
+  configuration: Release
+  build_script:
+  - ps: ./build.ps1 Build
+  test_script:
+  - ps: ./build.ps1 RunTests
+  - ps: ./build.ps1 CreateNuget
+  artifacts:
+  - path: build/nuget/*.nupkg
+    name: nuget
+  deploy:
+    provider: NuGet
+    server: https://www.myget.org/F/akkadotnet-contrib/api/v2/package
+    api_key:
+      secure: yoMgcchmDuXbvT90bgrUTOUNYgAId6QI0nofIOtnlfWzMjDEWfOqNqqTGPY+02M+
+    skip_symbols: false
+    symbol_server: https://www.myget.org/F/akkadotnet-contrib/symbols/api/v2/package
+    artifact: /.*\.nupkg/

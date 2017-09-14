@@ -16,8 +16,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Akka.Streams" Version="1.1.1.28-beta" />
-    <PackageReference Include="WindowsAzure.ServiceBus" Version="3.3.2" />
+    <PackageReference Include="Akka.Streams" Version="1.3.1" />
+    <PackageReference Include="WindowsAzure.ServiceBus" Version="4.1.3" />
   </ItemGroup>
 
 </Project>

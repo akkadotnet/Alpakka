@@ -55,7 +55,7 @@ namespace Akka.Streams.Csv
 
         public List<ByteString> Poll(bool requireLineEnd)
         {
-            if (_buffer.NonEmpty)
+            if (!_buffer.IsEmpty)
             {
                 var preFirstData = _firstData;
                 var prePos = _position;
@@ -79,7 +79,7 @@ namespace Akka.Streams.Csv
 
         private void DropReadBuffer()
         {
-            _buffer = _buffer.Drop(_position);
+            _buffer = _buffer.Slice(_position);
             _position = 0;
             _fieldStart = 0;
         }
@@ -91,7 +91,7 @@ namespace Akka.Streams.Csv
             private readonly CsvParser _parser;
             private readonly ByteString _buffer;
             private bool _useBuilder;
-            private ByteStringBuilder _builder;
+            private readonly List<byte> _builder = new List<byte>();
 
             public FieldBuilder(ByteString buffer, CsvParser parser)
             {
@@ -99,24 +99,27 @@ namespace Akka.Streams.Csv
                 _parser = parser;
             }
 
-            // Set up the ByteString builder instead of relying on `ByteString.slice`.
             public void Init(byte x)
             {
                 if (!_useBuilder)
                 {
-                    _builder = ByteString.NewBuilder().Append(_buffer.Slice(_parser._fieldStart, _parser._position)) + x;
+                    _builder.Clear();
+                    var start = _parser._fieldStart;
+                    var count = _parser._position - start;
+                    _builder.AddRange(_buffer.Slice(start, count));
+                    _builder.Add(x);
                     _useBuilder = true;
                 }
                 else
                 {
-                    _builder += x;
+                    _builder.Add(x);
                 }
             }
 
             public void Add(byte x)
             {
                 if (_useBuilder)
-                    _builder += x;
+                    _builder.Add(x);
             }
 
             public ByteString Result(int pos)
@@ -124,9 +127,9 @@ namespace Akka.Streams.Csv
                 if (_useBuilder)
                 {
                     _useBuilder = false;
-                    return _builder.Result();
+                    return ByteString.FromBytes(_builder.ToArray());
                 }
-                return _buffer.Slice(_parser._fieldStart, pos);
+                return _buffer.Slice(_parser._fieldStart, pos - _parser._fieldStart);
             }
         }
 

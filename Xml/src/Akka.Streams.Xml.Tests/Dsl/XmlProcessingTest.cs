@@ -13,7 +13,7 @@ using Xunit.Abstractions;
 
 namespace Akka.Streams.Xml.Tests.Dsl
 {
-    public class XmlProcessingTest : Akka.TestKit.Xunit.TestKit
+    public class XmlProcessingTest : Akka.TestKit.Xunit2.TestKit
     {
         private readonly ActorMaterializer _materializer;
         private readonly Sink<string, Task<IImmutableList<IParseEvent>>> _parser;

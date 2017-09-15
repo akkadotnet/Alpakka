@@ -25,7 +25,7 @@
 - 
   branches:
     only:
-      - addci
+      - dev
   image: Visual Studio 2017
   platform: Any CPU
   configuration: Release

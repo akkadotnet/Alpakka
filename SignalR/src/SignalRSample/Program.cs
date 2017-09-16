@@ -1,6 +1,7 @@
 ﻿using System;
 using Akka.Actor;
 using Akka.Streams;
+using Akka.Configuration;
 using Microsoft.Owin.Hosting;
 
 namespace SignalRSample
@@ -11,7 +12,11 @@ namespace SignalRSample
         {
             var url = "http://localhost:5000";
 
-            using (var system = ActorSystem.Create("web-system"))
+            Config config = @"
+                akka.loglevel = DEBUG
+            ";
+
+            using (var system = ActorSystem.Create("web-system", config))
             using (var materializer = system.Materializer())
             using (WebApp.Start<Startup>(url))
             {

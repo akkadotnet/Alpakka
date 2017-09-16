@@ -20,7 +20,6 @@ namespace SignalRSample
                 EnableDirectoryBrowsing = true
             });
             app.MapSignalR<EchoConnection>("/echo");
-
         }
     }
 }

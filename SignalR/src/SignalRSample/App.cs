@@ -9,6 +9,5 @@ namespace SignalRSample
     {
         public static ActorSystem System;
         public static IMaterializer Materializer;
-        
     }
 }

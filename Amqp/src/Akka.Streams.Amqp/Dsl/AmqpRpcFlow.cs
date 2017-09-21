@@ -22,7 +22,6 @@ namespace Akka.Streams.Amqp.Dsl
         {
             return Flow.FromGraph(new AmqpRpcFlowStage(settings, bufferSize, repliesPerMessage));
         }
-
         /// <summary>
         /// Create an [[https://www.rabbitmq.com/tutorials/tutorial-six-java.html RPC style flow]] for processing and communicating
         /// over a rabbitmq message bus. This will create a private queue, and add the reply-to header to messages sent out.
@@ -36,7 +35,7 @@ namespace Akka.Streams.Amqp.Dsl
         public static Flow<ByteString, ByteString, Task<string>> CreateSimple(AmqpSinkSettings settings,
             int repliesPerMessage = 1)
         {
-            return Flow.Create<ByteString, Task<string>>().Select(bytes => new OutgoingMessage(bytes, false, false))
+            return Flow.Create<ByteString, Task<string>>().Select(bytes => OutgoingMessage.Create(bytes, false, false))
                 .Via(Create(settings, 1, repliesPerMessage)).Select(_ => _.Bytes);
         }
     }

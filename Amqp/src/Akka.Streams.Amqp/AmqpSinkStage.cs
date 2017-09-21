@@ -9,7 +9,7 @@ namespace Akka.Streams.Amqp
     /// Connects to an AMQP server upon materialization and sends incoming messages to the server.
     /// Each materialized sink will create one connection to the broker.
     /// </summary>
-    public sealed class AmqpSinkStage : GraphStageWithMaterializedValue<SinkShape<OutgoingMessage>,Task<Done>>
+    public sealed class AmqpSinkStage : GraphStageWithMaterializedValue<SinkShape<OutgoingMessage>,Task>
     {
         public AmqpSinkSettings Settings { get;}
 
@@ -25,11 +25,11 @@ namespace Akka.Streams.Amqp
         public Inlet<OutgoingMessage> In = new Inlet<OutgoingMessage>("AmqpSink.in"); 
         public override SinkShape<OutgoingMessage> Shape => new SinkShape<OutgoingMessage>(In);
 
-        public override ILogicAndMaterializedValue<Task<Done>> CreateLogicAndMaterializedValue(Attributes inheritedAttributes)
+        public override ILogicAndMaterializedValue<Task> CreateLogicAndMaterializedValue(Attributes inheritedAttributes)
         {
             var promise = new TaskCompletionSource<Done>();
             var logic = new AmqpSinkStageLogic(this, promise, Shape);
-            return new LogicAndMaterializedValue<Task<Done>>(logic, promise.Task);
+            return new LogicAndMaterializedValue<Task>(logic, promise.Task);
         }
 
         protected override Attributes InitialAttributes => DefaultAttributes;

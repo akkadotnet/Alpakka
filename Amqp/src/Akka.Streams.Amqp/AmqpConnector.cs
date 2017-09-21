@@ -113,27 +113,27 @@ namespace Akka.Streams.Amqp
                 Connection.ConnectionShutdown += OnConnectionShutdown;
                 Channel.ModelShutdown += OnChannelShutdown;
 
-                Settings.Declarations.ForEach(declaration =>
+                foreach (var declaration in Settings.Declarations)
                 {
-                    if (declaration is QueueDeclaration)
+                    switch (declaration)
                     {
-                        var queueDeclaration = (QueueDeclaration)declaration;
-                        Channel.QueueDeclare(queueDeclaration.Name, queueDeclaration.Durable, queueDeclaration.Exclusive,
-                            queueDeclaration.AutoDelete, queueDeclaration.Arguments);
+                        case QueueDeclaration queueDeclaration:
+                            Channel.QueueDeclare(queueDeclaration.Name, queueDeclaration.Durable,
+                                queueDeclaration.Exclusive,
+                                queueDeclaration.AutoDelete, queueDeclaration.Arguments.ToDictionary(key=> key.Key,val=> val.Value));
+                            break;
+                        case BindingDeclaration bindingDeclaration:
+                            Channel.QueueBind(bindingDeclaration.Queue, bindingDeclaration.Exchange,
+                                bindingDeclaration.RoutingKey ?? "", bindingDeclaration.Arguments.ToDictionary(key => key.Key, val => val.Value));
+                            break;
+                        case ExchangeDeclaration exchangeDeclaration:
+                            Channel.ExchangeDeclare(exchangeDeclaration.Name, exchangeDeclaration.ExchangeType,
+                                exchangeDeclaration.Durable, exchangeDeclaration.AutoDelete,
+                                exchangeDeclaration.Arguments.ToDictionary(key => key.Key, val => val.Value));
+                            break;
+
                     }
-                    else if (declaration is BindingDeclaration)
-                    {
-                        var bindingDeclaration = (BindingDeclaration)declaration;
-                        Channel.QueueBind(bindingDeclaration.Queue, bindingDeclaration.Exchange,
-                            bindingDeclaration.RoutingKey ?? "", bindingDeclaration.Arguments);
-                    }
-                    else if (declaration is ExchangeDeclaration)
-                    {
-                        var exchangeDeclaration = (ExchangeDeclaration)declaration;
-                        Channel.ExchangeDeclare(exchangeDeclaration.Name, exchangeDeclaration.ExchangeType,
-                            exchangeDeclaration.Durable, exchangeDeclaration.AutoDelete, exchangeDeclaration.Arguments);
-                    }
-                });
+                }
 
                 WhenConnected();
             }

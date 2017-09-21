@@ -18,10 +18,9 @@ namespace Akka.Streams.Amqp
         public AmqpSinkSettings Settings { get; }
         public int BufferSize { get; }
         public int ResponsePerMessage { get; }
-        
+
         public readonly Inlet<OutgoingMessage> In = new Inlet<OutgoingMessage>("AmqpRpcFlow.in");
         public readonly Outlet<IncomingMessage> Out = new Outlet<IncomingMessage>("AmqpRpcFlow.out");
-
         public AmqpRpcFlowStage(AmqpSinkSettings settings, int bufferSize, int responsePerMessage = 1)
         {
             Settings = settings;
@@ -31,13 +30,11 @@ namespace Akka.Streams.Amqp
         }
         public override FlowShape<OutgoingMessage, IncomingMessage> Shape { get; }
         protected override Attributes InitialAttributes => DefaultAttributes;
-
         public override ILogicAndMaterializedValue<Task<string>> CreateLogicAndMaterializedValue(Attributes inheritedAttributes)
         {
             var promise = new TaskCompletionSource<string>();
             return new LogicAndMaterializedValue<Task<string>>(new Logic(this, promise), promise.Task);
         }
-
         public override string ToString()
         {
             return "AmqpRpcFlow";
@@ -72,7 +69,6 @@ namespace Akka.Streams.Amqp
                     var props = elem.Properties ?? new BasicProperties();
                     props.ReplyTo = _queueName;
                     Channel.BasicPublish(exchange,routingKey,elem.Mandatory,props, elem.Bytes.ToArray());
-
                     int ExpectedResponses()
                     {
                         var headers = props.Headers;
@@ -90,10 +86,8 @@ namespace Akka.Streams.Amqp
                             return _stage.ResponsePerMessage;
                         }
                     }
-
                     _outstandingMessages += ExpectedResponses();
                     Pull(_stage.In);
-
                 }, onUpstreamFinish: () =>
                 {
                     // We don't want to finish since we're still waiting
@@ -107,13 +101,10 @@ namespace Akka.Streams.Amqp
             }
 
             public override IAmqpConnectorSettings Settings => _stage.Settings;
-
             public override IConnectionFactory ConnectionFactoryFrom(IAmqpConnectionSettings settings) =>
                 AmqpConnector.ConnectionFactoryFrom(settings);
-
             public override IConnection NewConnection(IConnectionFactory factory, IAmqpConnectionSettings settings) =>
                 AmqpConnector.NewConnection(factory, settings);
-
             public override void WhenConnected()
             {
                 var shutdownCallback = GetAsyncCallback<(string consumerTag, ShutdownEventArgs args)>(tuple =>
@@ -133,7 +124,6 @@ namespace Akka.Streams.Amqp
                         _promise.SetException(appException);
                         FailStage(appException);
                     }
-                    
                 });
 
                 Pull(_stage.In);
@@ -195,27 +185,23 @@ namespace Akka.Streams.Amqp
             {
                 private readonly Action<IncomingMessage> _consumerCallback;
                 private readonly Action<(string consumerTag, ShutdownEventArgs args)> _shutdownCallback;
-
                 public DefaultConsumer(Action<IncomingMessage> consumerCallback, Action<(string consumerTag, ShutdownEventArgs args)> shutdownCallback)
                 {
                     _consumerCallback = consumerCallback;
                     _shutdownCallback = shutdownCallback;
                 }
-
                 public override void HandleBasicDeliver(string consumerTag, ulong deliveryTag, bool redelivered, string exchange, string routingKey,
                     IBasicProperties properties, byte[] body)
                 {
                     var envelope = Envelope.Create(deliveryTag, redelivered, exchange, routingKey);
-                    var incomingMessage = new IncomingMessage(ByteString.CopyFrom(body), envelope, properties);
+                    var incomingMessage = IncomingMessage.Create(ByteString.CopyFrom(body), envelope, properties);
                     _consumerCallback?.Invoke(incomingMessage);
                 }
-
                 public override void HandleBasicCancel(string consumerTag)
                 {
                     // non consumer initiated cancel, for example happens when the queue has been deleted.
                     _shutdownCallback?.Invoke((consumerTag, null));
                 }
-
                 public override void HandleModelShutdown(object model, ShutdownEventArgs reason)
                 {
                     _shutdownCallback?.Invoke((ConsumerTag, reason));

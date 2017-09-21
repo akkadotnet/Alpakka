@@ -11,19 +11,18 @@ namespace Akka.Streams.Amqp.Dsl
         /// </summary>
         /// <param name="settings">The sink settings</param>
         /// <returns>an <see cref="AmqpSink"/> that accepts <see cref="OutgoingMessage"/> elements.</returns>
-        public static Sink<OutgoingMessage, Task<Done>> Create(AmqpSinkSettings settings)
+        public static Sink<OutgoingMessage, Task> Create(AmqpSinkSettings settings)
         {
             return Sink.FromGraph(new AmqpSinkStage(settings));
         }
-
         /// <summary>
         /// Creates an <see cref="AmqpSink"/> that accepts <see cref="ByteString"/> elements.
         /// </summary>
         /// <param name="settings">the sink settings</param>
         /// <returns>an <see cref="AmqpSink"/> that accepts <see cref="ByteString"/> elements.</returns>
-        public static Sink<ByteString, Task<Done>> CreateSimple(AmqpSinkSettings settings)
+        public static Sink<ByteString, Task> CreateSimple(AmqpSinkSettings settings)
         {
-            return Create(settings).ContraMap<ByteString>(bytes => new OutgoingMessage(bytes, false, false));
+            return Create(settings).ContraMap<ByteString>(bytes => OutgoingMessage.Create(bytes, false, false));
         }
     }
 }

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using Akka.IO;
 using Akka.Streams.Stage;
 using RabbitMQ.Client;
@@ -16,7 +17,6 @@ namespace Akka.Streams.Amqp
         public static Attributes DefaultAttributes = Attributes.CreateName("AmqpSource");
         public IAmqpSourceSettings Settings { get; }
         public int BufferSize { get; }
-
         /// <summary>
         /// Constructor
         /// </summary>
@@ -27,23 +27,17 @@ namespace Akka.Streams.Amqp
             Settings = settings;
             BufferSize = bufferSize;
         }
-
         public override SourceShape<IncomingMessage> Shape => new SourceShape<IncomingMessage>(Out);
-
         public readonly Outlet<IncomingMessage> Out = new Outlet<IncomingMessage>("AmqpSource.out");
-
         protected override Attributes InitialAttributes => DefaultAttributes;
-
         protected override GraphStageLogic CreateLogic(Attributes inheritedAttributes)
         {
             return new AmqpSourceStageLogic(this);
         }
-
         public override string ToString()
         {
             return "AmqpSource";
         }
-
         private class AmqpSourceStageLogic : AmqpConnectorLogic
         {
             private readonly AmqpSourceStage _stage;
@@ -61,16 +55,11 @@ namespace Akka.Streams.Amqp
                     }
                 });
             }
-
             public override IAmqpConnectorSettings Settings => _stage.Settings;
-
             public override IConnectionFactory ConnectionFactoryFrom(IAmqpConnectionSettings settings) =>
                 AmqpConnector.ConnectionFactoryFrom(settings);
-
             public override IConnection NewConnection(IConnectionFactory factory, IAmqpConnectionSettings settings) =>
                 AmqpConnector.NewConnection(factory, settings);
-
-
             public override void WhenConnected()
             {
                 // we have only one consumer per connection so global is ok
@@ -101,12 +90,9 @@ namespace Akka.Streams.Amqp
                     SetupTmeporaryQueue(tempSettings);
                 }
             }
-
             public override void OnFailure(Exception ex)
             {
-                
             }
-
             private void SetupNamedQueue(NamedQueueSourceSettings settings)
             {
                 Channel.BasicConsume(settings.Queue,
@@ -114,9 +100,8 @@ namespace Akka.Streams.Amqp
                     settings.ConsumerTag,// consumer tag
                     settings.NoLocal,
                     settings.Exclusive,
-                    settings.Arguments, _amqpSourceConsumer);
+                    settings.Arguments.ToDictionary(k=> k.Key, val=> val.Value), _amqpSourceConsumer);
             }
-
             private void SetupTmeporaryQueue(TemporaryQueueSourceSettings settings)
             {
                 // this is a weird case that required dynamic declaration, the queue name is not known
@@ -125,8 +110,6 @@ namespace Akka.Streams.Amqp
                 Channel.QueueBind(queueName, settings.Exchange, settings.RoutingKey ?? "");
                 Channel.BasicConsume(queueName, false, _amqpSourceConsumer);
             }
-
-
             private void HandleDelivery(IncomingMessage message)
             {
                 if (IsAvailable(_stage.Out))
@@ -145,9 +128,6 @@ namespace Akka.Streams.Amqp
                     }
                 }
             }
-
-            
-
             private void PushAndAckMessage(IncomingMessage message)
             {
                 Push(_stage.Out, message);
@@ -157,34 +137,27 @@ namespace Akka.Streams.Amqp
                     false);// just this single message
 
             }
-
-            
-
             private class DefaultConsumer : DefaultBasicConsumer
             {
                 private readonly Action<IncomingMessage> _consumerCallback;
                 private readonly Action<ShutdownEventArgs> _shutdownCallback;
-
                 public DefaultConsumer(Action<IncomingMessage> consumerCallback, Action<ShutdownEventArgs> shutdownCallback)
                 {
                     _consumerCallback = consumerCallback;
                     _shutdownCallback = shutdownCallback;
                 }
-
                 public override void HandleBasicDeliver(string consumerTag, ulong deliveryTag, bool redelivered, string exchange, string routingKey,
                     IBasicProperties properties, byte[] body)
                 {
                     var envelope = Envelope.Create(deliveryTag, redelivered, exchange, routingKey);
-                    var incomingMessage = new IncomingMessage(ByteString.CopyFrom(body), envelope, properties);
+                    var incomingMessage = IncomingMessage.Create(ByteString.CopyFrom(body), envelope, properties);
                     _consumerCallback?.Invoke(incomingMessage);
                 }
-
                 public override void HandleBasicCancel(string consumerTag)
                 {
                     // non consumer initiated cancel, for example happens when the queue has been deleted.
                     _shutdownCallback?.Invoke(null);
                 }
-
                 public override void HandleModelShutdown(object model, ShutdownEventArgs reason)
                 {
                     _shutdownCallback?.Invoke(reason);

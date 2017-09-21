@@ -4,7 +4,7 @@ namespace Akka.Streams.Amqp
     /// <summary>
     /// Encapsulates a group of parameters used for AMQP's Basic methods
     /// </summary>
-    public class Envelope
+    public sealed class Envelope
     {
         /// <summary>
         /// Get the delivery tag included in this parameter envelope
@@ -25,7 +25,6 @@ namespace Akka.Streams.Amqp
         /// Get the routing key included in this parameter envelope
         /// </summary>
         public string RoutingKey { get; }
-
         /// <summary>
         /// Construct an <see cref="Envelope"/> with the specified construction parameters
         /// </summary>
@@ -40,13 +39,11 @@ namespace Akka.Streams.Amqp
             Exchange = exchange;
             RoutingKey = routingKey;
         }
-
         public override string ToString()
         {
             return
                 $"Envelope(DeliveryTag={DeliveryTag}, Redeliver={Redeliver}, Exchange={Exchange}, RoutingKey={RoutingKey})";
         }
-
         /// <summary>
         /// Construct an <see cref="Envelope"/> with the specified construction parameters
         /// </summary>

@@ -3,22 +3,20 @@ using RabbitMQ.Client;
 
 namespace Akka.Streams.Amqp
 {
-    public class OutgoingMessage
+    public sealed class OutgoingMessage
     {
-        public OutgoingMessage(ByteString bytes, bool immediate, bool mandatory, IBasicProperties properties = null)
+        public static OutgoingMessage Create(ByteString bytes, bool immediate, bool mandatory,
+            IBasicProperties properties = null) => new OutgoingMessage(bytes, immediate, mandatory, properties);
+        private OutgoingMessage(ByteString bytes, bool immediate, bool mandatory, IBasicProperties properties = null)
         {
             Bytes = bytes;
             Immediate = immediate;
             Mandatory = mandatory;
             Properties = properties;
         }
-
         public ByteString Bytes { get; }
-
         public bool Immediate { get; }
-
         public bool Mandatory { get; }
-
         public IBasicProperties Properties { get; }
     }
 }

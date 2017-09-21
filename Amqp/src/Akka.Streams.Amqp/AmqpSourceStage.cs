@@ -14,7 +14,7 @@ namespace Akka.Streams.Amqp
     /// </summary>
     public sealed class AmqpSourceStage : GraphStage<SourceShape<IncomingMessage>>
     {
-        public static Attributes DefaultAttributes = Attributes.CreateName("AmqpSource");
+        public static readonly Attributes DefaultAttributes = Attributes.CreateName("AmqpSource");
         public IAmqpSourceSettings Settings { get; }
         public int BufferSize { get; }
         /// <summary>

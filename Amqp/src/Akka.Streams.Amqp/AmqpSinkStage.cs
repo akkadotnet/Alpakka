@@ -13,7 +13,7 @@ namespace Akka.Streams.Amqp
     {
         public AmqpSinkSettings Settings { get;}
 
-        public static Attributes DefaultAttributes =
+        public static readonly Attributes DefaultAttributes =
             Attributes.CreateName("AmsqpSink")
                 .And(ActorAttributes.CreateDispatcher("akka.stream.default-blocking-io-dispatcher"));
 

@@ -10,6 +10,29 @@ namespace Akka.Streams.Contrib
 {
     public static class Retry
     {
+        /// <summary>
+        /// <para>
+        /// Retry flow factory. given a flow that produces <see cref="Result{T}"/>s, this wrapping flow may be used to try
+        /// and pass failed elements through the flow again. More accurately, the given flow consumes a tuple
+        /// of `input` and `state`, and produces a tuple of <see cref="Result{T}"/> of `output` and `state`.
+        /// If the flow emits a failed element (i.e. <see cref="Result{T}.IsSuccess"/> is false), the <paramref name="retryWith"/>
+        /// function is fed with the `state` of the failed element, and may produce a new input-state tuple to pass through
+        /// the original flow. The function may also yield `null` instead of `(input, state)`, which means not to retry a failed element.
+        /// </para>
+        /// <para>
+        /// IMPORTANT CAVEAT:
+        /// The given flow must not change the number of elements passing through it (i.e. it should output
+        /// exactly one element for every received element). Ignoring this, will have an unpredicted result,
+        /// and may result in a deadlock.
+        /// </para> 
+        /// </summary>
+        /// <param name="flow">the flow to retry</param>
+        /// <param name="retryWith">if output was failure, we can optionaly recover from it,
+        /// and retry with a new pair of input and new state we get from this function.</param>
+        /// <typeparam name="TI">input elements type</typeparam>
+        /// <typeparam name="TS">state to create a new `(I,S)` to retry with</typeparam>
+        /// <typeparam name="TO">output elements type</typeparam>
+        /// <typeparam name="TM">materialized value type</typeparam>
         public static IGraph<FlowShape<Tuple<TI, TS>, Tuple<Result<TO>, TS>>, TM> Create<TI, TS, TO, TM>(
             IGraph<FlowShape<Tuple<TI, TS>, Tuple<Result<TO>, TS>>, TM> flow, Func<TS, Tuple<TI, TS>> retryWith)
         {
@@ -23,6 +46,34 @@ namespace Akka.Streams.Contrib
             });
         }
 
+        /// <summary>
+        /// <para>
+        /// Factory for multiple retries flow. similar to the simple retry, but this will allow to
+        /// break down a "heavy" element which failed into multiple "thin" elements, that may succeed individually.
+        /// Since it's easy to inflate elements in retry cycle, there's also a limit parameter, that will limit the
+        /// amount of generated elements by the `retryWith` function, and will fail the stage if that limit is exceeded.
+        /// </para>
+        /// <para>
+        /// Passing `null` is valid, and will result in filtering out the failure quietly, without
+        /// emitting a failed <see cref="Result{T}"/> element.
+        /// </para>
+        /// <para>
+        /// IMPORTANT CAVEAT:
+        /// The given flow must not change the number of elements passing through it (i.e. it should output
+        ///     exactly one element for every received element). Ignoring this, will have an unpredicted result,
+        /// and may result in a deadlock.
+        /// </para>
+        /// </summary>
+        /// <param name="limit">since every retry can generate more elements, the inner queue can get too big.
+        /// if the limit is reached, the stage will fail.</param>
+        /// <param name="flow">the flow to retry</param>
+        /// <param name="retryWith">if output was failure, we can optionaly recover from it, and retry with
+        /// a sequence of input and new state pairs we get from this function.</param>
+        /// <typeparam name="TI">input elements type</typeparam>
+        /// <typeparam name="TS">state to create a new `(I,S)` to retry with</typeparam>
+        /// <typeparam name="TO">output elements type</typeparam>
+        /// <typeparam name="TM">materialized value type</typeparam>
+        /// <returns></returns>
         public static IGraph<FlowShape<Tuple<TI, TS>, Tuple<Result<TO>, TS>>, TM> Concat<TI, TS, TO, TM>(long limit,
             IGraph<FlowShape<Tuple<TI, TS>, Tuple<Result<TO>, TS>>, TM> flow, Func<TS, IEnumerable<Tuple<TI, TS>>> retryWith)
         {

@@ -1,22 +1,60 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using Akka.IO;
+using Akka.Streams.Amqp.Dsl;
 using Akka.Streams.Stage;
+using Akka.Util.Internal;
 using RabbitMQ.Client;
 
 namespace Akka.Streams.Amqp
 {
+    interface ICommitCallback
+    {
+    }
+
+    public sealed class AckArguments : ICommitCallback
+    {
+        public ulong DeliveryTag { get; }
+        public bool Multiple { get; }
+        public TaskCompletionSource<Done> Promise { get; }
+
+        public AckArguments(ulong deliveryTag, bool multiple, TaskCompletionSource<Done> promise)
+        {
+            Multiple = multiple;
+            Promise = promise;
+            DeliveryTag = deliveryTag;
+        }
+    }
+
+    public sealed class NackArguments : ICommitCallback
+    {
+        public ulong DeliveryTag { get; }
+        public bool Multiple { get; }
+        public bool Requeue { get; }
+        public TaskCompletionSource<Done> Promise { get; }
+
+        public NackArguments(ulong deliveryTag, bool multiple, bool requeue, TaskCompletionSource<Done> promise)
+        {
+            DeliveryTag = deliveryTag;
+            Multiple = multiple;
+            Requeue = requeue;
+            Promise = promise;
+        }
+    }
+
     /// <summary>
     /// Connects to an AMQP server upon materialization and consumes messages from it emitting them
     /// into the stream. Each materialized source will create one connection to the broker.
     /// As soon as an <see cref="IncomingMessage"/> is sent downstream, an ack for it is sent to the broker.
     /// </summary>
-    public sealed class AmqpSourceStage : GraphStage<SourceShape<IncomingMessage>>
+    public sealed class AmqpSourceStage : GraphStage<SourceShape<CommittableIncomingMessage>>
     {
         public static readonly Attributes DefaultAttributes = Attributes.CreateName("AmqpSource");
         public IAmqpSourceSettings Settings { get; }
         public int BufferSize { get; }
+
         /// <summary>
         /// Constructor
         /// </summary>
@@ -27,23 +65,24 @@ namespace Akka.Streams.Amqp
             Settings = settings;
             BufferSize = bufferSize;
         }
-        public override SourceShape<IncomingMessage> Shape => new SourceShape<IncomingMessage>(Out);
-        public readonly Outlet<IncomingMessage> Out = new Outlet<IncomingMessage>("AmqpSource.out");
+
+        public override SourceShape<CommittableIncomingMessage> Shape => new SourceShape<CommittableIncomingMessage>(Out);
+
+        public readonly Outlet<CommittableIncomingMessage> Out = new Outlet<CommittableIncomingMessage>("AmqpSource.out");
+
         protected override Attributes InitialAttributes => DefaultAttributes;
-        protected override GraphStageLogic CreateLogic(Attributes inheritedAttributes)
-        {
-            return new AmqpSourceStageLogic(this);
-        }
-        public override string ToString()
-        {
-            return "AmqpSource";
-        }
+
+        protected override GraphStageLogic CreateLogic(Attributes inheritedAttributes) => new AmqpSourceStageLogic(this);
+
+        public override string ToString() => "AmqpSource";
+
         private class AmqpSourceStageLogic : AmqpConnectorLogic
         {
             private readonly AmqpSourceStage _stage;
-            private readonly Queue<IncomingMessage> _queue = new Queue<IncomingMessage>();
+            private readonly Queue<CommittableIncomingMessage> _queue = new Queue<CommittableIncomingMessage>();
             private IBasicConsumer _amqpSourceConsumer;
-            
+            private AtomicCounter _unackedMessages = new AtomicCounter();
+
             public AmqpSourceStageLogic(AmqpSourceStage stage) : base(stage.Shape)
             {
                 _stage = stage;
@@ -51,33 +90,58 @@ namespace Akka.Streams.Amqp
                 {
                     if (_queue.Count > 0)
                     {
-                        PushAndAckMessage(_queue.Dequeue());
+                        PushMessage(_queue.Dequeue());
                     }
                 });
             }
+
             public override IAmqpConnectorSettings Settings => _stage.Settings;
+
             public override IConnectionFactory ConnectionFactoryFrom(IAmqpConnectionSettings settings) =>
                 AmqpConnector.ConnectionFactoryFrom(settings);
+
             public override IConnection NewConnection(IConnectionFactory factory, IAmqpConnectionSettings settings) =>
                 AmqpConnector.NewConnection(factory, settings);
+
             public override void WhenConnected()
             {
                 // we have only one consumer per connection so global is ok
                 Channel.BasicQos(0, (ushort) _stage.BufferSize, false);
-                var consumerCallback = GetAsyncCallback<IncomingMessage>(HandleDelivery);
+                var consumerCallback = GetAsyncCallback<CommittableIncomingMessage>(HandleDelivery);
+
                 var shutdownCallback = GetAsyncCallback<ShutdownEventArgs>(args =>
                 {
                     if (args != null)
                     {
                         FailStage(ShutdownSignalException.FromArgs(args));
                     }
-                    else
+                    else if (_unackedMessages.Current == 0)
                     {
                         CompleteStage();
                     }
                 });
 
-                _amqpSourceConsumer = new DefaultConsumer(consumerCallback,shutdownCallback);
+                var commitCallback = GetAsyncCallback<ICommitCallback>(callback =>
+                {
+                    switch (callback)
+                    {
+                        case AckArguments args:
+                            Channel.BasicAck(args.DeliveryTag, args.Multiple);
+                            _unackedMessages.DecrementAndGet();
+                            if (_unackedMessages.Current == 0) CompleteStage();
+                            args.Promise.SetResult(Done.Instance);
+                            break;
+
+                        case NackArguments args:
+                            Channel.BasicNack(args.DeliveryTag, args.Multiple, args.Requeue);
+                            _unackedMessages.DecrementAndGet();
+                            if (_unackedMessages.Current == 0) CompleteStage();
+                            args.Promise.SetResult(Done.Instance);
+                            break;
+                    }
+                });
+
+                _amqpSourceConsumer = new DefaultConsumer(consumerCallback, commitCallback, shutdownCallback);
 
                 if (Settings is NamedQueueSourceSettings)
                 {
@@ -90,18 +154,21 @@ namespace Akka.Streams.Amqp
                     SetupTmeporaryQueue(tempSettings);
                 }
             }
+
             public override void OnFailure(Exception ex)
             {
             }
+
             private void SetupNamedQueue(NamedQueueSourceSettings settings)
             {
                 Channel.BasicConsume(settings.Queue,
-                    false,// never auto-ack
-                    settings.ConsumerTag,// consumer tag
+                    false, // never auto-ack
+                    settings.ConsumerTag, // consumer tag
                     settings.NoLocal,
                     settings.Exclusive,
-                    settings.Arguments.ToDictionary(k=> k.Key, val=> val.Value), _amqpSourceConsumer);
+                    settings.Arguments.ToDictionary(k => k.Key, val => val.Value), _amqpSourceConsumer);
             }
+
             private void SetupTmeporaryQueue(TemporaryQueueSourceSettings settings)
             {
                 // this is a weird case that required dynamic declaration, the queue name is not known
@@ -110,11 +177,12 @@ namespace Akka.Streams.Amqp
                 Channel.QueueBind(queueName, settings.Exchange, settings.RoutingKey ?? "");
                 Channel.BasicConsume(queueName, false, _amqpSourceConsumer);
             }
-            private void HandleDelivery(IncomingMessage message)
+
+            private void HandleDelivery(CommittableIncomingMessage message)
             {
                 if (IsAvailable(_stage.Out))
                 {
-                    PushAndAckMessage(message);
+                    PushMessage(message);
                 }
                 else
                 {
@@ -128,43 +196,60 @@ namespace Akka.Streams.Amqp
                     }
                 }
             }
-            private void PushAndAckMessage(IncomingMessage message)
-            {
-                Push(_stage.Out, message);
-                // ack it as soon as we have passed it downstream
-                // TODO ack less often and do batch acks with multiple = true would probably be more performant
-                Channel.BasicAck(message.Envelope.DeliveryTag,
-                    false);// just this single message
 
-            }
+            private void PushMessage(CommittableIncomingMessage message) => Push(_stage.Out, message);
+
             private class DefaultConsumer : DefaultBasicConsumer
             {
-                private readonly Action<IncomingMessage> _consumerCallback;
+                private readonly Action<CommittableIncomingMessage> _consumerCallback;
+                private readonly Action<ICommitCallback> _commitCallback;
                 private readonly Action<ShutdownEventArgs> _shutdownCallback;
-                public DefaultConsumer(Action<IncomingMessage> consumerCallback, Action<ShutdownEventArgs> shutdownCallback)
+
+                public DefaultConsumer(Action<CommittableIncomingMessage> consumerCallback, Action<ICommitCallback> commitCallback,
+                    Action<ShutdownEventArgs> shutdownCallback)
                 {
                     _consumerCallback = consumerCallback;
+                    _commitCallback = commitCallback;
                     _shutdownCallback = shutdownCallback;
                 }
+
                 public override void HandleBasicDeliver(string consumerTag, ulong deliveryTag, bool redelivered, string exchange, string routingKey,
                     IBasicProperties properties, byte[] body)
                 {
                     var envelope = Envelope.Create(deliveryTag, redelivered, exchange, routingKey);
-                    var incomingMessage = IncomingMessage.Create(ByteString.CopyFrom(body), envelope, properties);
-                    _consumerCallback?.Invoke(incomingMessage);
+                    var message = IncomingMessage.Create(ByteString.CopyFrom(body), envelope, properties);
+                    
+                    var committableMessage =
+                        new CommittableIncomingMessage(
+                            message,
+                            ack: multiple =>
+                            {
+                                var promise = new TaskCompletionSource<Done>();
+                                _commitCallback(new AckArguments(message.Envelope.DeliveryTag, multiple, promise));
+                                return promise;
+                            },
+                            nack: (multiple, requeue) =>
+                            {
+                                var promise = new TaskCompletionSource<Done>();
+                                _commitCallback(new NackArguments(message.Envelope.DeliveryTag, multiple, requeue, promise));
+                                return promise;
+                            }
+                        );
+                    
+                    _consumerCallback?.Invoke(committableMessage);
                 }
+
                 public override void HandleBasicCancel(string consumerTag)
                 {
                     // non consumer initiated cancel, for example happens when the queue has been deleted.
                     _shutdownCallback?.Invoke(null);
                 }
+
                 public override void HandleModelShutdown(object model, ShutdownEventArgs reason)
                 {
                     _shutdownCallback?.Invoke(reason);
                 }
             }
-
         }
-        
     }
 }

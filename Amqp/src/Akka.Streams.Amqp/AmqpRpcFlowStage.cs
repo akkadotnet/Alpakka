@@ -4,7 +4,6 @@ using System.Threading.Tasks;
 using Akka.IO;
 using Akka.Streams.Amqp.Dsl;
 using Akka.Streams.Stage;
-using Akka.Util.Internal;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Framing;
 
@@ -50,7 +49,7 @@ namespace Akka.Streams.Amqp
             private readonly TaskCompletionSource<string> _promise;
             private readonly Queue<CommittableIncomingMessage> _queue = new Queue<CommittableIncomingMessage>();
             private string _queueName = "";
-            private readonly AtomicCounter _unackedMessages = new AtomicCounter();
+            private int _unackedMessages;
             private int _outstandingMessages;
             private IBasicConsumer _amqpSourceConsumer;
 
@@ -60,7 +59,7 @@ namespace Akka.Streams.Amqp
                 _promise = promise;
                 var exchange = _stage.Settings.Exchange ?? "";
                 var routingKey = _stage.Settings.RoutingKey ?? "";
-                
+
                 SetHandler(_stage.Out, new LambdaOutHandler(onPull: () =>
                 {
                     if (_queue.Count > 0)
@@ -70,19 +69,18 @@ namespace Akka.Streams.Amqp
                 }));
 
                 SetHandler(_stage.In, new LambdaInHandler(onPush: () =>
-                {
-                    var elem = Grab(_stage.In);
-                    var props = elem.Properties ?? new BasicProperties();
-                    props.ReplyTo = _queueName;
-                    Channel.BasicPublish(exchange, routingKey, elem.Mandatory, props, elem.Bytes.ToArray());
-
-                    int ExpectedResponses()
                     {
-                        var headers = props.Headers;
-                        if (headers == null)
-                            return _stage.ResponsePerMessage;
-                        else
+                        var elem = Grab(_stage.In);
+                        var props = elem.Properties ?? new BasicProperties();
+                        props.ReplyTo = _queueName;
+                        Channel.BasicPublish(exchange, routingKey, elem.Mandatory, props, elem.Bytes.ToArray());
+
+                        int ExpectedResponses()
                         {
+                            var headers = props.Headers;
+                            if (headers == null)
+                                return _stage.ResponsePerMessage;
+
                             if (headers.TryGetValue("expectedReplies", out var r))
                             {
                                 if (r != null)
@@ -93,20 +91,20 @@ namespace Akka.Streams.Amqp
 
                             return _stage.ResponsePerMessage;
                         }
-                    }
 
-                    var expectedResponses = ExpectedResponses();
+                        var expectedResponses = ExpectedResponses();
 
-                    _unackedMessages.AddAndGet(expectedResponses);
-                    _outstandingMessages += expectedResponses;
-                    Pull(_stage.In);
-                }, onUpstreamFinish: () =>
-                {
-                    // We don't want to finish since we're still waiting on incoming messages from rabbit. However, if we
-                    // haven't processed a message yet, we do want to complete so that we don't hang.
-                    if (_queue.Count == 0 && _outstandingMessages == 0 && _unackedMessages.Current == 0)
-                        CompleteStage(); //TODO: check if this is right?? JVM implementation: if (queue.isEmpty && outstandingMessages == 0) super.onUpstreamFinish()
-                }));
+                        _unackedMessages++;
+                        _outstandingMessages += expectedResponses;
+                        Pull(_stage.In);
+                    },
+                    onUpstreamFinish: () =>
+                    {
+                        // We don't want to finish since we're still waiting on incoming messages from rabbit. However, if we
+                        // haven't processed a message yet, we do want to complete so that we don't hang.
+                        if (_queue.Count == 0 && _outstandingMessages == 0 && _unackedMessages == 0)
+                            CompleteStage(); //TODO: check if this is right?? JVM implementation: if (queue.isEmpty && outstandingMessages == 0) super.onUpstreamFinish()
+                    }));
             }
 
             public override IAmqpConnectorSettings Settings => _stage.Settings;
@@ -142,29 +140,27 @@ namespace Akka.Streams.Amqp
 
                 // we have only one consumer per connection so global is ok
                 Channel.BasicQos(0, (ushort) _stage.BufferSize, false);
-                
+
                 var consumerCallback = GetAsyncCallback<CommittableIncomingMessage>(HandleDelivery);
-                
+
                 var commitCallback = GetAsyncCallback<ICommitCallback>(callback =>
                 {
                     switch (callback)
                     {
                         case AckArguments args:
                             Channel.BasicAck(args.DeliveryTag, args.Multiple);
-                            _unackedMessages.DecrementAndGet();
-                            if (_unackedMessages.Current == 0) CompleteStage();
+                            if (--_unackedMessages == 0) CompleteStage();
                             args.Promise.SetResult(Done.Instance);
                             break;
 
                         case NackArguments args:
                             Channel.BasicNack(args.DeliveryTag, args.Multiple, args.Requeue);
-                            _unackedMessages.DecrementAndGet();
-                            if (_unackedMessages.Current == 0) CompleteStage();
+                            if (--_unackedMessages == 0) CompleteStage();
                             args.Promise.SetResult(Done.Instance);
                             break;
                     }
                 });
-                
+
                 _amqpSourceConsumer = new DefaultConsumer(consumerCallback, commitCallback, shutdownCallback);
 
                 // Create an exclusive queue with a randomly generated name for use as the replyTo portion of RPC
@@ -197,8 +193,8 @@ namespace Akka.Streams.Amqp
             {
                 Push(_stage.Out, message);
                 _outstandingMessages -= 1;
-                
-                if (_outstandingMessages == 0 && _unackedMessages.Current == 0 && IsClosed(_stage.In))
+
+                if (_outstandingMessages == 0 && _unackedMessages == 0 && IsClosed(_stage.In))
                 {
                     CompleteStage();
                 }
@@ -218,7 +214,7 @@ namespace Akka.Streams.Amqp
                 private readonly Action<ICommitCallback> _commitCallback;
                 private readonly Action<(string consumerTag, ShutdownEventArgs args)> _shutdownCallback;
 
-                public DefaultConsumer(Action<CommittableIncomingMessage> consumerCallback, Action<ICommitCallback> commitCallback, 
+                public DefaultConsumer(Action<CommittableIncomingMessage> consumerCallback, Action<ICommitCallback> commitCallback,
                     Action<(string consumerTag, ShutdownEventArgs args)> shutdownCallback)
                 {
                     _consumerCallback = consumerCallback;
@@ -246,7 +242,7 @@ namespace Akka.Streams.Amqp
                                 _commitCallback(new NackArguments(message.Envelope.DeliveryTag, multiple, requeue, promise));
                                 return promise;
                             });
-                    
+
                     _consumerCallback?.Invoke(committableMessage);
                 }
 

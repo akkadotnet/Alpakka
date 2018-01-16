@@ -42,7 +42,7 @@ namespace Akka.Streams.Amqp.Tests
 
             //create source
             const int bufferSize = 10;
-            var amqpSource = AmqpSource.Create(
+            var amqpSource = AmqpSource.AtMostOnceSource(
                 NamedQueueSourceSettings.Create(DefaultAmqpConnection.Instance, queueName)
                     .WithDeclarations(queueDeclaration),
                 bufferSize);
@@ -53,7 +53,7 @@ namespace Akka.Streams.Amqp.Tests
 
             //run source
             var result =
-                amqpSource.Select(m => m.Message.Bytes.ToString(Encoding.UTF8))
+                amqpSource.Select(m => m.Bytes.ToString(Encoding.UTF8))
                     .Take(input.Count)
                     .RunWith(Sink.Seq<string>(), _materializer);
 

@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Data;
 using System.Linq;
-using Akka.Util.Internal;
 using RabbitMQ.Client;
 
 namespace Akka.Streams.Amqp

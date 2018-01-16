@@ -62,7 +62,8 @@ namespace Akka.Streams.Amqp
                     onDownstreamFinish: () =>
                     {
                         SetKeepGoing(true);
-                        if (_unackedMessages == 0) base.onDownstreamFinish();
+                        if (_unackedMessages == 0) 
+                            CompleteStage(); //TODO: check if this is right?? JVM implementation: if (unackedMessages == 0) super.onDownstreamFinish()
                     });
             }
 
@@ -167,7 +168,11 @@ namespace Akka.Streams.Amqp
                 }
             }
 
-            private void PushMessage(CommittableIncomingMessage message) => Push(_stage.Out, message);
+            private void PushMessage(CommittableIncomingMessage message)
+            {
+                Push(_stage.Out, message);
+                _unackedMessages++;
+            }
 
             private class DefaultConsumer : DefaultBasicConsumer
             {

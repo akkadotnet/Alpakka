@@ -10,40 +10,6 @@ using RabbitMQ.Client;
 
 namespace Akka.Streams.Amqp
 {
-    interface ICommitCallback
-    {
-    }
-
-    public sealed class AckArguments : ICommitCallback
-    {
-        public ulong DeliveryTag { get; }
-        public bool Multiple { get; }
-        public TaskCompletionSource<Done> Promise { get; }
-
-        public AckArguments(ulong deliveryTag, bool multiple, TaskCompletionSource<Done> promise)
-        {
-            Multiple = multiple;
-            Promise = promise;
-            DeliveryTag = deliveryTag;
-        }
-    }
-
-    public sealed class NackArguments : ICommitCallback
-    {
-        public ulong DeliveryTag { get; }
-        public bool Multiple { get; }
-        public bool Requeue { get; }
-        public TaskCompletionSource<Done> Promise { get; }
-
-        public NackArguments(ulong deliveryTag, bool multiple, bool requeue, TaskCompletionSource<Done> promise)
-        {
-            DeliveryTag = deliveryTag;
-            Multiple = multiple;
-            Requeue = requeue;
-            Promise = promise;
-        }
-    }
-
     /// <summary>
     /// Connects to an AMQP server upon materialization and consumes messages from it emitting them
     /// into the stream. Each materialized source will create one connection to the broker.
@@ -81,18 +47,23 @@ namespace Akka.Streams.Amqp
             private readonly AmqpSourceStage _stage;
             private readonly Queue<CommittableIncomingMessage> _queue = new Queue<CommittableIncomingMessage>();
             private IBasicConsumer _amqpSourceConsumer;
-            private AtomicCounter _unackedMessages = new AtomicCounter();
+            private int _unackedMessages;
 
             public AmqpSourceStageLogic(AmqpSourceStage stage) : base(stage.Shape)
             {
                 _stage = stage;
                 SetHandler(_stage.Out, () =>
-                {
-                    if (_queue.Count > 0)
                     {
-                        PushMessage(_queue.Dequeue());
-                    }
-                });
+                        if (_queue.Count > 0)
+                        {
+                            PushMessage(_queue.Dequeue());
+                        }
+                    },
+                    onDownstreamFinish: () =>
+                    {
+                        SetKeepGoing(true);
+                        if (_unackedMessages == 0) base.onDownstreamFinish();
+                    });
             }
 
             public override IAmqpConnectorSettings Settings => _stage.Settings;
@@ -115,7 +86,7 @@ namespace Akka.Streams.Amqp
                     {
                         FailStage(ShutdownSignalException.FromArgs(args));
                     }
-                    else if (_unackedMessages.Current == 0)
+                    else if (_unackedMessages == 0)
                     {
                         CompleteStage();
                     }
@@ -127,15 +98,13 @@ namespace Akka.Streams.Amqp
                     {
                         case AckArguments args:
                             Channel.BasicAck(args.DeliveryTag, args.Multiple);
-                            _unackedMessages.DecrementAndGet();
-                            if (_unackedMessages.Current == 0) CompleteStage();
+                            if (--_unackedMessages == 0 && IsClosed(_stage.Out)) CompleteStage();
                             args.Promise.SetResult(Done.Instance);
                             break;
 
                         case NackArguments args:
                             Channel.BasicNack(args.DeliveryTag, args.Multiple, args.Requeue);
-                            _unackedMessages.DecrementAndGet();
-                            if (_unackedMessages.Current == 0) CompleteStage();
+                            if (--_unackedMessages == 0 && IsClosed(_stage.Out)) CompleteStage();
                             args.Promise.SetResult(Done.Instance);
                             break;
                     }
@@ -143,15 +112,16 @@ namespace Akka.Streams.Amqp
 
                 _amqpSourceConsumer = new DefaultConsumer(consumerCallback, commitCallback, shutdownCallback);
 
-                if (Settings is NamedQueueSourceSettings)
+                switch (Settings)
                 {
-                    var namedSourceSettings = (NamedQueueSourceSettings) Settings;
-                    SetupNamedQueue(namedSourceSettings);
-                }
-                else if (Settings is TemporaryQueueSourceSettings)
-                {
-                    var tempSettings = (TemporaryQueueSourceSettings) Settings;
-                    SetupTmeporaryQueue(tempSettings);
+                    case NamedQueueSourceSettings _:
+                        var namedSourceSettings = (NamedQueueSourceSettings) Settings;
+                        SetupNamedQueue(namedSourceSettings);
+                        break;
+                    case TemporaryQueueSourceSettings _:
+                        var tempSettings = (TemporaryQueueSourceSettings) Settings;
+                        SetupTmeporaryQueue(tempSettings);
+                        break;
                 }
             }
 
@@ -218,7 +188,7 @@ namespace Akka.Streams.Amqp
                 {
                     var envelope = Envelope.Create(deliveryTag, redelivered, exchange, routingKey);
                     var message = IncomingMessage.Create(ByteString.CopyFrom(body), envelope, properties);
-                    
+
                     var committableMessage =
                         new CommittableIncomingMessage(
                             message,
@@ -235,7 +205,7 @@ namespace Akka.Streams.Amqp
                                 return promise;
                             }
                         );
-                    
+
                     _consumerCallback?.Invoke(committableMessage);
                 }
 

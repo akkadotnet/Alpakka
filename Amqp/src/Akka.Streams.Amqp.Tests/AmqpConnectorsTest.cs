@@ -5,6 +5,7 @@ using Akka.IO;
 using Akka.Streams.Amqp.Dsl;
 using Akka.Streams.Dsl;
 using Akka.Streams.TestKit;
+using FluentAssertions;
 using Xunit;
 
 namespace Akka.Streams.Amqp.Tests
@@ -26,7 +27,7 @@ namespace Akka.Streams.Amqp.Tests
         [Fact]
         public void Publish_and_consume_elements_through_a_simple_queue_again_in_the_same_process()
         {
-            var exchange = ExchangeDeclaration.Create("logs", "topic");
+            ExchangeDeclaration.Create("logs", "topic");
 
             //queue declaration
             var queueName = "amqp-conn-it-spec-simple-queue-" + Environment.TickCount;
@@ -92,6 +93,40 @@ namespace Akka.Streams.Amqp.Tests
                 .RunWith(amqpSink, _mat);
 
             probe.Request(5).ExpectNextUnorderedN(input.Select(s => ByteString.FromString(s + "a"))).ExpectComplete();
+        }
+        
+        [Fact]
+        public void Publish_from_one_source_and_consume_elements_with_multiple_sinks()
+        {
+            var queueName = "amqp-conn-it-spec-work-queues-" + Environment.TickCount;
+            var queueDeclaration = QueueDeclaration.Create(queueName);
+            var amqpSink = AmqpSink.CreateSimple(
+                AmqpSinkSettings.Create(_connectionSettings)
+                    .WithRoutingKey(queueName)
+                    .WithDeclarations(queueDeclaration));
+
+            var input = new[] {"one", "two", "three", "four", "five"};
+            Source.From(input).Select(ByteString.FromString).RunWith(amqpSink, _mat);
+
+            var mergedSources = Source.FromGraph(GraphDsl.Create(b =>
+            {
+                const int count = 3;
+                var merge = b.Add(new Merge<IncomingMessage>(count));
+                for (var n = 0; n < count; n++)
+                {
+                    var source = b.Add(
+                        AmqpSource.AtMostOnceSource(
+                            NamedQueueSourceSettings.Create(_connectionSettings, queueName).WithDeclarations(queueDeclaration),
+                            bufferSize: 1));
+
+                    b.From(source.Outlet).To(merge.In(n));
+                }
+
+                return new SourceShape<IncomingMessage>(merge.Out);
+            }));
+
+            var result = mergedSources.Select(x => x.Bytes.ToString()).Take(input.Length).RunWith(Sink.Seq<string>(), _mat);
+            result.Result.OrderBy(x => x).ToArray().Should().Equal(input.OrderBy(x => x).ToArray());
         }
     }
 }

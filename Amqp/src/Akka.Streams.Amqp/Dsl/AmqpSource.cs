@@ -10,7 +10,7 @@ namespace Akka.Streams.Amqp.Dsl
         /// <param name="settings"></param>
         /// <param name="bufferSize"></param>
         /// <returns>TBD</returns>
-        public static Source<IncomingMessage, NotUsed> Create(IAmqpSourceSettings settings, int bufferSize)
+        public static Source<CommittableIncomingMessage, NotUsed> Create(IAmqpSourceSettings settings, int bufferSize)
         {
             return Source.FromGraph(new AmqpSourceStage(settings, bufferSize));
         } 

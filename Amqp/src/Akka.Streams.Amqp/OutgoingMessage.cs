@@ -5,18 +5,19 @@ namespace Akka.Streams.Amqp
 {
     public sealed class OutgoingMessage
     {
-        public static OutgoingMessage Create(ByteString bytes, bool immediate, bool mandatory,
-            IBasicProperties properties = null) => new OutgoingMessage(bytes, immediate, mandatory, properties);
-        private OutgoingMessage(ByteString bytes, bool immediate, bool mandatory, IBasicProperties properties = null)
+        public OutgoingMessage(ByteString bytes, bool immediate, bool mandatory, IBasicProperties properties = null, string routingKey = null)
         {
             Bytes = bytes;
             Immediate = immediate;
             Mandatory = mandatory;
             Properties = properties;
+            RoutingKey = routingKey;
         }
+
         public ByteString Bytes { get; }
         public bool Immediate { get; }
         public bool Mandatory { get; }
         public IBasicProperties Properties { get; }
+        public string RoutingKey { get; }
     }
 }

@@ -90,10 +90,10 @@ namespace Akka.Streams.Amqp.Tests
             //#run-rpc-flow
             rpcQueueNameTask.Result.Should().NotBeNullOrWhiteSpace("RPC flow materializes into response queue name");
 
-            var amqpSink = AmqpSink.Create(AmqpSinkSettings.Create(_connectionSettings));
+            var amqpSink = AmqpSink.ReplyTo(AmqpReplyToSinkSettings.Create(_connectionSettings));
 
             amqpSource
-                .Select(msg => OutgoingMessage.Create(msg.Bytes.Concat(ByteString.FromString("a")), false, false, msg.Properties))
+                .Select(msg => new OutgoingMessage(msg.Bytes.Concat(ByteString.FromString("a")), false, false, msg.Properties))
                 .RunWith(amqpSink, _mat);
 
             probe.Request(5).ExpectNextUnorderedN(input.Select(s => ByteString.FromString(s + "a"))).ExpectComplete();

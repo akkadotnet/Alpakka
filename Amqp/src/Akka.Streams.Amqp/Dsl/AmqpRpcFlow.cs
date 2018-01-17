@@ -58,7 +58,7 @@ namespace Akka.Streams.Amqp.Dsl
         {
             return 
                 Flow.Create<ByteString>()
-                    .Select(bytes => OutgoingMessage.Create(bytes, false, false))
+                    .Select(bytes => new OutgoingMessage(bytes, false, false))
                     .ViaMaterialized(AtMostOnceFlow(settings, 1, repliesPerMessage), Keep.Right)
                     .Select(_ => _.Bytes);
         }

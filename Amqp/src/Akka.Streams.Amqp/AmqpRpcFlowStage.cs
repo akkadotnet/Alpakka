@@ -69,7 +69,8 @@ namespace Akka.Streams.Amqp
                     }
                 }));
 
-                SetHandler(_stage.In, new LambdaInHandler(onPush: () =>
+                SetHandler(_stage.In, new LambdaInHandler(
+                    onPush: () =>
                     {
                         var elem = Grab(_stage.In);
                         var props = elem.Properties ?? new BasicProperties();
@@ -86,23 +87,34 @@ namespace Akka.Streams.Amqp
                             {
                                 if (r != null)
                                 {
-                                    return Convert.ToInt32(r);
+                                    try
+                                    {
+                                        return Convert.ToInt32(r);
+                                    }
+                                    catch (Exception)
+                                    {
+                                        return _stage.ResponsePerMessage;
+                                    }
                                 }
                             }
 
                             return _stage.ResponsePerMessage;
                         }
 
-                        var expectedResponses = ExpectedResponses();
-
-                        _unackedMessages++;
-                        _outstandingMessages += expectedResponses;
+                        _outstandingMessages += ExpectedResponses();
                         Pull(_stage.In);
                     },
                     onUpstreamFinish: () =>
                     {
+                        SetKeepGoing(true);
                         // We don't want to finish since we're still waiting on incoming messages from rabbit. However, if we
                         // haven't processed a message yet, we do want to complete so that we don't hang.
+                        if (_queue.Count == 0 && _outstandingMessages == 0 && _unackedMessages == 0)
+                            CompleteStage(); //TODO: check if this is right?? JVM implementation: if (queue.isEmpty && outstandingMessages == 0) super.onUpstreamFinish()
+                    },
+                    onUpstreamFailure: ex =>
+                    {
+                        SetKeepGoing(true);
                         if (_queue.Count == 0 && _outstandingMessages == 0 && _unackedMessages == 0)
                             CompleteStage(); //TODO: check if this is right?? JVM implementation: if (queue.isEmpty && outstandingMessages == 0) super.onUpstreamFinish()
                     }));
@@ -123,24 +135,22 @@ namespace Akka.Streams.Amqp
                     if (tuple.args != null)
                     {
                         var exception = ShutdownSignalException.FromArgs(tuple.args);
-                        var appException = new ApplicationException(
-                            $"Consumer {_queueName} with consumerTag {tuple.consumerTag} shutdown unexpectedly", exception);
-                        _promise.SetException(appException);
-                        FailStage(appException);
+                        var ex = new ApplicationException($"Consumer {_queueName} with consumerTag {tuple.consumerTag} shutdown unexpectedly", exception);
+                        _promise.SetException(ex);
+                        FailStage(ex);
                     }
                     else
                     {
-                        var appException = new ApplicationException(
-                            $"Consumer {_queueName} with consumerTag {tuple.consumerTag} shutdown unexpectedly");
-                        _promise.SetException(appException);
-                        FailStage(appException);
+                        var ex = new ApplicationException($"Consumer {_queueName} with consumerTag {tuple.consumerTag} shutdown unexpectedly");
+                        _promise.SetException(ex);
+                        FailStage(ex);
                     }
                 });
 
                 Pull(_stage.In);
 
                 // we have only one consumer per connection so global is ok
-                Channel.BasicQos(0, (ushort) _stage.BufferSize, false);
+                Channel.BasicQos(0, (ushort) _stage.BufferSize, true);
 
                 var consumerCallback = GetAsyncCallback<CommittableIncomingMessage>(HandleDelivery);
 
@@ -149,15 +159,35 @@ namespace Akka.Streams.Amqp
                     switch (callback)
                     {
                         case AckArguments args:
-                            Channel.BasicAck(args.DeliveryTag, args.Multiple);
-                            if (--_unackedMessages == 0) CompleteStage();
-                            args.Commit();
+                            try
+                            {
+                                Channel.BasicAck(args.DeliveryTag, args.Multiple);
+                                if (--_unackedMessages == 0 &&
+                                    (IsClosed(_stage.Out) || (IsClosed(_stage.In) && _queue.Count == 0 && _outstandingMessages == 0)))
+                                    CompleteStage();
+                                args.Commit();
+                            }
+                            catch (Exception ex)
+                            {
+                                args.Fail(ex);
+                            }
+
                             break;
 
                         case NackArguments args:
-                            Channel.BasicNack(args.DeliveryTag, args.Multiple, args.Requeue);
-                            if (--_unackedMessages == 0) CompleteStage();
-                            args.Commit();
+                            try
+                            {
+                                Channel.BasicNack(args.DeliveryTag, args.Multiple, args.Requeue);
+                                if (--_unackedMessages == 0 &&
+                                    (IsClosed(_stage.Out) || (IsClosed(_stage.In) && _queue.Count == 0 && _outstandingMessages == 0)))
+                                    CompleteStage();
+                                args.Commit();
+                            }
+                            catch (Exception ex)
+                            {
+                                args.Fail(ex);
+                            }
+
                             break;
                     }
                 });
@@ -166,7 +196,6 @@ namespace Akka.Streams.Amqp
 
                 // Create an exclusive queue with a randomly generated name for use as the replyTo portion of RPC
                 _queueName = Channel.QueueDeclare("", false, true, true).QueueName;
-
                 Channel.BasicConsume(_queueName, false, _amqpSourceConsumer);
                 _promise.TrySetResult(_queueName);
             }
@@ -193,12 +222,8 @@ namespace Akka.Streams.Amqp
             private void PushMessage(CommittableIncomingMessage message)
             {
                 Push(_stage.Out, message);
+                _unackedMessages++;
                 _outstandingMessages -= 1;
-
-                if (_outstandingMessages == 0 && _unackedMessages == 0 && IsClosed(_stage.In))
-                {
-                    CompleteStage();
-                }
             }
 
             public override void PostStop()
@@ -228,20 +253,20 @@ namespace Akka.Streams.Amqp
                 {
                     var envelope = Envelope.Create(deliveryTag, redelivered, exchange, routingKey);
                     var message = new IncomingMessage(ByteString.CopyFrom(body), envelope, properties);
-                    
+
                     var committableMessage =
                         new CommittableIncomingMessage(
                             message,
                             ack: multiple =>
                             {
                                 var promise = new TaskCompletionSource<Done>();
-                                _commitCallback(new AckArguments(message.Envelope.DeliveryTag, multiple, promise));
+                                _commitCallback(new AckArguments(deliveryTag, multiple, promise));
                                 return promise;
                             },
                             nack: (multiple, requeue) =>
                             {
                                 var promise = new TaskCompletionSource<Done>();
-                                _commitCallback(new NackArguments(message.Envelope.DeliveryTag, multiple, requeue, promise));
+                                _commitCallback(new NackArguments(deliveryTag, multiple, requeue, promise));
                                 return promise;
                             });
 

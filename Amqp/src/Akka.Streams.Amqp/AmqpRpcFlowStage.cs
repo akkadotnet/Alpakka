@@ -261,13 +261,13 @@ namespace Akka.Streams.Amqp
                             {
                                 var promise = new TaskCompletionSource<Done>();
                                 _commitCallback(new AckArguments(deliveryTag, multiple, promise));
-                                return promise;
+                                return promise.Task;
                             },
                             nack: (multiple, requeue) =>
                             {
                                 var promise = new TaskCompletionSource<Done>();
                                 _commitCallback(new NackArguments(deliveryTag, multiple, requeue, promise));
-                                return promise;
+                                return promise.Task;
                             });
 
                     _consumerCallback(committableMessage);

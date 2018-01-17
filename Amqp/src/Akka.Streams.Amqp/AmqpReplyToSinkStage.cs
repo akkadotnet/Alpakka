@@ -52,11 +52,11 @@ namespace Akka.Streams.Amqp
                     onPush: () =>
                     {
                         var elem = Grab(_stage.In);
-                        if (!string.IsNullOrWhiteSpace(elem.Properties.ReplyTo))
+                        if (!string.IsNullOrWhiteSpace(elem.Properties?.ReplyTo))
                         {
                             Channel.BasicPublish(
                                 elem.RoutingKey ?? "",
-                                elem.Properties.ReplyTo,
+                                elem.Properties?.ReplyTo,
                                 elem.Mandatory,
                                 elem.Properties,
                                 elem.Bytes.ToArray());

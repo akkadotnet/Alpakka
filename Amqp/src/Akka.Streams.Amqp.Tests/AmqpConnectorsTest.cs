@@ -144,6 +144,44 @@ namespace Akka.Streams.Amqp.Tests
         }
 
         [Fact]
+        public void Correctly_close_a_AmqpRpcFlow_when_stream_is_closed_without_passing_any_elements()
+        {
+            Source.Empty<ByteString>()
+                .Via(AmqpRpcFlow.CreateSimple(AmqpSinkSettings.Create(_connectionSettings)))
+                .RunWith(this.SinkProbe<ByteString>(), _mat)
+                .EnsureSubscription()
+                .ExpectComplete();
+        }
+
+        [Fact]
+        public void Handle_missing_reply_to_header_correctly()
+        {
+            var outgoingMessage = new OutgoingMessage(ByteString.Empty, false, false);
+
+            Source
+                .Single(outgoingMessage)
+                .WatchTermination(Keep.Right)
+                .To(AmqpSink.ReplyTo(AmqpReplyToSinkSettings.Create(_connectionSettings)))
+                .Run(_mat)
+                .Wait();
+
+            try
+            {
+                Source
+                    .Single(outgoingMessage)
+                    .ToMaterialized(AmqpSink.ReplyTo(AmqpReplyToSinkSettings.Create(_connectionSettings, failIfReplyToMissing: true)), Keep.Right)
+                    .Run(_mat)
+                    .Wait();
+                
+                throw new Exception("Expected exception but there is no one");
+            }
+            catch (AggregateException ex)
+            {
+                ex.InnerException?.Message.Should().Be("Reply-to header was not set");
+            }
+        }
+        
+        [Fact]
         public void Publish_from_one_source_and_consume_elements_with_multiple_sinks()
         {
             var queueName = "amqp-conn-it-spec-work-queues-" + Environment.TickCount;

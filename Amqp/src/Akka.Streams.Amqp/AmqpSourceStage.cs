@@ -5,7 +5,6 @@ using System.Threading.Tasks;
 using Akka.IO;
 using Akka.Streams.Amqp.Dsl;
 using Akka.Streams.Stage;
-using Akka.Util.Internal;
 using RabbitMQ.Client;
 
 namespace Akka.Streams.Amqp
@@ -93,20 +92,20 @@ namespace Akka.Streams.Amqp
                     }
                 });
 
-                var commitCallback = GetAsyncCallback<ICommitCallback>(callback =>
+                var commitCallback = GetAsyncCallback<CommitCallback>(callback =>
                 {
                     switch (callback)
                     {
                         case AckArguments args:
                             Channel.BasicAck(args.DeliveryTag, args.Multiple);
                             if (--_unackedMessages == 0 && IsClosed(_stage.Out)) CompleteStage();
-                            args.Promise.SetResult(Done.Instance);
+                            args.Commit();
                             break;
 
                         case NackArguments args:
                             Channel.BasicNack(args.DeliveryTag, args.Multiple, args.Requeue);
                             if (--_unackedMessages == 0 && IsClosed(_stage.Out)) CompleteStage();
-                            args.Promise.SetResult(Done.Instance);
+                            args.Commit();
                             break;
                     }
                 });
@@ -177,10 +176,10 @@ namespace Akka.Streams.Amqp
             private class DefaultConsumer : DefaultBasicConsumer
             {
                 private readonly Action<CommittableIncomingMessage> _consumerCallback;
-                private readonly Action<ICommitCallback> _commitCallback;
+                private readonly Action<CommitCallback> _commitCallback;
                 private readonly Action<ShutdownEventArgs> _shutdownCallback;
 
-                public DefaultConsumer(Action<CommittableIncomingMessage> consumerCallback, Action<ICommitCallback> commitCallback,
+                public DefaultConsumer(Action<CommittableIncomingMessage> consumerCallback, Action<CommitCallback> commitCallback,
                     Action<ShutdownEventArgs> shutdownCallback)
                 {
                     _consumerCallback = consumerCallback;

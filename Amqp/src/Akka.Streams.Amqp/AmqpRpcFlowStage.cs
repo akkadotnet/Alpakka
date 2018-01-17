@@ -143,20 +143,20 @@ namespace Akka.Streams.Amqp
 
                 var consumerCallback = GetAsyncCallback<CommittableIncomingMessage>(HandleDelivery);
 
-                var commitCallback = GetAsyncCallback<ICommitCallback>(callback =>
+                var commitCallback = GetAsyncCallback<CommitCallback>(callback =>
                 {
                     switch (callback)
                     {
                         case AckArguments args:
                             Channel.BasicAck(args.DeliveryTag, args.Multiple);
                             if (--_unackedMessages == 0) CompleteStage();
-                            args.Promise.SetResult(Done.Instance);
+                            args.Commit();
                             break;
 
                         case NackArguments args:
                             Channel.BasicNack(args.DeliveryTag, args.Multiple, args.Requeue);
                             if (--_unackedMessages == 0) CompleteStage();
-                            args.Promise.SetResult(Done.Instance);
+                            args.Commit();
                             break;
                     }
                 });
@@ -211,10 +211,10 @@ namespace Akka.Streams.Amqp
             private class DefaultConsumer : DefaultBasicConsumer
             {
                 private readonly Action<CommittableIncomingMessage> _consumerCallback;
-                private readonly Action<ICommitCallback> _commitCallback;
+                private readonly Action<CommitCallback> _commitCallback;
                 private readonly Action<(string consumerTag, ShutdownEventArgs args)> _shutdownCallback;
 
-                public DefaultConsumer(Action<CommittableIncomingMessage> consumerCallback, Action<ICommitCallback> commitCallback,
+                public DefaultConsumer(Action<CommittableIncomingMessage> consumerCallback, Action<CommitCallback> commitCallback,
                     Action<(string consumerTag, ShutdownEventArgs args)> shutdownCallback)
                 {
                     _consumerCallback = consumerCallback;

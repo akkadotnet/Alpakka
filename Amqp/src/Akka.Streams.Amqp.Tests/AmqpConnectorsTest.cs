@@ -3,7 +3,6 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Akka.Actor;
 using Akka.IO;
 using Akka.Streams.Amqp.Dsl;
 using Akka.Streams.Dsl;
@@ -293,7 +292,7 @@ namespace Akka.Streams.Amqp.Tests
             var result = amqpSource
                 .SelectAsync(1, async cm =>
                 {
-                    await cm.Ack().Task;
+                    await cm.Ack();
                     return cm;
                 })
                 .Take(input.Length)
@@ -321,7 +320,7 @@ namespace Akka.Streams.Amqp.Tests
                 .Take(input.Length)
                 .SelectAsync(1, async cm =>
                 {
-                    await cm.Nack().Task;
+                    await cm.Nack();
                     return cm;
                 })
                 .RunWith(Sink.Seq<CommittableIncomingMessage>(), _mat);
@@ -332,7 +331,7 @@ namespace Akka.Streams.Amqp.Tests
             var result2 = amqpSource
                 .SelectAsync(1, async cm =>
                 {
-                    await cm.Ack().Task;
+                    await cm.Ack();
                     return cm;
                 })
                 .Take(input.Length)
@@ -348,7 +347,7 @@ namespace Akka.Streams.Amqp.Tests
             var queueDeclaration = QueueDeclaration.Create(queueName);
 
             var amqpSink = AmqpSink.CreateSimple(AmqpSinkSettings.Create(_connectionSettings).WithRoutingKey(queueName).WithDeclarations(queueDeclaration));
-            
+
             var amqpSource = AmqpSource.CommittableSource(
                 NamedQueueSourceSettings.Create(_connectionSettings, queueName).WithDeclarations(queueDeclaration), bufferSize: 10);
 
@@ -356,7 +355,10 @@ namespace Akka.Streams.Amqp.Tests
             Source.From(input).Select(ByteString.FromString).RunWith(amqpSink, _mat).Wait();
             var result = amqpSource.Take(input.Length).RunWith(Sink.Seq<CommittableIncomingMessage>(), _mat);
 
-            var _ = result.Result.Select(cm => cm.Ack().Task.Result.Should().Be(Done.Instance)).ToArray();
+            foreach (var cm in result.Result)
+            {
+                cm.Ack().Wait();
+            }
         }
 
         [Fact]
@@ -374,7 +376,7 @@ namespace Akka.Streams.Amqp.Tests
             var result1 = amqpSource
                 .SelectAsync(1, async cm =>
                 {
-                    await cm.Nack(requeue: false).Task;
+                    await cm.Nack(requeue: false);
                     return cm;
                 })
                 .Take(input.Length)
@@ -385,7 +387,7 @@ namespace Akka.Streams.Amqp.Tests
             var result2 = amqpSource
                 .SelectAsync(1, async cm =>
                 {
-                    await cm.Ack().Task;
+                    await cm.Ack();
                     return cm;
                 })
                 .Take(input.Length)
@@ -412,7 +414,7 @@ namespace Akka.Streams.Amqp.Tests
                     .ViaMaterialized(amqpRpcFlow, Keep.Right)
                     .SelectAsync(1, async cm =>
                     {
-                        await cm.Ack().Task;
+                        await cm.Ack();
                         return cm.Message;
                     })
                     .ToMaterialized(this.SinkProbe<IncomingMessage>(), Keep.Both)

@@ -39,7 +39,7 @@ namespace Akka.Streams.Amqp.Dsl
             return CommittableFlow(settings, bufferSize, repliesPerMessage)
                 .SelectAsync(1, async cm =>
                 {
-                    await cm.Ack().Task;
+                    await cm.Ack();
                     return cm.Message;
                 });
         }

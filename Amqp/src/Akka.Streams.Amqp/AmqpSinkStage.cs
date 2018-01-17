@@ -50,8 +50,9 @@ namespace Akka.Streams.Amqp
                 SetHandler(_stage.In, () =>
                 {
                     var elem = Grab(_stage.In);
-                    Channel.BasicPublish(Exchange,
-                        RoutingKey,
+                    Channel.BasicPublish(
+                        Exchange,
+                        elem.RoutingKey ?? RoutingKey,
                         elem.Mandatory,
                         elem.Properties,
                         elem.Bytes.ToArray());

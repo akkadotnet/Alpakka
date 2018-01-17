@@ -227,6 +227,7 @@ namespace Akka.Streams.Amqp
                 {
                     var envelope = Envelope.Create(deliveryTag, redelivered, exchange, routingKey);
                     var message = IncomingMessage.Create(ByteString.CopyFrom(body), envelope, properties);
+                    
                     var committableMessage =
                         new CommittableIncomingMessage(
                             message,
@@ -243,18 +244,18 @@ namespace Akka.Streams.Amqp
                                 return promise;
                             });
 
-                    _consumerCallback?.Invoke(committableMessage);
+                    _consumerCallback(committableMessage);
                 }
 
                 public override void HandleBasicCancel(string consumerTag)
                 {
                     // non consumer initiated cancel, for example happens when the queue has been deleted.
-                    _shutdownCallback?.Invoke((consumerTag, null));
+                    _shutdownCallback((consumerTag, null));
                 }
 
                 public override void HandleModelShutdown(object model, ShutdownEventArgs reason)
                 {
-                    _shutdownCallback?.Invoke((ConsumerTag, reason));
+                    _shutdownCallback((ConsumerTag, reason));
                 }
             }
         }

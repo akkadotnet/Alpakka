@@ -56,8 +56,11 @@ namespace Akka.Streams.Amqp.Dsl
         /// <returns>TBD</returns>
         public static Flow<ByteString, ByteString, Task<string>> CreateSimple(AmqpSinkSettings settings, int repliesPerMessage = 1)
         {
-            return Flow.Create<ByteString, Task<string>>().Select(bytes => OutgoingMessage.Create(bytes, false, false))
-                .Via(AtMostOnceFlow(settings, 1, repliesPerMessage)).Select(_ => _.Bytes);
+            return 
+                Flow.Create<ByteString>()
+                    .Select(bytes => OutgoingMessage.Create(bytes, false, false))
+                    .ViaMaterialized(AtMostOnceFlow(settings, 1, repliesPerMessage), Keep.Right)
+                    .Select(_ => _.Bytes);
         }
     }
 }

@@ -10,8 +10,9 @@ using RabbitMQ.Client.Framing;
 namespace Akka.Streams.Amqp
 {
     /// <summary>
-    /// This stage materializes to a <see cref="Task{String}"/>, which is the name of the private exclusive queue used for RPC communication
+    /// This stage materializes to a <see cref="T:System.Threading.Tasks.Task`1" />, which is the name of the private exclusive queue used for RPC communication
     /// </summary>
+    /// <inheritdoc />
     public class AmqpRpcFlowStage : GraphStageWithMaterializedValue<FlowShape<OutgoingMessage, CommittableIncomingMessage>, Task<string>>
     {
         public static readonly Attributes DefaultAttributes = Attributes.CreateName("AmqpRpcFlow")

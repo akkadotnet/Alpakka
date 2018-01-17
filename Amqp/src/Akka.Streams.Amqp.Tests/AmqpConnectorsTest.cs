@@ -84,16 +84,16 @@ namespace Akka.Streams.Amqp.Tests
                 .ToMaterialized(this.SinkProbe<ByteString>(), Keep.Both)
                 .Run(_mat);
             
-            var rpcQueueF = t.Item1;
+            var rpcQueueNameTask = t.Item1;
             var probe = t.Item2;
             
             //#run-rpc-flow
-            rpcQueueF.Wait();
+            rpcQueueNameTask.Result.Should().NotBeNullOrWhiteSpace("RPC flow materializes into response queue name");
 
             var amqpSink = AmqpSink.Create(AmqpSinkSettings.Create(_connectionSettings));
 
             amqpSource
-                .Select(b => OutgoingMessage.Create(b.Bytes.Concat(ByteString.FromString("a")), false, false, b.Properties))
+                .Select(msg => OutgoingMessage.Create(msg.Bytes.Concat(ByteString.FromString("a")), false, false, msg.Properties))
                 .RunWith(amqpSink, _mat);
 
             probe.Request(5).ExpectNextUnorderedN(input.Select(s => ByteString.FromString(s + "a"))).ExpectComplete();

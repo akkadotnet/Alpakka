@@ -33,8 +33,7 @@ namespace Akka.Streams.Amqp
 
         public static ShutdownSignalException FromArgs(ShutdownEventArgs args)
         {
-            return new ShutdownSignalException(args.Initiator, args.Cause, args.ClassId, args.MethodId,
-                args.ReplyCode, args.ReplyText);
+            return new ShutdownSignalException(args.Initiator, args.Cause, args.ClassId, args.MethodId, args.ReplyCode, args.ReplyText);
         }
     }
 }

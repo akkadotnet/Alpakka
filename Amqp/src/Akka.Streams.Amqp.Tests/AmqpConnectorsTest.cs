@@ -22,7 +22,7 @@ namespace Akka.Streams.Amqp.Tests
         public AmqpConnectorsTest()
         {
             _mat = ActorMaterializer.Create(Sys);
-            _connectionSettings = 
+            _connectionSettings =
                 AmqpConnectionDetails.Create("localhost", 5672)
                     .WithAutomaticRecoveryEnabled(true)
                     .WithNetworkRecoveryInterval(TimeSpan.FromSeconds(1));
@@ -49,7 +49,7 @@ namespace Akka.Streams.Amqp.Tests
                 bufferSize: 10);
 
             //run sink
-            var input = new [] {"one", "two", "three", "four", "five"};
+            var input = new[] {"one", "two", "three", "four", "five"};
             Source.From(input).Select(ByteString.FromString).RunWith(amqpSink, _mat).Wait();
 
             //run source
@@ -61,7 +61,7 @@ namespace Akka.Streams.Amqp.Tests
             result.Wait(TimeSpan.FromSeconds(3));
             Assert.Equal(input, result.Result);
         }
-        
+
         [Fact]
         public void Publish_via_RPC_and_then_consume_through_a_simple_queue_again_in_the_same_process()
         {
@@ -71,22 +71,22 @@ namespace Akka.Streams.Amqp.Tests
             //#create-rpc-flow
             var amqpRpcFlow = AmqpRpcFlow.CreateSimple(
                 AmqpSinkSettings.Create(_connectionSettings).WithRoutingKey(queueName).WithDeclarations(queueDeclaration));
-            
+
             //#create-rpc-flow
             var amqpSource = AmqpSource.AtMostOnceSource(NamedQueueSourceSettings.Create(_connectionSettings, queueName), bufferSize: 1);
 
             var input = new[] {"one", "two", "three", "four", "five"};
-            
+
             //#run-rpc-flow
             var t = Source.From(input)
                 .Select(ByteString.FromString)
                 .ViaMaterialized(amqpRpcFlow, Keep.Right)
                 .ToMaterialized(this.SinkProbe<ByteString>(), Keep.Both)
                 .Run(_mat);
-            
+
             var rpcQueueNameTask = t.Item1;
             var probe = t.Item2;
-            
+
             //#run-rpc-flow
             rpcQueueNameTask.Result.Should().NotBeNullOrWhiteSpace("RPC flow materializes into response queue name");
 
@@ -96,9 +96,53 @@ namespace Akka.Streams.Amqp.Tests
                 .Select(msg => new OutgoingMessage(msg.Bytes.Concat(ByteString.FromString("a")), false, false, msg.Properties))
                 .RunWith(amqpSink, _mat);
 
-            probe.Request(5).ExpectNextUnorderedN(input.Select(s => ByteString.FromString(s + "a"))).ExpectComplete();
+            probe
+                .Request(5)
+                .ExpectNextUnorderedN(input.Select(s => ByteString.FromString(s + "a")))
+                .ExpectComplete();
         }
-        
+
+        [Fact]
+        public void Publish_via_RPC_which_expects_2_responses_per_message_and_then_consume_through_a_simple_queue_again_in_the_same_process()
+        {
+            var queueName = "amqp-conn-it-spec-rpc-queue-" + Environment.TickCount;
+            var queueDeclaration = QueueDeclaration.Create(queueName);
+
+            var amqpRpcFlow = AmqpRpcFlow.CreateSimple(
+                AmqpSinkSettings.Create(_connectionSettings).WithRoutingKey(queueName).WithDeclarations(queueDeclaration), repliesPerMessage: 2);
+
+            var amqpSource = AmqpSource.AtMostOnceSource(NamedQueueSourceSettings.Create(_connectionSettings, queueName), bufferSize: 1);
+
+            var input = new[] {"one", "two", "three", "four", "five"};
+
+            var t =
+                Source.From(input)
+                    .Select(ByteString.FromString)
+                    .ViaMaterialized(amqpRpcFlow, Keep.Right)
+                    .ToMaterialized(this.SinkProbe<ByteString>(), Keep.Both)
+                    .Run(_mat);
+
+            var rpcQueueF = t.Item1;
+            var probe = t.Item2;
+            rpcQueueF.Result.Should().NotBeNullOrWhiteSpace("RPC flow materializes into response queue name");
+
+            var amqpSink = AmqpSink.ReplyTo(AmqpReplyToSinkSettings.Create(_connectionSettings));
+
+            amqpSource
+                .SelectMany(b =>
+                    new[]
+                    {
+                        new OutgoingMessage(b.Bytes.Concat(ByteString.FromString("a")), false, false, b.Properties),
+                        new OutgoingMessage(b.Bytes.Concat(ByteString.FromString("aa")), false, false, b.Properties)
+                    })
+                .RunWith(amqpSink, _mat);
+
+            probe
+                .Request(10)
+                .ExpectNextUnorderedN(input.SelectMany(s => new[] {ByteString.FromString(s + "a"), ByteString.FromString(s + "aa")}))
+                .ExpectComplete();
+        }
+
         [Fact]
         public void Publish_from_one_source_and_consume_elements_with_multiple_sinks()
         {

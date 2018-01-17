@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Threading.Tasks;
 
 namespace Akka.Streams.Amqp
 {
@@ -16,5 +17,6 @@ namespace Akka.Streams.Amqp
         }
 
         public void Commit() => _promise.TrySetResult(Done.Instance);
+        public void Fail(Exception ex) => _promise.TrySetException(ex);
     }
 }

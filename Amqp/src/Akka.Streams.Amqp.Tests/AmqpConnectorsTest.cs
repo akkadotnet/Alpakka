@@ -10,6 +10,10 @@ using Xunit;
 
 namespace Akka.Streams.Amqp.Tests
 {
+    /// <summary>
+    /// Needs a local running AMQP server on the default port with no password.
+    /// </summary>
+    /// <inheritdoc />
     public class AmqpConnectorsTest : Akka.TestKit.Xunit2.TestKit
     {
         private readonly AmqpConnectionDetails _connectionSettings;

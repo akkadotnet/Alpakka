@@ -5,11 +5,9 @@ using RabbitMQ.Client;
 
 namespace Akka.Streams.Amqp
 {
-
     public interface IAmqpConnectorSettings
     {
         IAmqpConnectionSettings ConnectionSettings { get; }
-
         IReadOnlyList<IDeclaration> Declarations { get; }
     }
 
@@ -37,11 +35,8 @@ namespace Akka.Streams.Amqp
         public string Queue { get; }
         public IReadOnlyList<IDeclaration> Declarations { get; }
         public bool NoLocal { get; }
-
         public bool Exclusive { get; }
-
         public string ConsumerTag { get; }
-
         public IReadOnlyDictionary<string, object> Arguments { get; }
 
         public static NamedQueueSourceSettings Create(IAmqpConnectionSettings connectionSettings, string queue)
@@ -51,38 +46,34 @@ namespace Akka.Streams.Amqp
 
         public NamedQueueSourceSettings WithDeclarations(params IDeclaration[] declarations)
         {
-            return new NamedQueueSourceSettings(ConnectionSettings, Queue, declarations, NoLocal, Exclusive, ConsumerTag,
-                Arguments);
+            return new NamedQueueSourceSettings(ConnectionSettings, Queue, declarations, NoLocal, Exclusive, ConsumerTag, Arguments);
         }
 
         public NamedQueueSourceSettings WithNoLocal(bool noLocal)
         {
-            return new NamedQueueSourceSettings(ConnectionSettings, Queue, Declarations, noLocal, Exclusive, ConsumerTag,
-                Arguments);
+            return new NamedQueueSourceSettings(ConnectionSettings, Queue, Declarations, noLocal, Exclusive, ConsumerTag, Arguments);
         }
 
         public NamedQueueSourceSettings WithExclusive(bool exclusive)
         {
-            return new NamedQueueSourceSettings(ConnectionSettings, Queue, Declarations, NoLocal, exclusive, ConsumerTag,
-                Arguments);
+            return new NamedQueueSourceSettings(ConnectionSettings, Queue, Declarations, NoLocal, exclusive, ConsumerTag, Arguments);
         }
 
         public NamedQueueSourceSettings WithConsumerTag(string consumerTag)
         {
-            return new NamedQueueSourceSettings(ConnectionSettings, Queue, Declarations, NoLocal, Exclusive, consumerTag,
-                Arguments);
+            return new NamedQueueSourceSettings(ConnectionSettings, Queue, Declarations, NoLocal, Exclusive, consumerTag, Arguments);
         }
 
         public NamedQueueSourceSettings WithArguments(params KeyValuePair<string, object>[] arguments)
         {
-           return new NamedQueueSourceSettings(ConnectionSettings, Queue, Declarations, NoLocal, Exclusive, ConsumerTag,
-                arguments.ToDictionary(key=> key.Key, val=> val.Value));
+            return new NamedQueueSourceSettings(ConnectionSettings, Queue, Declarations, NoLocal, Exclusive, ConsumerTag,
+                arguments.ToDictionary(key => key.Key, val => val.Value));
         }
 
         public NamedQueueSourceSettings WithArguments(params (string paramName, object paramValue)[] arguments)
         {
             return new NamedQueueSourceSettings(ConnectionSettings, Queue, Declarations, NoLocal, Exclusive, ConsumerTag,
-                arguments.ToDictionary(key=> key.paramName, val=> val.paramValue));
+                arguments.ToDictionary(key => key.paramName, val => val.paramValue));
         }
 
         public NamedQueueSourceSettings WithArguments(string key, object value)
@@ -92,11 +83,8 @@ namespace Akka.Streams.Amqp
                 new Dictionary<string, object> {{key, value}});
         }
 
-        public override string ToString()
-        {
-            return
-                $"NamedQueueSourceSettings(ConnectionSettings={ConnectionSettings}, Queue={Queue}, Declarations={Declarations.Count}, NoLocal={NoLocal}, Exclusive={Exclusive}, Arguments={Arguments.Count})";
-        }
+        public override string ToString() => 
+            $"NamedQueueSourceSettings(ConnectionSettings={ConnectionSettings}, Queue={Queue}, Declarations={Declarations.Count}, NoLocal={NoLocal}, Exclusive={Exclusive}, Arguments={Arguments.Count})";
     }
 
     public sealed class TemporaryQueueSourceSettings : IAmqpSourceSettings
@@ -115,26 +103,17 @@ namespace Akka.Streams.Amqp
         public IReadOnlyList<IDeclaration> Declarations { get; }
         public string RoutingKey { get; }
 
-        public static TemporaryQueueSourceSettings Create(IAmqpConnectionSettings connectionSettings, string exchange)
-        {
-            return new TemporaryQueueSourceSettings(connectionSettings, exchange);
-        }
+        public static TemporaryQueueSourceSettings Create(IAmqpConnectionSettings connectionSettings, string exchange) => 
+            new TemporaryQueueSourceSettings(connectionSettings, exchange);
 
-        public TemporaryQueueSourceSettings WithRoutingKey(string routingKey)
-        {
-            return new TemporaryQueueSourceSettings(ConnectionSettings, Exchange, Declarations, routingKey);
-        }
+        public TemporaryQueueSourceSettings WithRoutingKey(string routingKey) => 
+            new TemporaryQueueSourceSettings(ConnectionSettings, Exchange, Declarations, routingKey);
 
-        public TemporaryQueueSourceSettings WithDeclarations(params IDeclaration[] declarations)
-        {
-            return new TemporaryQueueSourceSettings(ConnectionSettings, Exchange, declarations, RoutingKey);
-        }
+        public TemporaryQueueSourceSettings WithDeclarations(params IDeclaration[] declarations) => 
+            new TemporaryQueueSourceSettings(ConnectionSettings, Exchange, declarations, RoutingKey);
 
-        public override string ToString()
-        {
-            return
-                $"TemporaryQueueSourceSettings(ConnectionSettings={ConnectionSettings},Exchange={Exchange}, Declarations={Declarations.Count}, RoutingKey={RoutingKey})";
-        }
+        public override string ToString() => 
+            $"TemporaryQueueSourceSettings(ConnectionSettings={ConnectionSettings},Exchange={Exchange}, Declarations={Declarations.Count}, RoutingKey={RoutingKey})";
     }
 
     public sealed class AmqpReplyToSinkSettings : IAmqpConnectorSettings
@@ -150,8 +129,7 @@ namespace Akka.Streams.Amqp
         public bool FailIfReplyToMissing { get; }
         public IReadOnlyList<IDeclaration> Declarations { get; }
 
-        public static AmqpReplyToSinkSettings Create(IAmqpConnectionSettings connectionSettings,
-            bool failIfReplyToMissing = true)
+        public static AmqpReplyToSinkSettings Create(IAmqpConnectionSettings connectionSettings, bool failIfReplyToMissing = true)
         {
             return new AmqpReplyToSinkSettings(connectionSettings, failIfReplyToMissing);
         }
@@ -172,32 +150,19 @@ namespace Akka.Streams.Amqp
         public string Exchange { get; }
         public string RoutingKey { get; }
         public IReadOnlyList<IDeclaration> Declarations { get; }
-        
-        public static AmqpSinkSettings Create(IAmqpConnectionSettings connectionSettings = null)
-        {
-            return new AmqpSinkSettings(connectionSettings?? DefaultAmqpConnection.Instance);
-        }
 
-        public AmqpSinkSettings WithExchange(string exchange)
-        {
-            return new AmqpSinkSettings(ConnectionSettings, exchange, RoutingKey, Declarations);
-        }
+        public static AmqpSinkSettings Create(IAmqpConnectionSettings connectionSettings = null) => 
+            new AmqpSinkSettings(connectionSettings ?? DefaultAmqpConnection.Instance);
 
-        public AmqpSinkSettings WithRoutingKey(string routingKey)
-        {
-            return new AmqpSinkSettings(ConnectionSettings, Exchange, routingKey, Declarations);
-        }
+        public AmqpSinkSettings WithExchange(string exchange) => new AmqpSinkSettings(ConnectionSettings, exchange, RoutingKey, Declarations);
 
-        public AmqpSinkSettings WithDeclarations(params IDeclaration[] declarations)
-        {
-            return new AmqpSinkSettings(ConnectionSettings, Exchange, RoutingKey, declarations);
-        }
+        public AmqpSinkSettings WithRoutingKey(string routingKey) => new AmqpSinkSettings(ConnectionSettings, Exchange, routingKey, Declarations);
 
-        public override string ToString()
-        {
-            return
-                $"AmqpSinkSettings(ConnectionSettings={ConnectionSettings}, Exchange={Exchange}, RoutingKey={RoutingKey}, Delcarations={Declarations.Count})";
-        }
+        public AmqpSinkSettings WithDeclarations(params IDeclaration[] declarations) => 
+            new AmqpSinkSettings(ConnectionSettings, Exchange, RoutingKey, declarations);
+
+        public override string ToString() => 
+            $"AmqpSinkSettings(ConnectionSettings={ConnectionSettings}, Exchange={Exchange}, RoutingKey={RoutingKey}, Delcarations={Declarations.Count})";
     }
 
     /// <summary>
@@ -225,20 +190,14 @@ namespace Akka.Streams.Amqp
 
         public Uri Uri { get; }
 
-        public AmqpConnectionUri Create(string uri)
-        {
-            return new AmqpConnectionUri(new Uri(uri));
-        }
+        public AmqpConnectionUri Create(string uri) => new AmqpConnectionUri(new Uri(uri));
 
-        public override string ToString()
-        {
-            return $"AmqpConnectionUri(Uri={Uri})";
-        }
+        public override string ToString() => $"AmqpConnectionUri(Uri={Uri})";
     }
 
     public sealed class AmqpConnectionDetails : IAmqpConnectionSettings
     {
-        private AmqpConnectionDetails(IReadOnlyList<(string host, int port)> hostAndPortList, 
+        private AmqpConnectionDetails(IReadOnlyList<(string host, int port)> hostAndPortList,
             AmqpCredentials? credentials = null,
             string virtualHost = null,
             SslOption ssl = null,
@@ -272,10 +231,8 @@ namespace Akka.Streams.Amqp
         public bool? AutomaticRecoveryEnabled { get; }
         public bool? TopologyRecoveryEnabled { get; }
 
-        public static AmqpConnectionDetails Create(string host, int port)
-        {
-            return new AmqpConnectionDetails(new List<(string host, int port)> {(host, port)});
-        }
+        public static AmqpConnectionDetails Create(string host, int port) => 
+            new AmqpConnectionDetails(new List<(string host, int port)> {(host, port)});
 
         public AmqpConnectionDetails WithHostsAndPorts((string host, int port) hostAndPort,
             params (string host, int port)[] hostAndPortList)
@@ -368,26 +325,13 @@ namespace Akka.Streams.Amqp
             Password = password;
         }
 
-        public static AmqpCredentials Create(string username, string password)
-        {
-            return new AmqpCredentials(username, password);
-        }
+        public static AmqpCredentials Create(string username, string password) => new AmqpCredentials(username, password);
 
-        public override string ToString()
-        {
-            return $"AmqpCredentials(Username={Username}, Password=********)";
-        }
+        public override string ToString() => $"AmqpCredentials(Username={Username}, Password=********)";
 
-        public override bool Equals(object obj)
-        {
-            return obj is AmqpCredentials && Equals((AmqpCredentials)obj);
-        }
+        public override bool Equals(object obj) => obj is AmqpCredentials credentials && Equals(credentials);
 
-        public bool Equals(AmqpCredentials other)
-        {
-            return Username == other.Username &&
-                   Password == other.Password;
-        }
+        public bool Equals(AmqpCredentials other) => Username == other.Username && Password == other.Password;
 
         public override int GetHashCode()
         {
@@ -415,7 +359,6 @@ namespace Akka.Streams.Amqp
 
     public sealed class QueueDeclaration : IDeclaration
     {
-
         private QueueDeclaration(string name, bool durable = false, bool exclusive = false, bool autoDelete = false,
             IReadOnlyDictionary<string, object> arguments = null)
         {
@@ -436,26 +379,14 @@ namespace Akka.Streams.Amqp
 
         public IReadOnlyDictionary<string, object> Arguments { get; }
 
-        public static QueueDeclaration Create(string name)
-        {
-            return new QueueDeclaration(name);
-        }
+        public static QueueDeclaration Create(string name) => new QueueDeclaration(name);
 
-        public QueueDeclaration WithDurable(bool durable)
-        {
-            return new QueueDeclaration(Name, durable, Exclusive, AutoDelete, Arguments);
-        }
+        public QueueDeclaration WithDurable(bool durable) => new QueueDeclaration(Name, durable, Exclusive, AutoDelete, Arguments);
 
-        public QueueDeclaration WithExclusive(bool exclusive)
-        {
-            return new QueueDeclaration(Name, Durable, exclusive, AutoDelete, Arguments);
-        }
+        public QueueDeclaration WithExclusive(bool exclusive) => new QueueDeclaration(Name, Durable, exclusive, AutoDelete, Arguments);
 
-        public QueueDeclaration WithAutoDelete(bool autoDelete)
-        {
-            return new QueueDeclaration(Name, Durable, Exclusive, autoDelete, Arguments);
-        }
-        
+        public QueueDeclaration WithAutoDelete(bool autoDelete) => new QueueDeclaration(Name, Durable, Exclusive, autoDelete, Arguments);
+
         public QueueDeclaration WithArguments(string key, object value)
         {
             return new QueueDeclaration(Name, Durable, Exclusive, AutoDelete,
@@ -468,11 +399,8 @@ namespace Akka.Streams.Amqp
                 arguments.ToDictionary(k => k.Key, val => val.Value));
         }
 
-        public override string ToString()
-        {
-            return
-                $"QueueDeclaration(Name={Name}, Durable={Durable}, Exclusive={Exclusive}, AutoDelete={AutoDelete}, Arguments={Arguments.Count})";
-        }
+        public override string ToString() => 
+            $"QueueDeclaration(Name={Name}, Durable={Durable}, Exclusive={Exclusive}, AutoDelete={AutoDelete}, Arguments={Arguments.Count})";
     }
 
     public sealed class BindingDeclaration : IDeclaration
@@ -494,36 +422,21 @@ namespace Akka.Streams.Amqp
 
         public IReadOnlyDictionary<string, object> Arguments { get; }
 
-        public static BindingDeclaration Create(string queue, string exchange)
-        {
-            return new BindingDeclaration(queue, exchange);
-        }
+        public static BindingDeclaration Create(string queue, string exchange) => new BindingDeclaration(queue, exchange);
 
-        public BindingDeclaration WithRoutingKey(string routingKey)
-        {
-            return new BindingDeclaration(Queue, Exchange, routingKey, Arguments);
-        }
+        public BindingDeclaration WithRoutingKey(string routingKey) => new BindingDeclaration(Queue, Exchange, routingKey, Arguments);
 
-        public BindingDeclaration WithArguments(string key, object value)
-        {
-            return new BindingDeclaration(Queue, Exchange, RoutingKey, new Dictionary<string, object> { { key, value } });
-        }
+        public BindingDeclaration WithArguments(string key, object value) => 
+            new BindingDeclaration(Queue, Exchange, RoutingKey, new Dictionary<string, object> {{key, value}});
 
-        public BindingDeclaration WithArguments(KeyValuePair<string, object> argument)
-        {
-            return new BindingDeclaration(Queue, Exchange, RoutingKey, new Dictionary<string, object> { { argument.Key, argument.Value } });
-        }
+        public BindingDeclaration WithArguments(KeyValuePair<string, object> argument) => 
+            new BindingDeclaration(Queue, Exchange, RoutingKey, new Dictionary<string, object> {{argument.Key, argument.Value}});
 
-        public BindingDeclaration WithArguments(params KeyValuePair<string, object>[] arguments)
-        {
-            return new BindingDeclaration(Queue, Exchange, RoutingKey, arguments.ToDictionary(k=> k.Key, val=> val.Value));
-        }
+        public BindingDeclaration WithArguments(params KeyValuePair<string, object>[] arguments) => 
+            new BindingDeclaration(Queue, Exchange, RoutingKey, arguments.ToDictionary(k => k.Key, val => val.Value));
 
-        public override string ToString()
-        {
-            return
-                $"BindingDeclaration(Queue={Queue}, Exchange={Exchange}, RoutingKey={RoutingKey}, Arguments={Arguments.Count})";
-        }
+        public override string ToString() => 
+            $"BindingDeclaration(Queue={Queue}, Exchange={Exchange}, RoutingKey={RoutingKey}, Arguments={Arguments.Count})";
     }
 
     public sealed class ExchangeDeclaration : IDeclaration
@@ -551,25 +464,13 @@ namespace Akka.Streams.Amqp
 
         public IReadOnlyDictionary<string, object> Arguments { get; }
 
-        public static ExchangeDeclaration Create(string name, string exchangeType)
-        {
-            return new ExchangeDeclaration(name, exchangeType);
-        }
+        public static ExchangeDeclaration Create(string name, string exchangeType) => new ExchangeDeclaration(name, exchangeType);
 
-        public ExchangeDeclaration WithDurable(bool durable)
-        {
-            return new ExchangeDeclaration(Name, ExchangeType, durable, AutoDelete, Internal, Arguments);
-        }
+        public ExchangeDeclaration WithDurable(bool durable) => new ExchangeDeclaration(Name, ExchangeType, durable, AutoDelete, Internal, Arguments);
 
-        public ExchangeDeclaration WithAutoDelete(bool autoDelete)
-        {
-            return new ExchangeDeclaration(Name, ExchangeType, Durable, autoDelete, Internal, Arguments);
-        }
+        public ExchangeDeclaration WithAutoDelete(bool autoDelete) => new ExchangeDeclaration(Name, ExchangeType, Durable, autoDelete, Internal, Arguments);
 
-        public ExchangeDeclaration WithInternal(bool @internal)
-        {
-            return new ExchangeDeclaration(Name, ExchangeType, Durable, AutoDelete, @internal, Arguments);
-        }
+        public ExchangeDeclaration WithInternal(bool @internal) => new ExchangeDeclaration(Name, ExchangeType, Durable, AutoDelete, @internal, Arguments);
 
         public ExchangeDeclaration WithArguments(string key, object value)
         {
@@ -589,11 +490,7 @@ namespace Akka.Streams.Amqp
                 arguments.ToDictionary(k => k.Key, val => val.Value));
         }
 
-        public override string ToString()
-        {
-            return
-                $"ExchangeDeclaration(Name={Name}, ExchangeType={ExchangeType}, Durable={Durable}, AutoDelete={AutoDelete}, Internal={Internal}, Arguments={Arguments.Count})";
-        }
+        public override string ToString() => 
+            $"ExchangeDeclaration(Name={Name}, ExchangeType={ExchangeType}, Durable={Durable}, AutoDelete={AutoDelete}, Internal={Internal}, Arguments={Arguments.Count})";
     }
-
 }

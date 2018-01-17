@@ -227,7 +227,7 @@ namespace Akka.Streams.Amqp
                     IBasicProperties properties, byte[] body)
                 {
                     var envelope = Envelope.Create(deliveryTag, redelivered, exchange, routingKey);
-                    var message = IncomingMessage.Create(ByteString.CopyFrom(body), envelope, properties);
+                    var message = new IncomingMessage(ByteString.CopyFrom(body), envelope, properties);
                     
                     var committableMessage =
                         new CommittableIncomingMessage(

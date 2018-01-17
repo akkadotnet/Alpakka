@@ -9,7 +9,7 @@ namespace Akka.Streams.Amqp.Dsl
         /// This is useful when "at-least once delivery" is desired, as each message will likely be
         /// delivered one time but in failure cases could be duplicated.
         /// If you commit the offset before processing the message you get "at-most once delivery" semantics,
-        /// and for that there is a [[#atMostOnceSource]].
+        /// and for that there is a <see cref="AtMostOnceSource"/>.
         /// Compared to auto-commit, this gives exact control over when a message is considered consumed.
         /// </summary>
         /// <param name="settings"></param>
@@ -30,7 +30,11 @@ namespace Akka.Streams.Amqp.Dsl
         public static Source<IncomingMessage, NotUsed> AtMostOnceSource(IAmqpSourceSettings settings, int bufferSize)
         {
             return CommittableSource(settings, bufferSize)
-                .SelectAsync(1, cm => cm.Ack().Task.ContinueWith(_ => cm.Message));
+                .SelectAsync(1, async cm =>
+                {
+                    await cm.Ack().Task;
+                    return cm.Message;
+                });
         }
     }
 }

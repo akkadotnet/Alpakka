@@ -1,5 +1,4 @@
-﻿using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 using Akka.IO;
 using Akka.Streams.Dsl;
 
@@ -16,6 +15,7 @@ namespace Akka.Streams.Amqp.Dsl
         /// Compared to auto-commit, this gives exact control over when a message is considered consumed.
         /// </summary>
         /// <param name="settings"></param>
+        /// <param name="bufferSize"></param>
         /// <param name="repliesPerMessage">The number of responses that should be expected for each message placed on the queue. This
         /// can be overridden per message by including <code>expectedReplies</code> in the the header of the <see cref="OutgoingMessage"/></param>
         /// <returns>TBD</returns>
@@ -24,20 +24,26 @@ namespace Akka.Streams.Amqp.Dsl
         {
             return Flow.FromGraph(new AmqpRpcFlowStage(settings, bufferSize, repliesPerMessage));
         }
-        
+
         /// <summary>
         /// Convenience for "at-most once delivery" semantics. Each message is acked to RabbitMQ before it is emitted downstream.
         /// </summary>
         /// <param name="settings"></param>
+        /// <param name="bufferSize"></param>
         /// <param name="repliesPerMessage">The number of responses that should be expected for each message placed on the queue. This
         /// can be overridden per message by including <code>expectedReplies</code> in the the header of the <see cref="OutgoingMessage"/></param>
         /// <returns>TBD</returns>
-        public static Flow<OutgoingMessage, IncomingMessage, Task<string>> AtMostOnceFlow(AmqpSinkSettings settings,
+        public static Flow<OutgoingMessage, IncomingMessage, Task<string>> AtMostOnceFlow(AmqpSinkSettings settings, 
             int bufferSize, int repliesPerMessage = 1)
         {
             return CommittableFlow(settings, bufferSize, repliesPerMessage)
-                .SelectAsync(1, cm => cm.Ack().Task.ContinueWith(_ => cm.Message));
+                .SelectAsync(1, async cm =>
+                {
+                    await cm.Ack().Task;
+                    return cm.Message;
+                });
         }
+
         /// <summary>
         /// Create an [[https://www.rabbitmq.com/tutorials/tutorial-six-java.html RPC style flow]] for processing and communicating
         /// over a rabbitmq message bus. This will create a private queue, and add the reply-to header to messages sent out.
@@ -48,8 +54,7 @@ namespace Akka.Streams.Amqp.Dsl
         /// <param name="repliesPerMessage">The number of responses that should be expected for each message placed on the queue. This
         /// can be overridden per message by including <code>expectedReplies</code> in the the header of the <see cref="OutgoingMessage"/></param>
         /// <returns>TBD</returns>
-        public static Flow<ByteString, ByteString, Task<string>> CreateSimple(AmqpSinkSettings settings,
-            int repliesPerMessage = 1)
+        public static Flow<ByteString, ByteString, Task<string>> CreateSimple(AmqpSinkSettings settings, int repliesPerMessage = 1)
         {
             return Flow.Create<ByteString, Task<string>>().Select(bytes => OutgoingMessage.Create(bytes, false, false))
                 .Via(AtMostOnceFlow(settings, 1, repliesPerMessage)).Select(_ => _.Bytes);

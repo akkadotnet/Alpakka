@@ -101,7 +101,8 @@ namespace Akka.Streams.Amqp
             public override void PostStop()
             {
                 _promise.TrySetException(new ApplicationException("stage stopped unexpectedly"));
-                Channel.ModelShutdown -= OnChannelShutdown;
+                if (Channel != null)
+                    Channel.ModelShutdown -= OnChannelShutdown;
                 base.PostStop(); //don't forget to call the base.PostStop()
             }
         }

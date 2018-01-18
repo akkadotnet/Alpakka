@@ -97,15 +97,31 @@ namespace Akka.Streams.Amqp
                     switch (callback)
                     {
                         case AckArguments args:
-                            Channel.BasicAck(args.DeliveryTag, args.Multiple);
-                            if (--_unackedMessages == 0 && IsClosed(_stage.Out)) CompleteStage();
-                            args.Commit();
+                            try
+                            {
+                                Channel.BasicAck(args.DeliveryTag, args.Multiple);
+                                if (--_unackedMessages == 0 && IsClosed(_stage.Out)) CompleteStage();
+                                args.Commit();
+                            }
+                            catch (Exception ex)
+                            {
+                                args.Fail(ex);
+                            }
+                            
                             break;
 
                         case NackArguments args:
-                            Channel.BasicNack(args.DeliveryTag, args.Multiple, args.Requeue);
-                            if (--_unackedMessages == 0 && IsClosed(_stage.Out)) CompleteStage();
-                            args.Commit();
+                            try
+                            {
+                                Channel.BasicNack(args.DeliveryTag, args.Multiple, args.Requeue);
+                                if (--_unackedMessages == 0 && IsClosed(_stage.Out)) CompleteStage();
+                                args.Commit();
+                            }
+                            catch (Exception ex)
+                            {
+                                args.Fail(ex);
+                            }
+                            
                             break;
                     }
                 });

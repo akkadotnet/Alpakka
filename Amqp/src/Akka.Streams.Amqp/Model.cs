@@ -190,7 +190,8 @@ namespace Akka.Streams.Amqp
 
         public Uri Uri { get; }
 
-        public AmqpConnectionUri Create(string uri) => new AmqpConnectionUri(new Uri(uri));
+        public static AmqpConnectionUri Create(string uri) => new AmqpConnectionUri(new Uri(uri));
+        public static AmqpConnectionUri Create(Uri uri) => new AmqpConnectionUri(uri);
 
         public override string ToString() => $"AmqpConnectionUri(Uri={Uri})";
     }

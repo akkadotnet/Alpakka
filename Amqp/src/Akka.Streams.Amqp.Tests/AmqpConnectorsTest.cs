@@ -546,5 +546,54 @@ namespace Akka.Streams.Amqp.Tests
 
             Assert.Equal(input, consumed, StringComparer.InvariantCulture);
         }
+
+        [Fact]
+        public void Correctly_close_a_AmqpFlow_when_stream_is_closed_without_passing_any_elements()
+        {
+            Source.Empty<(OutgoingMessage, int)>()
+                  .Via(AmqpFlow.Create<int>(AmqpSinkSettings.Create(_connectionSettings)))
+                  .RunWith(this.SinkProbe<int>(), _mat)
+                  .EnsureSubscription()
+                  .ExpectComplete();
+        }
+
+        [Fact]
+        public void Set_routing_key_per_message_while_publishing_with_flow_and_consume_them_in_the_same_process()
+        {
+            string GetRoutingKey(string s) => $"key.{s}";
+
+            var exchangeName = "amqp.topic." + Environment.TickCount;
+            var queueName = "amqp-conn-it-spec-simple-queue-" + Environment.TickCount;
+            var exchangeDeclaration = ExchangeDeclaration.Create(exchangeName, "topic");
+            var queueDeclaration = QueueDeclaration.Create(queueName);
+            var bindingDeclaration = BindingDeclaration.Create(queueName, exchangeName).WithRoutingKey(GetRoutingKey("*"));
+
+            var amqpFlow = AmqpFlow.Create<string>(
+                AmqpSinkSettings.Create(_connectionSettings)
+                                .WithExchange(exchangeName)
+                                .WithDeclarations(exchangeDeclaration, queueDeclaration, bindingDeclaration));
+
+            var amqpSource = AmqpSource.AtMostOnceSource(
+                NamedQueueSourceSettings.Create(_connectionSettings, queueName).WithDeclarations(exchangeDeclaration, queueDeclaration, bindingDeclaration),
+                bufferSize: 10);
+
+            var input = new[] {"one", "two", "three", "four", "five"};
+            var routingKeys = input.Select(GetRoutingKey);
+
+            Source.From(input)
+                  .Select(s => (new OutgoingMessage(ByteString.FromString(s), false, false, routingKey: GetRoutingKey(s)), s))
+                  .Via(amqpFlow)
+                  .RunWith(Sink.Ignore<string>(), _mat)
+                  .Wait();
+
+            var result =
+                amqpSource
+                    .Take(input.Length)
+                    .RunWith(Sink.Seq<IncomingMessage>(), _mat)
+                    .Result;
+
+            result.Select(x => x.Envelope.RoutingKey).Should().Equal(routingKeys);
+            result.Select(x => x.Bytes.ToString()).Should().Equal(input);
+        }
     }
 }

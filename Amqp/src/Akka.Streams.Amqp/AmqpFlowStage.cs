@@ -61,10 +61,17 @@ namespace Akka.Streams.Amqp
                             elem.Bytes.ToArray());
 
                         Push(_stage.Out, passThrough);
-                        //Pull(_stage.In);
                     },
-                    onUpstreamFinish: () => _promise.TrySetResult(Done.Instance),
-                    onUpstreamFailure: ex => _promise.TrySetException(ex));
+                    onUpstreamFinish: () =>
+                    {
+                        _promise.TrySetResult(Done.Instance);
+                        CompleteStage();
+                    },
+                    onUpstreamFailure: ex =>
+                    {
+                        _promise.TrySetException(ex);
+                        CompleteStage();
+                    });
             }
 
             public string Exchange => _stage.Settings.Exchange ?? "";
@@ -89,10 +96,10 @@ namespace Akka.Streams.Amqp
                 });
 
                 Channel.ModelShutdown += OnChannelShutdown;
-                Pull(_stage.In);
             }
 
-            private void OnChannelShutdown(object sender, ShutdownEventArgs shutdownEventArgs) => _shutdownCallback?.Invoke(shutdownEventArgs);
+            private void OnChannelShutdown(object sender, ShutdownEventArgs shutdownEventArgs) => 
+                _shutdownCallback?.Invoke(shutdownEventArgs);
 
             public override void PostStop()
             {

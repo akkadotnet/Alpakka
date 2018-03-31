@@ -47,8 +47,8 @@ namespace Akka.Streams.Kafka.Stages
         private const string TimerKey = "PollTimer";
 
         private readonly Queue<CommittableMessage<K, V>> _buffer;
-        private IEnumerable<TopicPartition> assignedPartitions = null;
-        private volatile bool isPaused = false;
+        private IEnumerable<TopicPartition> _assignedPartitions;
+        private volatile bool _isPaused;
         private readonly TaskCompletionSource<NotUsed> _completion;
 
         public KafkaCommittableSourceStage(CommittableConsumerStage<K, V> stage, Attributes attributes, TaskCompletionSource<NotUsed> completion) : base(stage.Shape)
@@ -70,11 +70,11 @@ namespace Akka.Streams.Kafka.Stages
                 }
                 else
                 {
-                    if (isPaused)
+                    if (_isPaused)
                     {
-                        _consumer.Resume(assignedPartitions);
-                        isPaused = false;
-                        Log.Debug($"Polling resumed, buffer is empty");
+                        _consumer.Resume(_assignedPartitions);
+                        _isPaused = false;
+                        Log.Debug("Polling resumed, buffer is empty");
                     }
                     PullQueue();
                 }
@@ -131,7 +131,7 @@ namespace Akka.Streams.Kafka.Stages
         // Consumer's events
         //
 
-        private void HandleOnMessage(object sender, ConsumerRecord<K, V> message) => _messagesReceived.Invoke(message);
+        private void HandleOnMessage(object sender, ConsumerRecord<K, V> message) => _messagesReceived(message);
 
         private void HandleConsumeError(object sender, ConsumerRecord message)
         {
@@ -166,12 +166,12 @@ namespace Akka.Streams.Kafka.Stages
 
         private void HandleOnPartitionsAssigned(object sender, List<TopicPartition> list)
         {
-            _partitionsAssigned.Invoke(list);
+            _partitionsAssigned(list);
         }
 
         private void HandleOnPartitionsRevoked(object sender, List<TopicPartition> list)
         {
-            _partitionsRevoked.Invoke(list);
+            _partitionsRevoked(list);
         }
 
         //
@@ -196,25 +196,25 @@ namespace Akka.Streams.Kafka.Stages
         {
             Log.Debug($"Partitions were assigned: {_consumer.Name}");
             _consumer.Assign(partitions);
-            assignedPartitions = partitions;
+            _assignedPartitions = partitions;
         }
 
         private void PartitionsRevoked(IEnumerable<TopicPartition> partitions)
         {
             Log.Debug($"Partitions were revoked: {_consumer.Name}");
             _consumer.Unassign();
-            assignedPartitions = null;
+            _assignedPartitions = null;
         }
 
         private void PullQueue()
         {
             _consumer.Poll(_settings.PollTimeout);
 
-            if (!isPaused && _buffer.Count > _settings.BufferSize)
+            if (!_isPaused && _buffer.Count > _settings.BufferSize)
             {
                 Log.Debug($"Polling paused, buffer is full");
-                _consumer.Pause(assignedPartitions);
-                isPaused = true;
+                _consumer.Pause(_assignedPartitions);
+                _isPaused = true;
             }
         }
 

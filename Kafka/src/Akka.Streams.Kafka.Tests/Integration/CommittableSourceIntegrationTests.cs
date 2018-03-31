@@ -40,9 +40,10 @@ namespace Akka.Streams.Kafka.Tests.Integration
 
         private async Task GivenInitializedTopic(string topic)
         {
-            var producer = ProducerSettings.CreateKafkaProducer();
-            await producer.ProduceAsync(topic, new Message<Null, string> { Value = InitialMsg });
-            producer.Dispose();
+            using (var producer = ProducerSettings.CreateKafkaProducer())
+            {
+                await producer.ProduceAsync(topic, new Message<Null, string> { Value = InitialMsg });
+            }
         }
 
         private ConsumerSettings<Null, string> CreateConsumerSettings(string group)

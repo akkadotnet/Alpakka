@@ -46,7 +46,7 @@ namespace Akka.Streams.Kafka.Stages
                 onPush: () =>
                 {
                     var msg = Grab(In);
-                    _sendToProducer.Invoke(msg);
+                    _sendToProducer(msg);
                 },
                 onUpstreamFinish: () =>
                 {

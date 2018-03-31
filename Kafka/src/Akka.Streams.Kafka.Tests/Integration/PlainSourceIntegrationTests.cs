@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Akka.Configuration;
 using Akka.Streams.Dsl;
-using Akka.Streams.Kafka.Messages;
+using Akka.Streams.Kafka.Dsl;
 using Akka.Streams.Kafka.Settings;
 using Akka.Streams.Supervision;
 using Akka.Streams.TestKit;
@@ -69,12 +69,12 @@ namespace Akka.Streams.Kafka.Tests.Integration
             await Source
                 .From(range)
                 .Select(elem => new MessageAndMeta<Null, string> { Topic = topic, Message = new Message<Null, string> { Value = elem.ToString() } })
-                .RunWith(Dsl.Producer.PlainSink(producerSettings), _materializer);
+                .RunWith(KafkaProducer.PlainSink(producerSettings), _materializer);
         }
 
         private TestSubscriber.Probe<string> CreateProbe(ConsumerSettings<Null, string> consumerSettings, string topic, ISubscription sub)
         {
-            return Dsl.Consumer
+            return KafkaConsumer
                 .PlainSource(consumerSettings, sub)
                 .Where(c => !c.Value.Equals(InitialMsg))
                 .Select(c => c.Value)
@@ -178,7 +178,7 @@ namespace Akka.Streams.Kafka.Tests.Integration
                 .WithProperty("auto.offset.reset", "earliest")
                 .WithGroupId(group1);
 
-            var probe = Dsl.Consumer
+            var probe = KafkaConsumer
                 .PlainSource(settings, Subscriptions.Assignment(new TopicPartition(topic1, 0)))
                 .WithAttributes(ActorAttributes.CreateSupervisionStrategy(Deciders.StoppingDecider))
                 .Select(c => c.Value)
@@ -208,7 +208,7 @@ namespace Akka.Streams.Kafka.Tests.Integration
                 .WithProperty("auto.offset.reset", "earliest")
                 .WithGroupId(group1);
 
-            var probe = Dsl.Consumer
+            var probe = KafkaConsumer
                 .PlainSource(settings, Subscriptions.Assignment(new TopicPartition(topic1, 0)))
                 .WithAttributes(ActorAttributes.CreateSupervisionStrategy(Decider))
                 .Select(c => c.Value)

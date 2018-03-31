@@ -22,33 +22,51 @@ var producerSettings = new ProducerSettings<Null, string>(system, null, new Stri
     .WithBootstrapServers("localhost:9092");
 ```
 
-### Producer as a Sink
-`Producer.PlainSink` is the easiest way to publish messages. The sink consumes `ProducerRecord` elements which contains a topic name to which the record is being sent.
+In addition to programmatic construction of the ProducerSettings it can also be created from configuration (application.conf). By default when creating ProducerSettings with the ActorSystem parameter it uses the config section akka.kafka.producer.
 
-```C#
-Source
-    .From(Enumerable.Range(500, 601))
-    .Select(c => c.ToString())
-    .Select(elem => new MessageAndMeta<Null, string> { Topic = "topic1", Message = new Message<Null, string> { Value = elem }})
-    .RunWith(Producer.PlainSink(producerSettings), materializer);
 ```
-The materialized value of the sink is a `Task` which is completed with result when the stream completes or with exception if an error occurs.
+akka.kafka.producer {
+  # Tuning parameter of how many sends that can run in parallel.
+  parallelism = 100
 
-### Producer as a Flow
-Sometimes there is a need for publishing messages in the middle of the stream processing, not as the last step, and then you can use `Producer.CreateFlow`
+  # How long to wait for `Producer.Flush`
+  flush-timeout = 10s
+  
+  # Fully qualified config path which holds the dispatcher configuration
+  # to be used by the producer stages. Some blocking may occur.
+  # When this value is empty, the dispatcher configured for the stream
+  # will be used.
+  use-dispatcher = "akka.kafka.default-dispatcher"
+}
+```
+
+### Producer as a Sink
+`KafkaProducer.PlainSink` is the easiest way to publish messages. The sink consumes `MessageAndMeta` elements which contains a topic name to which the record is being sent, an optional partition number, and an optional key and value.
 
 ```C#
 Source
     .From(Enumerable.Range(1, 100))
     .Select(c => c.ToString())
-    .Select(elem => new MessageAndMeta<Null, string> { Topic = "topic1", Message = new Message<Null, string> { Value = elem }})
-    .Via(Producer.CreateFlow(producerSettings))
+    .Select(elem => new MessageAndMeta<Null, string> { Topic = "topic1", Message = new Message<Null, string> { Value = elem } })
+    .RunWith(KafkaProducer.PlainSink(producerSettings), materializer);
+```
+The materialized value of the sink is a `Task` which is completed with result when the stream completes or with exception if an error occurs.
+
+### Producer as a Flow
+Sometimes there is a need for publishing messages in the middle of the stream processing, not as the last step, and then you can use `KafkaProducer.PlainFlow`
+
+```C#
+Source
+    .From(Enumerable.Range(1, 100))
+    .Select(c => c.ToString())
+    .Select(elem => new MessageAndMeta<Null, string> { Topic = "topic1", Message = new Message<Null, string> { Value = elem } })
+    .Via(KafkaProducer.PlainFlow(producerSettings))
     .Select(record =>
     {
         Console.WriteLine($"Producer: {record.Topic}/{record.Partition} {record.Offset}: {record.Value}");
         return record;
     })
-    .RunWith(Sink.Ignore<Message<Null, string>>(), materializer);
+    .RunWith(Sink.Ignore<DeliveryReport<Null, string>>(), materializer);
 ```
 
 ## Consumer
@@ -73,7 +91,7 @@ var consumerSettings = ConsumerSettings<Null, string>.Create(system, null, new S
 ```C#
 var subscription = Subscriptions.Assignment(new TopicPartition("akka", 0));
 
-Consumer.PlainSource(consumerSettings, subscription)
+KafkaConsumer.PlainSource(consumerSettings, subscription)
     .RunForeach(result =>
     {
         Console.WriteLine($"Consumer: {result.Topic}/{result.Partition} {result.Offset}: {result.Value}");
@@ -81,7 +99,7 @@ Consumer.PlainSource(consumerSettings, subscription)
 ```
 
 ### Committable Consumer
-The `Consumer.CommittableSource` makes it possible to commit offset positions to Kafka.
+The `KafkaConsumer.CommittableSource` makes it possible to commit offset positions to Kafka.
 
 Compared to auto-commit this gives exact control of when a message is considered consumed.
 
@@ -90,7 +108,7 @@ If you need to store offsets in anything other than Kafka, `PlainSource` should 
 This is useful when “at-least once delivery” is desired, as each message will likely be delivered one time but in failure cases could be duplicated.
 
 ```C#
-Consumer.CommitableSource(consumerSettings, Subscriptions.Topics("topic1"))
+KafkaConsumer.CommitableSource(consumerSettings, Subscriptions.Topics("topic1"))
     .SelectAsync(1, elem =>
     {
         return elem.CommitableOffset.Commit();

@@ -5,10 +5,10 @@ using Akka.Actor;
 using Akka.Configuration;
 using Akka.Streams;
 using Akka.Streams.Dsl;
+using Akka.Streams.Kafka.Dsl;
 using Akka.Streams.Kafka.Settings;
 using Confluent.Kafka;
 using Confluent.Kafka.Serialization;
-using Producer = Akka.Streams.Kafka.Dsl.Producer;
 
 namespace SimpleProducer
 {
@@ -31,7 +31,7 @@ namespace SimpleProducer
                 .Cycle(() => Enumerable.Range(1, 100).GetEnumerator())
                 .Select(c => c.ToString())
                 .Select(elem => new MessageAndMeta<Null, string> { Topic = "akka100", Message = new Message<Null, string> { Value = elem }})
-                .Via(Producer.CreateFlow(producerSettings))
+                .Via(KafkaProducer.PlainFlow(producerSettings))
                 .Select(record =>
                 {
                     Console.WriteLine($"Producer: {record.Topic}/{record.Partition} {record.Offset}: {record.Value}");

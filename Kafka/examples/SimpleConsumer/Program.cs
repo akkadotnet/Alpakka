@@ -3,12 +3,10 @@ using System.Text;
 using Akka.Actor;
 using Akka.Configuration;
 using Akka.Streams;
-using Akka.Streams.Dsl;
+using Akka.Streams.Kafka.Dsl;
 using Akka.Streams.Kafka.Settings;
 using Confluent.Kafka;
 using Confluent.Kafka.Serialization;
-using Consumer = Akka.Streams.Kafka.Dsl.Consumer;
-using System.Collections.Generic;
 
 namespace SimpleConsumer
 {
@@ -30,7 +28,7 @@ namespace SimpleConsumer
 
             var subscription = Subscriptions.Topics("akka100");
 
-            Consumer.PlainSource(consumerSettings, subscription)
+            KafkaConsumer.PlainSource(consumerSettings, subscription)
                 .RunForeach(result =>
                 {
                     Console.WriteLine($"Consumer: {result.Topic}/{result.Partition} {result.Offset}: {result.Value}");

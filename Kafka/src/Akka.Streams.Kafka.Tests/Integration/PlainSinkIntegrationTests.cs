@@ -5,14 +5,13 @@ using System.Text;
 using System.Threading.Tasks;
 using Akka.Configuration;
 using Akka.Streams.Dsl;
-using Akka.Streams.Kafka.Messages;
+using Akka.Streams.Kafka.Dsl;
 using Akka.Streams.Kafka.Settings;
 using Confluent.Kafka;
 using Confluent.Kafka.Serialization;
 using FluentAssertions;
 using Xunit;
 using Xunit.Abstractions;
-using Producer = Akka.Streams.Kafka.Dsl.Producer;
 
 namespace Akka.Streams.Kafka.Tests.Integration
 {
@@ -78,7 +77,7 @@ namespace Akka.Streams.Kafka.Tests.Integration
                 .From(Enumerable.Range(1, 100))
                 .Select(c => c.ToString())
                 .Select(elem => new MessageAndMeta<Null, string> { Topic = topic1, Message = new Message<Null, string> { Value = elem } })
-                .RunWith(Producer.PlainSink(ProducerSettings), _materializer);
+                .RunWith(KafkaProducer.PlainSink(ProducerSettings), _materializer);
 
             var dateTimeStart = DateTime.UtcNow;
 
@@ -109,7 +108,7 @@ namespace Akka.Streams.Kafka.Tests.Integration
                 .From(Enumerable.Range(1, 100))
                 .Select(c => c.ToString())
                 .Select(elem => new MessageAndMeta<Null, string> { Topic = topic1, Message = new Message<Null, string> { Value = elem } })
-                .RunWith(Producer.PlainSink(config), _materializer).Wait();
+                .RunWith(KafkaProducer.PlainSink(config), _materializer).Wait();
 
             // TODO: find a better way to test FailStage
             act.Should().Throw<AggregateException>().WithInnerException<KafkaException>();

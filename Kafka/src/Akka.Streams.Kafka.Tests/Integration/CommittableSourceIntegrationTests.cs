@@ -1,17 +1,15 @@
 ﻿using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Akka.Configuration;
 using Akka.Streams.Dsl;
-using Akka.Streams.Kafka.Messages;
+using Akka.Streams.Kafka.Dsl;
 using Akka.Streams.Kafka.Settings;
 using Akka.Streams.TestKit;
 using Confluent.Kafka;
 using Confluent.Kafka.Serialization;
-using FluentAssertions;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -67,11 +65,11 @@ namespace Akka.Streams.Kafka.Tests.Integration
             await Source
                 .From(Enumerable.Range(1, elementsCount))
                 .Select(elem => new MessageAndMeta<Null, string> { Topic = topic1, Message = new Message<Null, string> { Value = elem.ToString() } })
-                .RunWith(Dsl.Producer.PlainSink(ProducerSettings), _materializer);
+                .RunWith(KafkaProducer.PlainSink(ProducerSettings), _materializer);
 
             var consumerSettings = CreateConsumerSettings(group1);
 
-            var probe = Dsl.Consumer
+            var probe = KafkaConsumer
                 .CommittableSource(consumerSettings, Subscriptions.Assignment(new TopicPartition(topic1, 0)))
                 .Where(c => !c.Record.Value.Equals(InitialMsg))
                 .Select(c => c.Record.Value)
@@ -96,12 +94,12 @@ namespace Akka.Streams.Kafka.Tests.Integration
             await Source
                 .From(Enumerable.Range(1, 100))
                 .Select(elem => new MessageAndMeta<Null, string> { Topic = topic1, Message = new Message<Null, string> { Value = elem.ToString() } })
-                .RunWith(Dsl.Producer.PlainSink(ProducerSettings), _materializer);
+                .RunWith(KafkaProducer.PlainSink(ProducerSettings), _materializer);
 
             var consumerSettings = CreateConsumerSettings(group1);
             var committedElements = new ConcurrentQueue<string>();
 
-            var (_, probe1) = Dsl.Consumer.CommittableSource(consumerSettings, Subscriptions.Assignment(new TopicPartition(topic1, 0)))
+            var (_, probe1) = KafkaConsumer.CommittableSource(consumerSettings, Subscriptions.Assignment(new TopicPartition(topic1, 0)))
                 .WhereNot(c => c.Record.Value == InitialMsg)
                 .SelectAsync(10, elem =>
                 {
@@ -123,7 +121,7 @@ namespace Akka.Streams.Kafka.Tests.Integration
 
             // Await.result(control.isShutdown, remainingOrDefault)
 
-            var probe2 = Dsl.Consumer.CommittableSource(consumerSettings, Subscriptions.Assignment(new TopicPartition(topic1, 0)))
+            var probe2 = KafkaConsumer.CommittableSource(consumerSettings, Subscriptions.Assignment(new TopicPartition(topic1, 0)))
                 .Select(_ => _.Record.Value)
                 .RunWith(this.SinkProbe<string>(), _materializer);
 
@@ -134,7 +132,7 @@ namespace Akka.Streams.Kafka.Tests.Integration
             await Source
                 .From(Enumerable.Range(101, 100))
                 .Select(elem => new MessageAndMeta<Null, string> { Topic = topic1, Message = new Message<Null, string> { Value = elem.ToString() } })
-                .RunWith(Dsl.Producer.PlainSink(ProducerSettings), _materializer);
+                .RunWith(KafkaProducer.PlainSink(ProducerSettings), _materializer);
 
             probe2.Request(100);
             foreach (var i in Enumerable.Range(committedElements.Count + 1, 100).Select(c => c.ToString()))
@@ -143,7 +141,7 @@ namespace Akka.Streams.Kafka.Tests.Integration
             probe2.Cancel();
 
             // another consumer should see all
-            var probe3 = Dsl.Consumer.CommittableSource(consumerSettings.WithGroupId(group2), Subscriptions.Assignment(new TopicPartition(topic1, 0)))
+            var probe3 = KafkaConsumer.CommittableSource(consumerSettings.WithGroupId(group2), Subscriptions.Assignment(new TopicPartition(topic1, 0)))
                 .WhereNot(c => c.Record.Value == InitialMsg)
                 .Select(_ => _.Record.Value)
                 .RunWith(this.SinkProbe<string>(), _materializer);

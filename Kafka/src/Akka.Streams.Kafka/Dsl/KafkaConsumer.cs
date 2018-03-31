@@ -10,7 +10,7 @@ using Akka.Streams.Kafka.Messages;
 
 namespace Akka.Streams.Kafka.Dsl
 {
-    public static class Consumer
+    public static class KafkaConsumer
     {
         public static Source<ConsumerRecord<K, V>, Task> PlainSource<K, V>(ConsumerSettings<K, V> settings, ISubscription subscription)
         {

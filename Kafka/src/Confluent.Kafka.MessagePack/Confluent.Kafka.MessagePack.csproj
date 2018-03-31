@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyTitle>Confluent.Kafka.MessagePack</AssemblyTitle>
+    <Description>Provides an MessagePack Serializer and Deserializer compatible with Confluent.Kafka</Description>
+    <TargetFramework>netstandard1.6</TargetFramework>
+    <Copyright>Copyright © 2017-2018 AkkaNetContrib</Copyright>
+    <Authors>AkkaNetContrib</Authors>
+    <VersionPrefix>0.5.0</VersionPrefix>
+    <PackageTags>akka;actors;streams;kafka;reactive;messagepack</PackageTags>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <PackageIconUrl>http://getakka.net/images/akkalogo.png</PackageIconUrl>
+    <PackageProjectUrl>https://github.com/AkkaNetContrib/Akka.Streams.Kafka</PackageProjectUrl>
+    <PackageLicenseUrl>https://github.com/AkkaNetContrib/Akka.Streams.Kafka/blob/dev/LICENSE</PackageLicenseUrl>
+    <NetStandardImplicitPackageVersion>1.6.1</NetStandardImplicitPackageVersion>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Confluent.Kafka" Version="1.0.0-experimental-1" />
+    <PackageReference Include="MessagePack" Version="1.7.3.4" />
+  </ItemGroup>
+
+</Project>

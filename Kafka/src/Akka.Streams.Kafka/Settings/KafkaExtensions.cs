@@ -28,6 +28,7 @@ namespace Akka.Streams.Kafka.Settings
         {
             switch (error.Code)
             {
+                case ErrorCode.Local_Transport:
                 case ErrorCode.Local_AllBrokersDown:
                     return false;
             }

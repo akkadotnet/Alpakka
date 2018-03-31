@@ -2,6 +2,8 @@
 using System.Threading.Tasks;
 using Akka.Streams.Kafka.Settings;
 using Akka.Streams.Stage;
+using Akka.Streams.Supervision;
+using Akka.Util.Internal;
 using Confluent.Kafka;
 
 namespace Akka.Streams.Kafka.Stages
@@ -38,26 +40,64 @@ namespace Akka.Streams.Kafka.Stages
         private readonly ProducerStage<K, V> _stage;
         private IProducer<K, V> _producer;
         private readonly TaskCompletionSource<NotUsed> _completionState = new TaskCompletionSource<NotUsed>();
-        private Action<MessageAndMeta<K, V>> _sendToProducer;
+        private volatile bool _inIsClosed;
+        private readonly AtomicCounter _awaitingConfirmation = new AtomicCounter(0);
 
         public ProducerStageLogic(ProducerStage<K, V> stage, Attributes attributes) : base(stage.Shape)
         {
             _stage = stage;
 
+            var supervisionStrategy = attributes.GetAttribute<ActorAttributes.SupervisionStrategy>(null);
+            var decider = supervisionStrategy != null ? supervisionStrategy.Decider : Deciders.ResumingDecider;
+
             SetHandler(_stage.In, 
                 onPush: () =>
                 {
                     var msg = Grab(_stage.In);
-                    _sendToProducer(msg);
+                    var result = new TaskCompletionSource<DeliveryReport<K, V>>();
+
+                    _producer.Produce(msg.TopicPartition, msg.Message, report =>
+                    {
+                        if (!report.Error.HasError)
+                        {
+                            result.SetResult(report);
+                        }
+                        else
+                        {
+                            var exception = new KafkaException(report.Error);
+                            switch (decider(exception))
+                            {
+                                case Directive.Stop:
+                                    if (_stage.CloseProducerOnStop)
+                                    {
+                                        _producer.Dispose();
+                                    }
+                                    FailStage(exception);
+                                    break;
+                                default:
+                                    result.SetException(exception);
+                                    break;
+                            }
+                        }
+
+                        if (_awaitingConfirmation.DecrementAndGet() == 0 && _inIsClosed)
+                        {
+                            CheckForCompletion();
+                        }
+                    });
+
+                    _awaitingConfirmation.IncrementAndGet();
+                    Push(_stage.Out, result.Task);
                 },
                 onUpstreamFinish: () =>
                 {
+                    _inIsClosed = true;
                     _completionState.SetResult(NotUsed.Instance);
-                    _producer.Flush(_stage.Settings.FlushTimeout);
                     CheckForCompletion();
                 },
                 onUpstreamFailure: exception =>
                 {
+                    _inIsClosed = true;
                     _completionState.SetException(exception);
                     CheckForCompletion();
                 });
@@ -76,12 +116,6 @@ namespace Akka.Streams.Kafka.Stages
             Log.Debug($"Producer started: {_producer.Name}");
 
             _producer.OnError += OnProducerError;
-
-            _sendToProducer = msg =>
-            {
-                var task = _producer.ProduceAsync(msg.TopicPartition, msg.Message);
-                Push(_stage.Out, task);
-            };
         }
 
         public override void PostStop()
@@ -112,7 +146,7 @@ namespace Akka.Streams.Kafka.Stages
 
         public void CheckForCompletion()
         {
-            if (IsClosed(_stage.In))
+            if (IsClosed(_stage.In) && _awaitingConfirmation.Current == 0)
             {
                 var completionTask = _completionState.Task;
 

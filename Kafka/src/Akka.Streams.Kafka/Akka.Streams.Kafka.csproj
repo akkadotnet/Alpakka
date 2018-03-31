@@ -10,8 +10,8 @@
     <PackageTags>akka;actors;streams;kafka;reactive</PackageTags>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageIconUrl>http://getakka.net/images/akkalogo.png</PackageIconUrl>
-    <PackageProjectUrl>https://github.com/AkkaNetContrib/Akka.Streams.Kafka</PackageProjectUrl>
-    <PackageLicenseUrl>https://github.com/AkkaNetContrib/Akka.Streams.Kafka/blob/dev/LICENSE</PackageLicenseUrl>
+    <PackageProjectUrl>https://github.com/AkkaNetContrib/Alpakka</PackageProjectUrl>
+    <PackageLicenseUrl>https://github.com/AkkaNetContrib/Alpakka/blob/dev/LICENSE</PackageLicenseUrl>
     <NetStandardImplicitPackageVersion>1.6.1</NetStandardImplicitPackageVersion>
     <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>

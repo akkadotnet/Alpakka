@@ -1,18 +1,17 @@
-﻿using Akka.Streams.Dsl;
-using Akka.Streams.SNS;
+﻿using System;
+using System.Collections.Immutable;
+using System.Linq;
+using System.Threading.Tasks;
+using Akka.Streams.Dsl;
 using Akka.Streams.TestKit;
 using Amazon.SimpleNotificationService;
 using Amazon.SimpleNotificationService.Model;
 using FluentAssertions;
 using NSubstitute;
-using System;
-using System.Collections.Immutable;
-using System.Linq;
-using System.Threading.Tasks;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace Akka.Streams.SignalR.Tests
+namespace Akka.Streams.SNS.Tests
 {
     public class SnsPublishFlowSpec: Akka.TestKit.Xunit2.TestKit
     {
@@ -34,7 +33,7 @@ namespace Akka.Streams.SignalR.Tests
             var val = TestSource.SourceProbe<string>(this).Via(SnsPublisher.PublishToSNSFlow("topic-Arn", snsService)).ToMaterialized(Sink.Seq<PublishResponse>(), Keep.Both).Run(this.materializer);
             val.Item1.SendNext("sns-message").SendComplete();
             var task =val.Item2.Wait(TimeSpan.FromSeconds(1)).Should().BeTrue();
-            val.Item2.Result.ShouldBeEquivalentTo(ImmutableList.Create(response));
+            val.Item2.Result.Should().BeEquivalentTo(ImmutableList.Create(response));
             snsService.Received(1).PublishAsync(request);
         }
 
@@ -62,7 +61,7 @@ namespace Akka.Streams.SignalR.Tests
             }
             val.Item1.SendComplete();
             var task =val.Item2.Wait(TimeSpan.FromSeconds(1)).Should().BeTrue();
-            val.Item2.Result.ShouldBeEquivalentTo(expectedResponseMessages);
+            val.Item2.Result.Should().BeEquivalentTo(expectedResponseMessages);
             snsService.ReceivedWithAnyArgs(3);
         }
         

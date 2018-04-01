@@ -10,7 +10,7 @@ namespace Akka.Streams.SNS
     {
         private string topicArn;
         private IAmazonSimpleNotificationService snsService;
-private readonly Inlet<string> inlet =new Inlet<string>("SnsPublishFlow.in");
+        private readonly Inlet<string> inlet =new Inlet<string>("SnsPublishFlow.in");
         private readonly Outlet<PublishResponse> outlet =new Outlet<PublishResponse>("SnsPublishFlow.out");
         private readonly FlowShape<string, PublishResponse> shape;
         

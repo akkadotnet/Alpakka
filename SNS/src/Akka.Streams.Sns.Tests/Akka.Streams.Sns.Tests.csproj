@@ -15,10 +15,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Akka.Streams.SNS\Akka.Streams.SNS.csproj" />
+    <Folder Include="Properties\" />
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Properties\" />
+    <ProjectReference Include="..\Akka.Streams.SNS\Akka.Streams.Sns.csproj" />
   </ItemGroup>
 </Project>

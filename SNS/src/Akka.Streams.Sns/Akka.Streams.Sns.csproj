@@ -1,6 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFrameworks>netstandard2.0</TargetFrameworks>
+    <TargetFrameworks>netstandard1.6</TargetFrameworks>
     <AssemblyTitle>Akka.Streams.SNS</AssemblyTitle>
     <Description>Amazon SNS adapter for Akka.NET Streams</Description>
     <Copyright>Copyright © 2017-2018 Akka.NET Contrib</Copyright>

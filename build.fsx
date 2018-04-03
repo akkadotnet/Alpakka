@@ -47,6 +47,8 @@ Target "RestorePackages" (fun _ ->
                    ++ "./**/Akka.Streams.Azure.StorageQueue.csproj"
                    ++ "./**/Akka.Streams.Amqp.csproj"
                    ++ "./**/Akka.Streams.Amqp.Tests.csproj"
+                   ++ "./**/Akka.Streams.SNS.csproj"
+                   ++ "./**/Akka.Streams.SNS.Tests.csproj"
 
     let runSingleProject project =
         DotNetCli.Restore
@@ -70,6 +72,8 @@ Target "Build" (fun _ ->
                    ++ "./**/Akka.Streams.Azure.StorageQueue.csproj"
                    ++ "./**/Akka.Streams.Amqp.csproj"
                    ++ "./**/Akka.Streams.Amqp.Tests.csproj"
+                   ++ "./**/Akka.Streams.SNS.csproj"
+                   ++ "./**/Akka.Streams.SNS.Tests.csproj"
 
     let runSingleProject project =
         DotNetCli.Build
@@ -90,6 +94,7 @@ Target "RunTests" (fun _ ->
                    ++ "./**/Akka.Streams.Csv.Tests.csproj"
                    //++ "./**/Akka.Streams.SignalR.Tests.csproj"
                    //++ "./**/Akka.Streams.Amqp.Tests.csproj"
+                   ++ "./**/Akka.Streams.SNS.Tests.csproj"
 
     let runSingleProject project =
         DotNetCli.RunCommand
@@ -118,7 +123,7 @@ Target "CreateNuget" (fun _ ->
                    ++ "./**/Akka.Streams.Azure.ServiceBus.csproj"
                    ++ "./**/Akka.Streams.Azure.StorageQueue.csproj"
                    ++ "./**/Akka.Streams.Amqp.csproj"
-
+                   ++ "./**/Akka.Streams.SNS.csproj"
 
     let runSingleProject project =
         DotNetCli.Pack

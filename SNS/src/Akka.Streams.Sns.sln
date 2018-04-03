@@ -1,13 +1,13 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 2013
-VisualStudioVersion = 12.0.40629.0
+# Visual Studio 15
+VisualStudioVersion = 15.0.27428.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{E00CECB0-8E8D-4799-AA1C-DC8588EAB2A7}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Akka.Streams.SNS", "Akka.Streams.SNS\Akka.Streams.SNS.csproj", "{E5D54C96-85E7-4608-95CA-9C2B4F110E0B}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Akka.Streams.Sns", "Akka.Streams.SNS\Akka.Streams.Sns.csproj", "{E5D54C96-85E7-4608-95CA-9C2B4F110E0B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Akka.Streams.SNS.Tests", "Akka.Streams.SNS.Tests\Akka.Streams.SNS.Tests.csproj", "{F49AF862-23E0-479F-BD1F-7EDD1EB4D5B7}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Akka.Streams.Sns.Tests", "Akka.Streams.SNS.Tests\Akka.Streams.Sns.Tests.csproj", "{F49AF862-23E0-479F-BD1F-7EDD1EB4D5B7}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -30,5 +30,8 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{E5D54C96-85E7-4608-95CA-9C2B4F110E0B} = {E00CECB0-8E8D-4799-AA1C-DC8588EAB2A7}
 		{F49AF862-23E0-479F-BD1F-7EDD1EB4D5B7} = {E00CECB0-8E8D-4799-AA1C-DC8588EAB2A7}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {65EE3941-C2D2-4446-8F47-35AEAC3DA302}
 	EndGlobalSection
 EndGlobal

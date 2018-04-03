@@ -17,7 +17,7 @@ namespace Akka.Streams.Kafka.Tests.Integration
 {
     public class CommittableSourceIntegrationTests : Akka.TestKit.Xunit2.TestKit
     {
-        private const string KafkaUrl = "localhost:9092";
+        private const string KafkaUrl = "localhost:29092";
 
         private const string InitialMsg = "initial msg in topic, required to create the topic before any consumer subscribes to it";
 

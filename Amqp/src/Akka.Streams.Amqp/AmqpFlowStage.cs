@@ -79,13 +79,7 @@ namespace Akka.Streams.Amqp
             public string RoutingKey => _stage.Settings.RoutingKey ?? "";
 
             public override IAmqpConnectorSettings Settings => _stage.Settings;
-
-            public override IConnectionFactory ConnectionFactoryFrom(IAmqpConnectionSettings settings) =>
-                AmqpConnector.ConnectionFactoryFrom(settings);
-
-            public override IConnection NewConnection(IConnectionFactory factory, IAmqpConnectionSettings settings) =>
-                AmqpConnector.NewConnection(factory, settings);
-
+            
             public override void WhenConnected()
             {
                 _shutdownCallback = GetAsyncCallback<ShutdownEventArgs>(args =>

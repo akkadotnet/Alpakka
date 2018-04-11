@@ -67,13 +67,7 @@ namespace Akka.Streams.Amqp
             }
 
             public override IAmqpConnectorSettings Settings => _stage.Settings;
-
-            public override IConnectionFactory ConnectionFactoryFrom(IAmqpConnectionSettings settings) =>
-                AmqpConnector.ConnectionFactoryFrom(settings);
-
-            public override IConnection NewConnection(IConnectionFactory factory, IAmqpConnectionSettings settings) =>
-                AmqpConnector.NewConnection(factory, settings);
-
+            
             public override void WhenConnected()
             {
                 // we have only one consumer per connection so global is ok

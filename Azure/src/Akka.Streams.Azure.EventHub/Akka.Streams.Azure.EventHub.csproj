@@ -6,7 +6,7 @@
     <TargetFramework>net461</TargetFramework>
     <Copyright>Copyright © 2017 Akka.NET Contrib</Copyright>
     <Authors>Akka.NET Contrib</Authors>
-    <VersionPrefix>0.1.0</VersionPrefix>
+    <VersionPrefix>0.1.1</VersionPrefix>
     <PackageTags>akka;actors;streams;azure;EventHubs</PackageTags>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageIconUrl>http://getakka.net/images/akkalogo.png</PackageIconUrl>

@@ -49,6 +49,8 @@ Target "RestorePackages" (fun _ ->
                    ++ "./**/Akka.Streams.Amqp.Tests.csproj"
                    ++ "./**/Akka.Streams.SNS.csproj"
                    ++ "./**/Akka.Streams.SNS.Tests.csproj"
+                   ++ "./**/Akka.Streams.Kafka.csproj"
+                   ++ "./**/Akka.Streams.Kafka.Tests.csproj"
 
     let runSingleProject project =
         DotNetCli.Restore
@@ -74,6 +76,8 @@ Target "Build" (fun _ ->
                    ++ "./**/Akka.Streams.Amqp.Tests.csproj"
                    ++ "./**/Akka.Streams.SNS.csproj"
                    ++ "./**/Akka.Streams.SNS.Tests.csproj"
+                   ++ "./**/Akka.Streams.Kafka.csproj"
+                   ++ "./**/Akka.Streams.Kafka.Tests.csproj"
 
     let runSingleProject project =
         DotNetCli.Build
@@ -124,6 +128,7 @@ Target "CreateNuget" (fun _ ->
                    ++ "./**/Akka.Streams.Azure.StorageQueue.csproj"
                    ++ "./**/Akka.Streams.Amqp.csproj"
                    ++ "./**/Akka.Streams.SNS.csproj"
+                   ++ "./**/Akka.Streams.Kafka.csproj"
 
     let runSingleProject project =
         DotNetCli.Pack

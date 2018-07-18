@@ -7,7 +7,7 @@ namespace Akka.Streams.Amqp.V1.Util
         public static Decider GetDeciderOrDefault(this Attributes attributes)
         {
             var attr = attributes.GetAttribute<ActorAttributes.SupervisionStrategy>(null);
-            return attr != null ? attr.Decider : Deciders.StoppingDecider;
+            return attr?.Decider ?? Deciders.StoppingDecider;
         }
     }
 }

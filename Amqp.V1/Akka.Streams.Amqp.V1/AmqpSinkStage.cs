@@ -1,16 +1,13 @@
 ﻿using Akka.Streams.Stage;
 using Amqp;
-using System;
-using System.Diagnostics;
 using System.Threading.Tasks;
 
 namespace Akka.Streams.Amqp.V1
 {
     public sealed class AmqpSinkStage<T> : GraphStageWithMaterializedValue<SinkShape<T>, Task>
     {
-        public readonly Inlet<T> In = new Inlet<T>("AmqpSink.in");
-        public override SinkShape<T> Shape => new SinkShape<T>(In);
-
+        public Inlet<T> In { get; }
+        public override SinkShape<T> Shape { get; }
         public IAmpqSinkSettings<T> AmpqSourceSettings { get; }
 
         public override ILogicAndMaterializedValue<Task> CreateLogicAndMaterializedValue(Attributes inheritedAttributes)
@@ -22,6 +19,8 @@ namespace Akka.Streams.Amqp.V1
 
         public AmqpSinkStage(IAmpqSinkSettings<T> ampqSourceSettings)
         {
+            In = new Inlet<T>("AmqpSink.in");
+            Shape = new SinkShape<T>(In);
             AmpqSourceSettings = ampqSourceSettings;
         }
 
@@ -39,15 +38,9 @@ namespace Akka.Streams.Amqp.V1
 
                 SetHandler(stage.In, () =>
                 {
-                    try
-                    {
-                        var elem = Grab(stage.In);
-                        sender.Send(new Message(amqpSinkStage.AmpqSourceSettings.GetBytes(elem)));
-                        Pull(stage.In);
-                    } catch (Exception e)
-                    {
-                        Debugger.Break();
-                    }
+                    var elem = Grab(stage.In);
+                    sender.Send(new Message(amqpSinkStage.AmpqSourceSettings.GetBytes(elem)));
+                    Pull(stage.In);
                 },
                     onUpstreamFinish: () => promise.SetResult(Done.Instance),
                     onUpstreamFailure: ex => promise.SetException(ex)
@@ -62,7 +55,6 @@ namespace Akka.Streams.Amqp.V1
 
             public override void PostStop()
             {
-                promise.TrySetException(new ApplicationException("stage stopped unexpectedly"));
                 sender.Close();
                 base.PostStop();
             }

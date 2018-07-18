@@ -16,10 +16,8 @@ namespace Akka.Streams.Amqp.V1.Tests
         public AmqpConnectorsTest()
         {
             materializer = ActorMaterializer.Create(Sys);
-            var serialization = Sys.Serialization;
-
-            serializer = serialization.FindSerializerForType(typeof(string));
-            address = new Address("amqp://guest:guest@localhost:5673");
+            serializer = Sys.Serialization.FindSerializerForType(typeof(string));
+            address = new Address("amqp://guest:guest@localhost:5672");
         }
 
         [Fact]
@@ -30,11 +28,11 @@ namespace Akka.Streams.Amqp.V1.Tests
 
             var queueName = "q1";
             var senderlinkName = "amqp-conn-test-sender";
-            var receiverlinkName = "amqp-conn-test-sender";
+            var receiverlinkName = "amqp-conn-test-receiver";
 
             //create sink and source
-            var amqpSink = AmpqSink<string>.Create(new NamedQueueSinkSettings<string>(session, senderlinkName, queueName, serializer));
-            var amqpSource = AmpqSource<string>.Create(new NamedQueueSourceSettings<string>(session, receiverlinkName, queueName, 200, serializer));
+            var amqpSink = AmpqSink.Create(new NamedQueueSinkSettings<string>(session, senderlinkName, queueName, serializer));
+            var amqpSource = AmpqSource.Create(new NamedQueueSourceSettings<string>(session, receiverlinkName, queueName, 200, serializer));
 
             //run sink
             var input = new[] { "one", "two", "three", "four", "five" };
@@ -45,7 +43,8 @@ namespace Akka.Streams.Amqp.V1.Tests
                             .Take(input.Length)
                             .RunWith(Sink.Seq<string>(), materializer);
 
-            result.Wait(TimeSpan.FromSeconds(3));
+            result.Wait(TimeSpan.FromSeconds(30));
+            Assert.True(result.IsCompleted);
             Assert.Equal(input, result.Result);
 
             session.Close();

@@ -24,7 +24,8 @@ namespace Akka.Streams.Amqp.V1
             this.serializer = serializer;
         }
 
-        public T Convert(Message message) {
+        public T Convert(Message message)
+        {
             var bString = message.GetBody<byte[]>();
             return serializer.FromBinary<T>(bString);
         }

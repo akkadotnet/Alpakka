@@ -3,9 +3,9 @@ using System.Threading.Tasks;
 
 namespace Akka.Streams.Amqp.V1.Dsl
 {
-    public static class AmpqSink<T>
+    public static class AmpqSink
     {
-        public static Sink<T, Task> Create(IAmpqSinkSettings<T> sourceSettings)
+        public static Sink<T, Task> Create<T>(IAmpqSinkSettings<T> sourceSettings)
         {
             return Sink.FromGraph(new AmqpSinkStage<T>(sourceSettings));
         }

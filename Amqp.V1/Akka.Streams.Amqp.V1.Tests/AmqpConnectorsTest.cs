@@ -26,7 +26,7 @@ namespace Akka.Streams.Amqp.V1.Tests
             Connection connection = new Connection(address);
             Session session = new Session(connection);
 
-            var queueName = "q1";
+            var queueName = "simple-queue-test" + Guid.NewGuid();
             var senderlinkName = "amqp-conn-test-sender";
             var receiverlinkName = "amqp-conn-test-receiver";
 

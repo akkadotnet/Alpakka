@@ -16,13 +16,25 @@ namespace Akka.Streams.Amqp.V1.Tests
             Address address = new Address("amqp://guest:guest@localhost:5672");
             Connection connection = await Connection.Factory.CreateAsync(address);
             Session session = new Session(connection);
-
+            
             Message message = new Message("Hello AMQP");
-           
-            SenderLink sender = new SenderLink(session, "sender-link", "q1");
-            await sender.SendAsync(message);
 
-            ReceiverLink receiver = new ReceiverLink(session, "receiver-link", "q1");
+            Target target = new Target
+            {
+                Address = "q1",
+                Capabilities = new Symbol[] { new Symbol("queue") }
+            };
+
+            SenderLink sender = new SenderLink(session, "sender-link", target, null);
+            sender.Send(message);
+
+            Source source = new Source
+            {
+                Address = "q1",
+                Capabilities = new Symbol[] { new Symbol("queue") }
+            };
+
+            ReceiverLink receiver = new ReceiverLink(session, "receiver-link", source, null);
             message = await receiver.ReceiveAsync();
             receiver.Accept(message);
 

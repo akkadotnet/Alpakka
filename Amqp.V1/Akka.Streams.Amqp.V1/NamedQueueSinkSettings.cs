@@ -1,10 +1,11 @@
 ﻿using Akka.IO;
 using Amqp;
 using Akka.Serialization;
+using Amqp.Framing;
+using Amqp.Types;
 
 namespace Akka.Streams.Amqp.V1
 {
-
     public class NamedQueueSinkSettings<T> : IAmpqSinkSettings<T>
     {
         private readonly Session session;
@@ -29,6 +30,10 @@ namespace Akka.Streams.Amqp.V1
             return serializer.ToBinary(obj);
         }
 
-        public SenderLink GetSenderLink() => new SenderLink(session, linkName, queueName);
+        public SenderLink GetSenderLink() => new SenderLink(session, linkName, new Target
+        {
+            Address = queueName,
+            Capabilities = new Symbol[] { new Symbol("queue") }
+        }, null);
     }
 }

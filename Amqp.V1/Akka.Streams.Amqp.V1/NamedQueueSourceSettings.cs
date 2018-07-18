@@ -1,5 +1,7 @@
 ﻿using Akka.Serialization;
 using Amqp;
+using Amqp.Framing;
+using Amqp.Types;
 
 namespace Akka.Streams.Amqp.V1
 {
@@ -31,6 +33,10 @@ namespace Akka.Streams.Amqp.V1
         }
 
         public int Credit { get; }
-        public ReceiverLink GetReceiverLink() => new ReceiverLink(session, linkName, queueName);
+        public ReceiverLink GetReceiverLink() => new ReceiverLink(session, linkName, new Source
+        {
+            Address = queueName,
+            Capabilities = new Symbol[] { new Symbol("queue") }
+        }, null);
     }
 }

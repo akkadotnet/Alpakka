@@ -26,7 +26,7 @@ namespace Akka.Streams.Amqp.V1.Tests
             };
 
             SenderLink sender = new SenderLink(session, "sender-link", target, null);
-            sender.Send(message);
+            await sender.SendAsync(message);
 
             Source source = new Source
             {

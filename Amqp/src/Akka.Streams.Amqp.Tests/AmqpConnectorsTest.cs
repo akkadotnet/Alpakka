@@ -595,5 +595,28 @@ namespace Akka.Streams.Amqp.Tests
             result.Select(x => x.Envelope.RoutingKey).Should().Equal(routingKeys);
             result.Select(x => x.Bytes.ToString()).Should().Equal(input);
         }
+
+        [Fact]
+        public void Declare_connection_that_does_not_require_server_acks()
+        {
+            var connectionSettings = AmqpConnectionDetails.Create("localhost", 5672);
+
+            var queueName = "amqp-conn-it-spec-fire-and-forget-" + Environment.TickCount;
+            var queueDeclaration = QueueDeclaration.Create(queueName);
+
+            var amqpSink = AmqpSink.CreateSimple(AmqpSinkSettings.Create(connectionSettings)
+                .WithRoutingKey(queueName)
+                .WithDeclarations(queueDeclaration));
+
+            var amqpSource = AmqpSource.CommittableSource(NamedQueueSourceSettings.Create(connectionSettings, queueName)
+                .WithAckRequired(false)
+                .WithDeclarations(queueDeclaration), bufferSize: 10);
+
+            var input = new[] {"one", "two", "three", "four", "five"};
+            Source.From(input).Select(ByteString.FromString).RunWith(amqpSink, _mat).Wait();
+
+            var result = amqpSource.Take(input.Length).RunWith(Sink.Seq<CommittableIncomingMessage>(), _mat).Result;
+            result.Select(x => x.Message.Bytes.ToString(Encoding.UTF8)).Should().Equal(input);
+        }
     }
 }

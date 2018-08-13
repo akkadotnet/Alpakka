@@ -43,8 +43,6 @@ namespace Akka.Streams.Kafka.Stages
         private Action<ConsumerRecord<K, V>> _messagesReceived;
         private Action<IEnumerable<TopicPartition>> _partitionsAssigned;
         private Action<IEnumerable<TopicPartition>> _partitionsRevoked;
-        private Action<TopicPartitionOffset> _partitionEof;
-
         private readonly Decider _decider;
 
         private const string TimerKey = "PollTimer";
@@ -96,14 +94,23 @@ namespace Akka.Streams.Kafka.Stages
             _consumer.OnError += HandleOnError;
             _consumer.OnPartitionsAssigned += HandleOnPartitionsAssigned;
             _consumer.OnPartitionsRevoked += HandleOnPartitionsRevoked;
-            _consumer.OnPartitionEOF += HandleOnPartitionEOF;
 
-            _subscription.AssignConsumer(_consumer);
+            switch (_subscription)
+            {
+                case TopicSubscription ts:
+                    _consumer.Subscribe(ts.Topics);
+                    break;
+                case Assignment a:
+                    _consumer.Assign(a.TopicPartitions);
+                    break;
+                case AssignmentWithOffset awo:
+                    _consumer.Assign(awo.TopicPartitions);
+                    break;
+            }
 
             _messagesReceived = GetAsyncCallback<ConsumerRecord<K, V>>(MessagesReceived);
             _partitionsAssigned = GetAsyncCallback<IEnumerable<TopicPartition>>(PartitionsAssigned);
             _partitionsRevoked = GetAsyncCallback<IEnumerable<TopicPartition>>(PartitionsRevoked);
-            _partitionEof = GetAsyncCallback<TopicPartitionOffset>(PartitionEOF);
             ScheduleRepeatedly(TimerKey, _settings.PollInterval);
         }
 
@@ -114,7 +121,6 @@ namespace Akka.Streams.Kafka.Stages
             _consumer.OnError -= HandleOnError;
             _consumer.OnPartitionsAssigned -= HandleOnPartitionsAssigned;
             _consumer.OnPartitionsRevoked -= HandleOnPartitionsRevoked;
-            _consumer.OnPartitionEOF -= HandleOnPartitionEOF;
 
             Log.Debug($"Consumer stopped: {_consumer.Name}");
             _consumer.Dispose();
@@ -169,11 +175,6 @@ namespace Akka.Streams.Kafka.Stages
             _partitionsRevoked(list);
         }
 
-        private void HandleOnPartitionEOF(object sender, TopicPartitionOffset tpo)
-        {
-            _partitionEof(tpo);
-        }
-
         //
         // Async callbacks
         //
@@ -199,12 +200,6 @@ namespace Akka.Streams.Kafka.Stages
             Log.Debug($"Partitions were revoked: {_consumer.Name}");
             _consumer.Unassign();
             _assignedPartitions = null;
-        }
-
-        private void PartitionEOF(TopicPartitionOffset obj)
-        {
-            Log.Debug($"Partition EOF triggered: {_consumer.Name}");
-            _subscription.InvokeTopicPartitionEofReached(obj);
         }
 
         private void PullQueue()

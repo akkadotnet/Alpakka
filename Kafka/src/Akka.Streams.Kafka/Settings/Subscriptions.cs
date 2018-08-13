@@ -32,9 +32,7 @@ namespace Akka.Streams.Kafka.Settings
         }
 
         public IImmutableSet<string> Topics { get; }
-
         
-
         public override void AssignConsumer<K, V>(IConsumer<K, V> consumer)
         {
             consumer.Subscribe(Topics);

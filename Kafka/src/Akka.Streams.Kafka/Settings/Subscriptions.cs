@@ -3,28 +3,11 @@ using Confluent.Kafka;
 
 namespace Akka.Streams.Kafka.Settings
 {
-    public delegate void TopicPartitionEofReachedEventHandler(TopicPartitionOffset topicPartitionOffset);
+    public interface ISubscription { }
+    public interface IManualSubscription : ISubscription { }
+    public interface IAutoSubscription : ISubscription { }
 
-    public interface ISubscription {
-        void AssignConsumer<K, V>(IConsumer<K, V> consumer);
-
-        void InvokeTopicPartitionEofReached(TopicPartitionOffset topicPartitionOffset);
-        event TopicPartitionEofReachedEventHandler TopicPartitionEofReached;
-    }
-
-    public abstract class Subscription : ISubscription
-    {
-        public event TopicPartitionEofReachedEventHandler TopicPartitionEofReached;
-
-        public abstract void AssignConsumer<K, V>(IConsumer<K, V> consumer);
-
-        public void InvokeTopicPartitionEofReached(TopicPartitionOffset topicPartitionOffset)
-        {
-            TopicPartitionEofReached?.Invoke(topicPartitionOffset);
-        }
-    }
-
-    internal sealed class TopicSubscription : Subscription
+    internal sealed class TopicSubscription : IAutoSubscription
     {
         public TopicSubscription(IImmutableSet<string> topics)
         {
@@ -32,16 +15,9 @@ namespace Akka.Streams.Kafka.Settings
         }
 
         public IImmutableSet<string> Topics { get; }
-
-        
-
-        public override void AssignConsumer<K, V>(IConsumer<K, V> consumer)
-        {
-            consumer.Subscribe(Topics);
-        }
     }
 
-    internal sealed class Assignment : Subscription
+    internal sealed class Assignment : IManualSubscription
     {
         public Assignment(IImmutableSet<TopicPartition> topicPartitions)
         {
@@ -49,14 +25,9 @@ namespace Akka.Streams.Kafka.Settings
         }
 
         public IImmutableSet<TopicPartition> TopicPartitions { get; }
-
-        public override void AssignConsumer<K, V>(IConsumer<K, V> consumer)
-        {
-            consumer.Assign(TopicPartitions);
-        }
     }
 
-    internal sealed class AssignmentWithOffset : Subscription
+    internal sealed class AssignmentWithOffset : IManualSubscription
     {
         public AssignmentWithOffset(IImmutableSet<TopicPartitionOffset> topicPartitions)
         {
@@ -64,22 +35,17 @@ namespace Akka.Streams.Kafka.Settings
         }
 
         public IImmutableSet<TopicPartitionOffset> TopicPartitions { get; }
-
-        public override void AssignConsumer<K, V>(IConsumer<K, V> consumer)
-        {
-            consumer.Assign(TopicPartitions);
-        }
     }
 
     public static class Subscriptions
     {
-        public static ISubscription Topics(params string[] topics) =>
+        public static IAutoSubscription Topics(params string[] topics) =>
             new TopicSubscription(topics.ToImmutableHashSet());
 
-        public static ISubscription Assignment(params TopicPartition[] topicPartitions) =>
+        public static IManualSubscription Assignment(params TopicPartition[] topicPartitions) =>
             new Assignment(topicPartitions.ToImmutableHashSet());
 
-        public static ISubscription AssignmentWithOffset(params TopicPartitionOffset[] topicPartitions) =>
+        public static IManualSubscription AssignmentWithOffset(params TopicPartitionOffset[] topicPartitions) =>
             new AssignmentWithOffset(topicPartitions.ToImmutableHashSet());
     }
 }

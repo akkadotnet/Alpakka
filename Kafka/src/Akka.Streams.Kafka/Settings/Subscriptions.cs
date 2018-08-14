@@ -3,25 +3,13 @@ using Confluent.Kafka;
 
 namespace Akka.Streams.Kafka.Settings
 {
-    public delegate void TopicPartitionEofReachedEventHandler(TopicPartitionOffset topicPartitionOffset);
-
     public interface ISubscription {
         void AssignConsumer<K, V>(IConsumer<K, V> consumer);
-
-        void InvokeTopicPartitionEofReached(TopicPartitionOffset topicPartitionOffset);
-        event TopicPartitionEofReachedEventHandler TopicPartitionEofReached;
     }
 
     public abstract class Subscription : ISubscription
     {
-        public event TopicPartitionEofReachedEventHandler TopicPartitionEofReached;
-
         public abstract void AssignConsumer<K, V>(IConsumer<K, V> consumer);
-
-        public void InvokeTopicPartitionEofReached(TopicPartitionOffset topicPartitionOffset)
-        {
-            TopicPartitionEofReached?.Invoke(topicPartitionOffset);
-        }
     }
 
     internal sealed class TopicSubscription : Subscription

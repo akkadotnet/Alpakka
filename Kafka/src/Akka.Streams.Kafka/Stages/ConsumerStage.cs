@@ -7,6 +7,7 @@ using Akka.Streams.Stage;
 using Confluent.Kafka;
 using Akka.Streams.Supervision;
 using System.Runtime.Serialization;
+using System.Text;
 
 namespace Akka.Streams.Kafka.Stages
 {
@@ -52,6 +53,7 @@ namespace Akka.Streams.Kafka.Stages
         private readonly Queue<ConsumerRecord<K, V>> _buffer;
         private IEnumerable<TopicPartition> _assignedPartitions;
         private volatile bool _isPaused;
+        private byte[] _eofMessageType;
         private readonly TaskCompletionSource<NotUsed> _completion;
 
         public KafkaSourceStageLogic(KafkaSourceStage<K, V> stage, Attributes attributes, TaskCompletionSource<NotUsed> completion) : base(stage.Shape)
@@ -61,27 +63,28 @@ namespace Akka.Streams.Kafka.Stages
             _out = stage.Out;
             _completion = completion;
             _buffer = new Queue<ConsumerRecord<K, V>>(stage.Settings.BufferSize);
+            _eofMessageType = Encoding.UTF8.GetBytes("TopicPartition EOF Reached");
 
             var supervisionStrategy = attributes.GetAttribute<ActorAttributes.SupervisionStrategy>(null);
             _decider = supervisionStrategy != null ? supervisionStrategy.Decider : Deciders.ResumingDecider;
 
-            SetHandler(_out, onPull:() =>
-            {
-                if (_buffer.Count > 0)
-                {
-                    Push(_out, _buffer.Dequeue());
-                }
-                else
-                {
-                    if (_isPaused)
-                    {
-                        _consumer.Resume(_assignedPartitions);
-                        _isPaused = false;
-                        Log.Debug("Polling resumed, buffer is empty");
-                    }
-                    PullQueue();
-                }
-            });
+            SetHandler(_out, onPull: () =>
+             {
+                 if (_buffer.Count > 0)
+                 {
+                     Push(_out, _buffer.Dequeue());
+                 }
+                 else
+                 {
+                     if (_isPaused)
+                     {
+                         _consumer.Resume(_assignedPartitions);
+                         _isPaused = false;
+                         Log.Debug("Polling resumed, buffer is empty");
+                     }
+                     PullQueue();
+                 }
+             });
         }
 
         public override void PreStart()
@@ -96,7 +99,10 @@ namespace Akka.Streams.Kafka.Stages
             _consumer.OnError += HandleOnError;
             _consumer.OnPartitionsAssigned += HandleOnPartitionsAssigned;
             _consumer.OnPartitionsRevoked += HandleOnPartitionsRevoked;
-            _consumer.OnPartitionEOF += HandleOnPartitionEOF;
+            if (_settings.AddEofMessage)
+            {
+                _consumer.OnPartitionEOF += HandleOnPartitionEOF;
+            }
 
             _subscription.AssignConsumer(_consumer);
 
@@ -114,7 +120,10 @@ namespace Akka.Streams.Kafka.Stages
             _consumer.OnError -= HandleOnError;
             _consumer.OnPartitionsAssigned -= HandleOnPartitionsAssigned;
             _consumer.OnPartitionsRevoked -= HandleOnPartitionsRevoked;
-            _consumer.OnPartitionEOF -= HandleOnPartitionEOF;
+            if (_settings.AddEofMessage)
+            {
+                _consumer.OnPartitionEOF -= HandleOnPartitionEOF;
+            }
 
             Log.Debug($"Consumer stopped: {_consumer.Name}");
             _consumer.Dispose();
@@ -204,7 +213,20 @@ namespace Akka.Streams.Kafka.Stages
         private void PartitionEOF(TopicPartitionOffset obj)
         {
             Log.Debug($"Partition EOF triggered: {_consumer.Name}");
-            _subscription.InvokeTopicPartitionEofReached(obj);
+            if (_settings.AddEofMessage)
+            {
+                var msg = new ConsumerRecord<K, V>
+                {
+                    Topic = obj.Topic,
+                    Partition = obj.Partition,
+                    Offset = obj.Offset,
+                    Headers = new Headers
+                    {
+                        new Header("MessageType", _eofMessageType)
+                    }
+                };
+                MessagesReceived(msg);
+            }
         }
 
         private void PullQueue()

@@ -80,8 +80,7 @@ namespace Akka.Streams.Kafka.Settings
             int? bufferSize = null,
             string dispatcherId = null,
             IImmutableDictionary<string, object> properties = null,
-            bool? addEofMessage = null,
-            bool? completeSourceAfterAllEofs = null) =>
+            bool? addEofMessage = null) =>
             new ConsumerSettings<TKey, TValue>(
                 keyDeserializer: keyDeserializer ?? this.KeyDeserializer,
                 valueDeserializer: valueDeserializer ?? this.ValueDeserializer,

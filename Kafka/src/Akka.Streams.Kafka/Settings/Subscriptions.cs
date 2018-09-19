@@ -1,29 +1,58 @@
+using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
 using Confluent.Kafka;
 
 namespace Akka.Streams.Kafka.Settings
 {
     public interface ISubscription {
         void AssignConsumer<K, V>(IConsumer<K, V> consumer);
+        IEnumerable<TopicPartition> GetTopicPartitions();
     }
 
     public abstract class Subscription : ISubscription
     {
         public abstract void AssignConsumer<K, V>(IConsumer<K, V> consumer);
+        public abstract IEnumerable<TopicPartition> GetTopicPartitions();
     }
 
     internal sealed class TopicSubscription : Subscription
     {
-        public TopicSubscription(IImmutableSet<string> topics)
+        public TopicSubscription(IImmutableSet<string> topics, Dictionary<string, object> kafkaConfiguration = null)
         {
             Topics = topics;
+            this.kafkaConfiguration = kafkaConfiguration;
         }
 
         public IImmutableSet<string> Topics { get; }
-        
+
+        private Dictionary<string, object> kafkaConfiguration;
+
         public override void AssignConsumer<K, V>(IConsumer<K, V> consumer)
         {
             consumer.Subscribe(Topics);
+        }
+
+        public override IEnumerable<TopicPartition> GetTopicPartitions()
+        {
+            if (kafkaConfiguration != null)
+            {
+                var adminClient = new AdminClient(kafkaConfiguration);
+                var metadata = adminClient.GetMetadata(true, TimeSpan.FromSeconds(3));
+                if (metadata != null)
+                {
+                    var d = metadata.Topics.ToDictionary(x => x.Topic);
+                    foreach (var topic in Topics.Where(t => d.ContainsKey(t)))
+                    {
+                        var dt = d[topic];
+                        foreach (var partition in dt.Partitions)
+                        {
+                            yield return new TopicPartition(topic, partition.PartitionId);
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -40,6 +69,11 @@ namespace Akka.Streams.Kafka.Settings
         {
             consumer.Assign(TopicPartitions);
         }
+
+        public override IEnumerable<TopicPartition> GetTopicPartitions()
+        {
+            return TopicPartitions;
+        }
     }
 
     internal sealed class AssignmentWithOffset : Subscription
@@ -55,12 +89,20 @@ namespace Akka.Streams.Kafka.Settings
         {
             consumer.Assign(TopicPartitions);
         }
+
+        public override IEnumerable<TopicPartition> GetTopicPartitions()
+        {
+            return TopicPartitions.Select(x => x.TopicPartition);
+        }
     }
 
     public static class Subscriptions
     {
         public static ISubscription Topics(params string[] topics) =>
             new TopicSubscription(topics.ToImmutableHashSet());
+
+        public static ISubscription Topics(Dictionary<string, object> kafkaConfiguration, params string[] topics) =>
+            new TopicSubscription(topics.ToImmutableHashSet(), kafkaConfiguration);
 
         public static ISubscription Assignment(params TopicPartition[] topicPartitions) =>
             new Assignment(topicPartitions.ToImmutableHashSet());

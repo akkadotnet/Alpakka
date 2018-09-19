@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using Akka.Streams.Kafka.Dsl;
 using Confluent.Kafka;
 
@@ -10,15 +11,17 @@ namespace Akka.Streams.Kafka.Messages
     /// </summary>
     public sealed class CommittableMessage<K, V>
     {
-        public CommittableMessage(ConsumerRecord<K, V> record, CommitableOffset commitableOffset)
+        public CommittableMessage(ConsumerRecord<K, V> record, CommitableOffset commitableOffset, MessageType messageType)
         {
             Record = record;
             CommitableOffset = commitableOffset;
+            MessageType = messageType;
         }
-
+        
         public ConsumerRecord<K, V> Record { get; }
 
         public CommitableOffset CommitableOffset { get; }
+        public MessageType MessageType { get; }        
     }
 
     /// <summary>

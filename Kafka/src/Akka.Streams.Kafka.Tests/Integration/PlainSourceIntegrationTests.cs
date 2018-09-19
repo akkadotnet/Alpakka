@@ -20,7 +20,7 @@ namespace Akka.Streams.Kafka.Tests.Integration
 {
     public class PlainSourceIntegrationTests : Akka.TestKit.Xunit2.TestKit
     {
-        private const string KafkaUrl = "localhost:29092";
+        private const string KafkaUrl = "localhost:9092";
 
         private const string InitialMsg = "initial msg in topic, required to create the topic before any consumer subscribes to it";
 
@@ -77,8 +77,8 @@ namespace Akka.Streams.Kafka.Tests.Integration
         {
             return KafkaConsumer
                 .PlainSource(consumerSettings, sub)
-                .Where(c => !c.Value.Equals(InitialMsg))
-                .Select(c => c.Value)
+                .Where(c => !c.Record.Value.Equals(InitialMsg))
+                .Select(c => c.Record.Value)
                 .RunWith(this.SinkProbe<string>(), _materializer);
         }
 
@@ -118,7 +118,8 @@ namespace Akka.Streams.Kafka.Tests.Integration
 
             var consumerSettings = CreateConsumerSettings(group1);
 
-            var probe = CreateProbe(consumerSettings, topic1, Subscriptions.AssignmentWithOffset(new TopicPartitionOffset(topic1, 0, new Offset(offset))));
+            //0 based offsets, so if there are supposed to be 100, and read from offset 50, you would end up with 49
+            var probe = CreateProbe(consumerSettings, topic1, Subscriptions.AssignmentWithOffset(new TopicPartitionOffset(topic1, 0, new Offset(offset) -1 )));
 
             probe.Request(elementsCount);
             foreach (var i in Enumerable.Range(offset, elementsCount - offset).Select(c => c.ToString()))
@@ -182,7 +183,7 @@ namespace Akka.Streams.Kafka.Tests.Integration
             var probe = KafkaConsumer
                 .PlainSource(settings, Subscriptions.Assignment(new TopicPartition(topic1, 0)))
                 .WithAttributes(ActorAttributes.CreateSupervisionStrategy(Deciders.StoppingDecider))
-                .Select(c => c.Value)
+                .Select(c => c.Record.Value)
                 .RunWith(this.SinkProbe<int>(), _materializer);
 
             var error = probe.Request(elementsCount).ExpectEvent(TimeSpan.FromSeconds(10));
@@ -212,7 +213,7 @@ namespace Akka.Streams.Kafka.Tests.Integration
             var probe = KafkaConsumer
                 .PlainSource(settings, Subscriptions.Assignment(new TopicPartition(topic1, 0)))
                 .WithAttributes(ActorAttributes.CreateSupervisionStrategy(Decider))
-                .Select(c => c.Value)
+                .Select(c => c.Record.Value)
                 .RunWith(this.SinkProbe<int>(), _materializer);
 
             probe.Request(elementsCount);

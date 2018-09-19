@@ -31,7 +31,7 @@ namespace SimpleConsumer
             KafkaConsumer.PlainSource(consumerSettings, subscription)
                 .RunForeach(result =>
                 {
-                    Console.WriteLine($"Consumer: {result.Topic}/{result.Partition} {result.Offset}: {result.Value}");
+                    Console.WriteLine($"Consumer: {result.Record.Topic}/{result.Record.Partition} {result.Record.Offset}: {result.Record.Value}");
                 }, materializer);
 
 

@@ -26,7 +26,7 @@ namespace Akka.Streams.Kafka.Settings
                 bufferSize: config.GetInt("buffer-size", 50),
                 dispatcherId: config.GetString("use-dispatcher", "akka.kafka.default-dispatcher"),
                 properties: ImmutableDictionary<string, object>.Empty,
-                addEofMessage: config.GetBoolean("add-eof-message"));
+                addEofMessage: config.GetBoolean("add-eof-message", false));
         }
 
         public object this[string propertyKey] => this.Properties.GetValueOrDefault(propertyKey);

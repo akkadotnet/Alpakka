@@ -22,7 +22,7 @@ namespace Akka.Streams.Kafka.Dsl
         /// possible, but when it is, it will make the consumption fully atomic and give "exactly once" semantics that are
         /// stronger than the "at-least once" semantics you get with Kafka's offset commit functionality.
         /// </summary>
-        public static Source<ConsumerRecord<K, V>, Task> PlainSource<K, V>(ConsumerSettings<K, V> settings, ISubscription subscription)
+        public static Source<ConsumerMessage<K, V>, Task> PlainSource<K, V>(ConsumerSettings<K, V> settings, ISubscription subscription)
         {
             return Source.FromGraph(new KafkaSourceStage<K, V>(settings, subscription));
         }

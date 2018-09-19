@@ -53,7 +53,7 @@ namespace Akka.Streams.Kafka.Stages
                  {
                      if (_isPaused)
                      {
-                         _consumer.Resume(_assignedPartitions);
+                         _consumer.Resume(_assignedPartitions ?? _consumer.Assignment);
                          _isPaused = false;
                          Log.Debug("Polling resumed, buffer is empty");
                      }
@@ -212,7 +212,7 @@ namespace Akka.Streams.Kafka.Stages
             if (!_isPaused && _buffer.Count > _settings.BufferSize)
             {
                 Log.Debug($"Polling paused, buffer is full");
-                _consumer.Pause(_assignedPartitions);
+                _consumer.Pause(_assignedPartitions ?? _consumer.Assignment);
                 _isPaused = true;
             }
         }

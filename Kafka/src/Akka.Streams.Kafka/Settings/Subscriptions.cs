@@ -6,7 +6,8 @@ using Confluent.Kafka;
 
 namespace Akka.Streams.Kafka.Settings
 {
-    public interface ISubscription {
+    public interface ISubscription
+    {
         void AssignConsumer<K, V>(IConsumer<K, V> consumer);
         IEnumerable<TopicPartition> GetTopicPartitions();
     }

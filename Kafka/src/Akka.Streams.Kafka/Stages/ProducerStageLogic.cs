@@ -30,7 +30,7 @@ namespace Akka.Streams.Kafka.Stages
                     var msg = Grab(_stage.In);
                     var result = new TaskCompletionSource<DeliveryReport<K, V>>();
 
-                    Log.Info("Producing: " + msg.TopicPartition);
+                    Log.Debug("Producing: " + msg.TopicPartition);
                     _producer.Produce(msg.TopicPartition, msg.Message, report =>
                     {
                         if (!report.Error.HasError)

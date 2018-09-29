@@ -6,7 +6,7 @@ using Confluent.Kafka;
 
 namespace Akka.Streams.Kafka.Stages
 {
-    internal sealed class ProducerStage<K, V> : GraphStage<FlowShape<MessageAndMeta<K, V>, Task<DeliveryReport<K, V>>>>
+    internal sealed class ProducerStage<K, V> : GraphStageWithMaterializedValue<FlowShape<MessageAndMeta<K, V>, Task<DeliveryReport<K, V>>>, Task>
     {
         public ProducerSettings<K, V> Settings { get; }
         public bool CloseProducerOnStop { get; }
@@ -22,14 +22,16 @@ namespace Akka.Streams.Kafka.Stages
             Settings = settings;
             CloseProducerOnStop = closeProducerOnStop;
             ProducerProvider = producerProvider;
+
             Shape = new FlowShape<MessageAndMeta<K, V>, Task<DeliveryReport<K, V>>>(In, Out);
         }
 
         public override FlowShape<MessageAndMeta<K, V>, Task<DeliveryReport<K, V>>> Shape { get; }
 
-        protected override GraphStageLogic CreateLogic(Attributes inheritedAttributes)
+        public override ILogicAndMaterializedValue<Task> CreateLogicAndMaterializedValue(Attributes inheritedAttributes)
         {
-            return new ProducerStageLogic<K, V>(this, inheritedAttributes);
+            var completion = new TaskCompletionSource<NotUsed>();
+            return new LogicAndMaterializedValue<Task>(new ProducerStageLogic<K, V>(this, inheritedAttributes, completion), completion.Task);
         }
     }
 }

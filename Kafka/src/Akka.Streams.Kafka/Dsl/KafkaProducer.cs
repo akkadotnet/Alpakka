@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Threading.Tasks;
 using Akka.Streams.Dsl;
 using Akka.Streams.Kafka.Messages;
 using Akka.Streams.Kafka.Settings;
@@ -17,10 +18,7 @@ namespace Akka.Streams.Kafka.Dsl
         /// </summary>
         public static Sink<MessageAndMeta<TKey, TValue>, Task> PlainSink<TKey, TValue>(ProducerSettings<TKey, TValue> settings)
         {
-            return Flow
-                .Create<MessageAndMeta<TKey, TValue>>()
-                .Via(PlainFlow(settings))
-                .ToMaterialized(Sink.Ignore<DeliveryReport<TKey, TValue>>(), Keep.Right);
+            return PlainFlow(settings).ToMaterialized(Sink.Ignore<DeliveryReport<TKey, TValue>>(), Keep.Left);
         }
 
         /// <summary>
@@ -28,17 +26,14 @@ namespace Akka.Streams.Kafka.Dsl
         /// </summary>
         public static Sink<MessageAndMeta<TKey, TValue>, Task> PlainSink<TKey, TValue>(ProducerSettings<TKey, TValue> settings, IProducer<TKey, TValue> producer)
         {
-            return Flow
-                .Create<MessageAndMeta<TKey, TValue>>()
-                .Via(PlainFlow(settings, producer))
-                .ToMaterialized(Sink.Ignore<DeliveryReport<TKey, TValue>>(), Keep.Right);
+            return PlainFlow(settings, producer).ToMaterialized(Sink.Ignore<DeliveryReport<TKey, TValue>>(), Keep.Left);
         }
 
         /// <summary>
         /// Publish records to Kafka topics and then continue the flow. Possibility to pass through a message, which
         /// can for example be a <see cref="CommittedOffsets"/> that can be committed later in the flow.
         /// </summary>
-        public static Flow<MessageAndMeta<TKey, TValue>, DeliveryReport<TKey, TValue>, NotUsed> PlainFlow<TKey, TValue>(ProducerSettings<TKey, TValue> settings)
+        public static Flow<MessageAndMeta<TKey, TValue>, DeliveryReport<TKey, TValue>, Task> PlainFlow<TKey, TValue>(ProducerSettings<TKey, TValue> settings)
         {
             var flow = Flow.FromGraph(new ProducerStage<TKey, TValue>(
                     settings,
@@ -55,7 +50,7 @@ namespace Akka.Streams.Kafka.Dsl
         /// Publish records to Kafka topics and then continue the flow. Possibility to pass through a message, which
         /// can for example be a <see cref="CommitableOffset"/> that can be committed later in the flow.
         /// </summary>
-        public static Flow<MessageAndMeta<TKey, TValue>, DeliveryReport<TKey, TValue>, NotUsed> PlainFlow<TKey, TValue>(ProducerSettings<TKey, TValue> settings, IProducer<TKey, TValue> producer)
+        public static Flow<MessageAndMeta<TKey, TValue>, DeliveryReport<TKey, TValue>, Task> PlainFlow<TKey, TValue>(ProducerSettings<TKey, TValue> settings, IProducer<TKey, TValue> producer)
         {
             var flow = Flow.FromGraph(new ProducerStage<TKey, TValue>(
                     settings,

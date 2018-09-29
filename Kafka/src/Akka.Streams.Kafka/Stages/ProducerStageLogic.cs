@@ -12,22 +12,25 @@ namespace Akka.Streams.Kafka.Stages
         private readonly ProducerStage<K, V> _stage;
         private IProducer<K, V> _producer;
         private readonly TaskCompletionSource<NotUsed> _completionState = new TaskCompletionSource<NotUsed>();
+        private readonly TaskCompletionSource<NotUsed> _stageCompleted;
         private volatile bool _inIsClosed;
         private readonly AtomicCounter _awaitingConfirmation = new AtomicCounter(0);
 
-        public ProducerStageLogic(ProducerStage<K, V> stage, Attributes attributes) : base(stage.Shape)
+        public ProducerStageLogic(ProducerStage<K, V> stage, Attributes attributes, TaskCompletionSource<NotUsed> completion) : base(stage.Shape)
         {
+            _stageCompleted = completion;
             _stage = stage;
 
             var supervisionStrategy = attributes.GetAttribute<ActorAttributes.SupervisionStrategy>(null);
             var decider = supervisionStrategy != null ? supervisionStrategy.Decider : Deciders.ResumingDecider;
 
-            SetHandler(_stage.In, 
+            SetHandler(_stage.In,
                 onPush: () =>
                 {
                     var msg = Grab(_stage.In);
                     var result = new TaskCompletionSource<DeliveryReport<K, V>>();
 
+                    Log.Info("Producing: " + msg.TopicPartition);
                     _producer.Produce(msg.TopicPartition, msg.Message, report =>
                     {
                         if (!report.Error.HasError)
@@ -99,12 +102,17 @@ namespace Akka.Streams.Kafka.Stages
                 Log.Debug($"Producer closed: {_producer.Name}");
             }
 
+            _stageCompleted.SetResult(NotUsed.Instance);
             base.PostStop();
         }
 
         private void OnProducerError(object sender, Error error)
         {
-            Log.Error(error.Reason);
+            Log.Error($"{error.Code}: {error.Reason}");
+            //ANDSTE: I am in doubt; timeout exceptions are not reasons to fail the stage, as a closed connection
+            //will stil work to produce messages on.
+            //no need to fail stage
+            //return;
 
             if (!KafkaExtensions.IsBrokerErrorRetriable(error) && !KafkaExtensions.IsLocalErrorRetriable(error))
             {
@@ -115,6 +123,7 @@ namespace Akka.Streams.Kafka.Stages
 
         public void CheckForCompletion()
         {
+            Log.Debug("Checking completion");
             if (IsClosed(_stage.In) && _awaitingConfirmation.Current == 0)
             {
                 var completionTask = _completionState.Task;

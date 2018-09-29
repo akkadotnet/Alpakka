@@ -11,14 +11,14 @@ namespace Akka.Streams.Kafka.Stages
     {
         private readonly ProducerStage<K, V> _stage;
         private IProducer<K, V> _producer;
-        private readonly TaskCompletionSource<NotUsed> _completionState = new TaskCompletionSource<NotUsed>();
-        private readonly TaskCompletionSource<NotUsed> _stageCompleted;
+        private readonly TaskCompletionSource<NotUsed> _completionState;
+        
         private volatile bool _inIsClosed;
         private readonly AtomicCounter _awaitingConfirmation = new AtomicCounter(0);
 
         public ProducerStageLogic(ProducerStage<K, V> stage, Attributes attributes, TaskCompletionSource<NotUsed> completion) : base(stage.Shape)
         {
-            _stageCompleted = completion;
+            _completionState = completion;
             _stage = stage;
 
             var supervisionStrategy = attributes.GetAttribute<ActorAttributes.SupervisionStrategy>(null);
@@ -101,8 +101,7 @@ namespace Akka.Streams.Kafka.Stages
                 _producer.Dispose();
                 Log.Debug($"Producer closed: {_producer.Name}");
             }
-
-            _stageCompleted.SetResult(NotUsed.Instance);
+            
             base.PostStop();
         }
 
@@ -123,7 +122,6 @@ namespace Akka.Streams.Kafka.Stages
 
         public void CheckForCompletion()
         {
-            Log.Debug("Checking completion");
             if (IsClosed(_stage.In) && _awaitingConfirmation.Current == 0)
             {
                 var completionTask = _completionState.Task;

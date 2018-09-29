@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Akka.Streams.Kafka.Messages;
@@ -7,7 +7,6 @@ using Akka.Streams.Stage;
 using Confluent.Kafka;
 using Akka.Streams.Supervision;
 using System.Runtime.Serialization;
-using System.Text;
 
 namespace Akka.Streams.Kafka.Stages
 {
@@ -43,23 +42,25 @@ namespace Akka.Streams.Kafka.Stages
             var supervisionStrategy = attributes.GetAttribute<ActorAttributes.SupervisionStrategy>(null);
             _decider = supervisionStrategy != null ? supervisionStrategy.Decider : Deciders.ResumingDecider;
 
-            SetHandler(_out, onPull: () =>
-             {
-                 if (_buffer.Count > 0)
-                 {
-                     Push(_out, _buffer.Dequeue());
-                 }
-                 else
-                 {
-                     if (_isPaused)
-                     {
-                         _consumer.Resume(_assignedPartitions ?? _consumer.Assignment);
-                         _isPaused = false;
-                         Log.Debug("Polling resumed, buffer is empty");
-                     }
-                     PullQueue();
-                 }
-             });
+            SetHandler(
+                _out,
+                onPull: () =>
+                {
+                    if (_buffer.Count > 0)
+                    {
+                        Push(_out, _buffer.Dequeue());
+                    }
+                    else
+                    {
+                        if (_isPaused)
+                        {
+                            _consumer.Resume(_assignedPartitions ?? _consumer.Assignment);
+                            _isPaused = false;
+                            Log.Debug("Polling resumed, buffer is empty");
+                        }
+                        PullQueue();
+                    }
+                });
         }
 
         public override void PreStart()
@@ -102,6 +103,7 @@ namespace Akka.Streams.Kafka.Stages
 
             Log.Debug($"Consumer stopped: {_consumer.Name}");
             _consumer.Dispose();
+            _completion.SetResult(NotUsed.Instance);
 
             base.PostStop();
         }

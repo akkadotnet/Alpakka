@@ -137,6 +137,10 @@ namespace Akka.Streams.Kafka.Stages
         private void HandleOnError(object sender, Error error)
         {
             Log.Error(error.Reason);
+            //ANDSTE: I am in doubt; timeout exceptions are not reasons to fail the stage, as a closed connection
+            //will stil work to produce messages on.
+            //no need to fail stage
+            //return;
 
             if (!KafkaExtensions.IsBrokerErrorRetriable(error) && !KafkaExtensions.IsLocalErrorRetriable(error))
             {

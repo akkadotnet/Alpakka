@@ -75,7 +75,7 @@ namespace Akka.Streams.Amqp
                         var elem = Grab(_stage.In);
                         var props = elem.Properties ?? new BasicProperties();
                         props.ReplyTo = _queueName;
-                        Channel.BasicPublish(exchange, routingKey, elem.Mandatory, props, elem.Bytes.ToArray());
+                        Channel.BasicPublish(exchange, elem.RoutingKey ?? routingKey, elem.Mandatory, props, elem.Bytes.ToArray());
 
                         int ExpectedResponses()
                         {

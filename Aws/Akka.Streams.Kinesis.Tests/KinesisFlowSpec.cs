@@ -16,6 +16,8 @@ using System.Linq;
 using System.Net;
 using System.Text;
 using Akka.Event;
+using Amazon;
+using Amazon.Runtime;
 using FluentAssertions;
 using FluentAssertions.Extensions;
 using Xunit;

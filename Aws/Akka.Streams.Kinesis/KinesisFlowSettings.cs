@@ -11,18 +11,37 @@ using System;
 
 namespace Akka.Streams.Kinesis
 {
+    /// <summary>
+    /// Type of a retry backoff used by <see cref="KinesisFlow"/>
+    /// when pushing the request to Amazon Kinesis streams.
+    /// </summary>
     public enum RetryBackoffStrategy
     {
+        /// <summary>
+        /// A backoff delay that will be increasing <see cref="KinesisFlowSettings.RetryInitialTimeout"/>
+        /// by factor of two, eg. 500ms, 1s, 2s, 4s, 8s etc.
+        /// </summary>
         Exponential,
+
+        /// <summary>
+        /// A backoff strategy that will apply a constant <see cref="KinesisFlowSettings.RetryInitialTimeout"/>
+        /// delay before the next attempt of pushing events to Amazon Kinesis.
+        /// </summary>
         Linear
     }
 
+    /// <summary>
+    /// Immutable settings class to be used by <see cref="KinesisFlow"/> factory methods.
+    /// </summary>
     public sealed class KinesisFlowSettings
     {
         private const int MAX_RECORDS_PER_REQUEST = 500;
         private const int MAX_RECORDS_PER_SHARD_PER_SECOND = 1000;
         private const int MAX_BYTES_PER_SHARD_PER_SECOND = 1000000;
 
+        /// <summary>
+        /// Default <see cref="KinesisFlowSettings"/>, assuming only 1 active shard.
+        /// </summary>
         public static KinesisFlowSettings Default = ByNumberOfShard(1);
 
         private static KinesisFlowSettings ByNumberOfShard(int shards) => new KinesisFlowSettings(
@@ -34,12 +53,50 @@ namespace Akka.Streams.Kinesis
             maxBytesPerSecond: shards * MAX_BYTES_PER_SHARD_PER_SECOND,
             maxRetries: 5);
 
+        /// <summary>
+        /// Maximum number of concurrent put requests send to Amazon Kinesis.
+        /// Default value: 2
+        /// </summary>
         public int Parallelism { get; }
+
+        /// <summary>
+        /// Maximum size of a single batch of records send to Amazon Kinesis in a single packet.
+        /// Default value: 500
+        /// </summary>
         public int MaxBatchSize { get; }
+
+        /// <summary>
+        /// A backoff strategy used when trying to redeliver failed send requests.
+        /// Default value: <see cref="RetryBackoffStrategy.Exponential"/>
+        /// </summary>
         public RetryBackoffStrategy BackoffStrategy { get; }
+
+        /// <summary>
+        /// Maximum number of records send per second. This is used to avoid native Amazon Kinesis
+        /// throttling mechanism, that will not allow to send more data that provided threshold.
+        /// Default value: 1000
+        /// </summary>
         public int MaxRecordsPerSecond { get; }
+
+        /// <summary>
+        /// Maximum total messages payload size send each second. This is used to avoid native Amazon Kinesis
+        /// throttling mechanism, that will not allow to send more data that provided threshold.
+        /// Default value: 1MB (1 000 000 bytes).
+        /// </summary>
         public int MaxBytesPerSecond { get; }
+
+        /// <summary>
+        /// Maximum number of retries allowed before stream will fail due to inability to push records.
+        /// Default value: 5
+        /// </summary>
         public int MaxRetries { get; }
+
+        /// <summary>
+        /// Initial delay used before the attempt to redeliver failed put records.
+        /// For <see cref="RetryBackoffStrategy.Linear"/> it stays the same.
+        /// For <see cref="RetryBackoffStrategy.Exponential"/> it will grow exponentially (factor: 2).
+        /// Default value: 500ms
+        /// </summary>
         public TimeSpan RetryInitialTimeout { get; }
 
         public KinesisFlowSettings(

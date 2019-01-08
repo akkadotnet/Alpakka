@@ -8,20 +8,58 @@
 #endregion
 
 using System;
+using Akka.Streams.Dsl;
 using Amazon.Kinesis;
 
 namespace Akka.Streams.Kinesis
 {
+    /// <summary>
+    /// Immutable settings class used to configure <see cref="KinesisSource"/>.
+    /// </summary>
     public sealed class ShardSettings
     {
+        /// <summary>
+        /// Creates a new instance of <see cref="ShardSettings"/> class.
+        /// </summary>
+        /// <param name="streamName">Name of Amazon Kinesis stream. It must be already present.</param>
+        /// <param name="shardId">Name of an Amazon Kinesis shard in context of stream with provided <paramref name="streamName"/>.</param>
+        /// <returns></returns>
         public static ShardSettings Create(string streamName, string shardId) =>
             new ShardSettings(streamName, shardId, ShardIteratorType.LATEST, TimeSpan.FromSeconds(1), 500, null, null);
 
+        /// <summary>
+        /// Name of a stream to start receiving data from.
+        /// </summary>
         public string StreamName { get; }
+        
+        /// <summary>
+        /// Shard identifier for a given stream. To merge data from multiple kinesis shards,
+        /// you can use <see cref="SourceOperations.Merge{TOut1,TOut2,TMat}"/> method.
+        /// </summary>
         public string ShardId { get; }
+
+        /// <summary>
+        /// Type of shard iterator defined for Amazon Kinesis client.
+        /// Default value: <see cref="ShardIteratorType.LATEST"/>
+        /// </summary>
         public ShardIteratorType ShardIteratorType { get; }
+
+        /// <summary>
+        /// <see cref="KinesisSource"/> is polling Amazon Kinesis accordingly to a given interval.
+        /// Default value: 1 second.
+        /// </summary>
         public TimeSpan RefreshInterval { get; }
+
+        /// <summary>
+        /// <see cref="KinesisSource"/> is polling Amazon Kinesis in batches. This value must be between 0 and 10 000.
+        /// Default value: 500
+        /// </summary>
         public int Limit { get; }
+
+        /// <summary>
+        /// A starting sequence number, from which the source should continue fetching the data.
+        /// Default value: null
+        /// </summary>
         public string StartingSequenceNumber { get; }
         public DateTime? AtTimestamp { get; }
 

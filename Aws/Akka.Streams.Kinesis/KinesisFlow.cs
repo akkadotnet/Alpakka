@@ -18,11 +18,26 @@ using Flow = Akka.Streams.Dsl.Flow;
 
 namespace Akka.Streams.Kinesis
 {
+    /// <summary>
+    /// A container for factory methods used to build Akka.NET Streams flows to an Amazon Kinesis streams.
+    /// Flows can be used to send data to Kinesis streams. They handle acknowledgments, retries and rate
+    /// limiting necessary to fit into AWS Kinesis constraints.
+    /// </summary>
     public static class KinesisFlow
     {
         private static readonly TimeSpan Second = TimeSpan.FromSeconds(1);
         internal static readonly Func<IAmazonKinesis> DefaultClientFactory = () => new AmazonKinesisClient();
 
+        /// <summary>
+        /// Creates a default flow used to send raw records to Amazon Kinesis.
+        /// </summary>
+        /// <param name="streamName">Name of a stream. It must be present before using it.</param>
+        /// <param name="settings"></param>
+        /// <param name="client">
+        /// Amazon Kinesis client factory. After materialization, current Akka.NET Stream will take
+        /// responsibility for managing that client, disposing it once stream will be stopped.
+        /// </param>
+        /// <returns></returns>
         public static Flow<PutRecordsRequestEntry, PutRecordsResultEntry, NotUsed>
             Create(string streamName, KinesisFlowSettings settings = null, Func<IAmazonKinesis> client = null)
         {
@@ -41,6 +56,16 @@ namespace Akka.Streams.Kinesis
         private static int GetPayloadByteSize(PutRecordsRequestEntry request) =>
             request.PartitionKey.Length + (int)request.Data.Position;
 
+        /// <summary>
+        /// Creates a flow that produces and inserts records to Amazon Kinsesis for a given (partition-key, message-payload) pair.
+        /// </summary>
+        /// <param name="streamName">Name of a stream. It must be present before using it.</param>
+        /// <param name="settings"></param>
+        /// <param name="client">
+        /// Amazon Kinesis client factory. After materialization, current Akka.NET Stream will take
+        /// responsibility for managing that client, disposing it once stream will be stopped.
+        /// </param>
+        /// <returns></returns>
         public static Flow<(string, ByteString), PutRecordsResultEntry, NotUsed> 
             ByPartitionAndBytes(string streamName, KinesisFlowSettings settings = null, Func<IAmazonKinesis> client = null)
         {
@@ -59,6 +84,16 @@ namespace Akka.Streams.Kinesis
                 .Via(Create(streamName, settings, client));
         }
 
+        /// <summary>
+        /// Creates a flow that produces and inserts records to Amazon Kinsesis for a given (partition-key, message-payload) pair.
+        /// </summary>
+        /// <param name="streamName">Name of a stream. It must be present before using it.</param>
+        /// <param name="settings"></param>
+        /// <param name="client">
+        /// Amazon Kinesis client factory. After materialization, current Akka.NET Stream will take
+        /// responsibility for managing that client, disposing it once stream will be stopped.
+        /// </param>
+        /// <returns></returns>
         public static Flow<(string, MemoryStream), PutRecordsResultEntry, NotUsed>
             ByPartitionAndData(string streamName, KinesisFlowSettings settings = null, Func<IAmazonKinesis> client = null)
         {

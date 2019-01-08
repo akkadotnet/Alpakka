@@ -113,7 +113,7 @@ namespace Akka.Streams.Kinesis
                     var job = _pendingRequests.Dequeue();
                     Push(_out, PutRecords(_streamName, job.Records, recordsToRetry => _resultCallback(new Result(job.Attempt, recordsToRetry.Length == 0, recordsToRetry))));
 
-                    ///Log.Debug("Successfully put {0} records", job.Records.Count());
+                    Log.Debug("Successfully put {0} records", job.Records.Count());
                 }
             }
 
@@ -146,19 +146,19 @@ namespace Akka.Streams.Kinesis
             {
                 if (result.WasSuccessful)
                 {
-                   // Log.Debug("PutRecords call finished successfully");
+                    Log.Debug("PutRecords call finished successfully");
                     _inFlight--;
                     TryToExecute();
                     if (!HasBeenPulled(_in)) TryPull(_in);
                 }
                 else if (result.Attempt > _maxRetries)
                 {
-                    //Log.Warning("PutRecords call finished with partial errors after {0} attempts", result.Attempt);
+                    Log.Warning("PutRecords call finished with partial errors after {0} attempts", result.Attempt);
                     FailStage(new PublishingRecordsException(result.Attempt, result.RecordsToRetry));
                 }
                 else
                 {
-                    //Log.Debug("PutRecords call finished with partial errors; scheduling retry");
+                    Log.Debug("PutRecords call finished with partial errors; scheduling retry");
                     _inFlight--;
                     _waitingRetries[_retryToken] = new Job(result.Attempt+1, result.RecordsToRetry.Select(t => t.Item1));
                     TimeSpan delay;
@@ -196,7 +196,7 @@ namespace Akka.Streams.Kinesis
                 if (_waitingRetries.TryGetValue(key, out var job))
                 {
                     _waitingRetries.Remove(key);
-                    ///Log.Debug("Retrying to PutRecords again");
+                    Log.Debug("Retrying to PutRecords again");
                     _pendingRequests.Enqueue(job);
                     TryToExecute();
                 }

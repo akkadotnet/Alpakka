@@ -35,24 +35,24 @@ namespace Akka.Streams.Kafka.Stages
                 onPush: () =>
                 {
                     var msg = Grab(_stage.In);
-                    var result = new TaskCompletionSource<DeliveryReport<K, V>>();
-
-                    _producer.Produce(msg.TopicPartition, msg.Message, report =>
+                    var result = _producer.ProduceAsync(msg.Topic, msg.Message);
+                    result.ContinueWith(t =>
                     {
-                        if (!report.Error.HasError)
+                        if (t.IsFaulted || t.IsCanceled)
                         {
-                            result.SetResult(report);
-                        }
-                        else
-                        {
-                            var exception = new KafkaException(report.Error);
+                            Exception exception = null;
+                            if (t.IsCanceled)
+                            {
+                                exception = new KafkaException(new Error(ErrorCode.Local_TimedOut)); //? don't really know
+                            }
+                            else
+                            {
+                                exception = t.Exception.InnerException;                                
+                            }
                             switch (decider(exception))
                             {
                                 case Directive.Stop:
                                     _failStageCallback(exception);
-                                    break;
-                                default:
-                                    result.SetException(exception);
                                     break;
                             }
                         }
@@ -64,7 +64,7 @@ namespace Akka.Streams.Kafka.Stages
                     });
 
                     _awaitingConfirmation.IncrementAndGet();
-                    Push(_stage.Out, result.Task);
+                    Push(_stage.Out, result);
                 },
                 onUpstreamFinish: () =>
                 {
@@ -120,10 +120,10 @@ namespace Akka.Streams.Kafka.Stages
 
         private void OnProducerError(object sender, Error error)
         {
-            Log.Error($"{error.Code}: {error.Reason}");
+            Log.Error($"{error.Code}: {error.Reason}"); //I do want to know what's going on!
             //ANDSTE: I am in doubt; timeout exceptions are not reasons to fail the stage, as a closed connection
-            //will stil work to produce messages on.
-            //no need to fail stage
+            //running production without failing stage
+            //no need to fail stage?
             //return;
 
             if (!KafkaExtensions.IsBrokerErrorRetriable(error) && !KafkaExtensions.IsLocalErrorRetriable(error))

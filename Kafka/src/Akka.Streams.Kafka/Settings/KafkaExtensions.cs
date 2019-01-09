@@ -4,7 +4,7 @@ namespace Akka.Streams.Kafka.Settings
 {
     public static class KafkaExtensions
     {
-        public static bool IsBrokerErrorRetriable(Error error)
+        public static bool IsBrokerErrorRetriable(this Error error)
         {
             switch (error.Code)
             {
@@ -24,7 +24,7 @@ namespace Akka.Streams.Kafka.Settings
             return false;
         }
 
-        public static bool IsLocalErrorRetriable(Error error)
+        public static bool IsLocalErrorRetriable(this Error error)
         {
             switch (error.Code)
             {

@@ -6,7 +6,6 @@ using Akka.Streams.Kafka.Settings;
 using Akka.Streams.Stage;
 using Confluent.Kafka;
 using Akka.Streams.Supervision;
-using System.Runtime.Serialization;
 
 namespace Akka.Streams.Kafka.Stages
 {
@@ -17,7 +16,6 @@ namespace Akka.Streams.Kafka.Stages
         private readonly Outlet<ConsumerMessage<K, V>> _out;
         private IConsumer<K, V> _consumer;
 
-        private Action<ConsumerRecord<K, V>> _messagesReceived;
         private Action<IEnumerable<TopicPartition>> _partitionsAssigned;
         private Action<IEnumerable<TopicPartition>> _partitionsRevoked;
         private Action<TopicPartitionOffset> _partitionEof;
@@ -68,21 +66,20 @@ namespace Akka.Streams.Kafka.Stages
             base.PreStart();
 
             _consumer = _settings.CreateKafkaConsumer();
+
             Log.Debug($"Consumer started: {_consumer.Name}");
 
-            _consumer.OnRecord += HandleOnMessage;
-            _consumer.OnConsumeError += HandleConsumeError;
             _consumer.OnError += HandleOnError;
             _consumer.OnPartitionsAssigned += HandleOnPartitionsAssigned;
             _consumer.OnPartitionsRevoked += HandleOnPartitionsRevoked;
-            if (_settings.AddEofMessage)
+            //IConsumer does not have all necesary events defined to handle eof's
+            if (_settings.AddEofMessage && _consumer is Consumer<K, V> consumer)
             {
-                _consumer.OnPartitionEOF += HandleOnPartitionEOF;
+                consumer.OnPartitionEOF += HandleOnPartitionEOF;
             }
 
             _subscription.AssignConsumer(_consumer);
 
-            _messagesReceived = GetAsyncCallback<ConsumerRecord<K, V>>(MessagesReceived);
             _partitionsAssigned = GetAsyncCallback<IEnumerable<TopicPartition>>(PartitionsAssigned);
             _partitionsRevoked = GetAsyncCallback<IEnumerable<TopicPartition>>(PartitionsRevoked);
             _partitionEof = GetAsyncCallback<TopicPartitionOffset>(PartitionEOF);
@@ -91,14 +88,13 @@ namespace Akka.Streams.Kafka.Stages
 
         public override void PostStop()
         {
-            _consumer.OnRecord -= HandleOnMessage;
-            _consumer.OnConsumeError -= HandleConsumeError;
             _consumer.OnError -= HandleOnError;
             _consumer.OnPartitionsAssigned -= HandleOnPartitionsAssigned;
             _consumer.OnPartitionsRevoked -= HandleOnPartitionsRevoked;
-            if (_settings.AddEofMessage)
+            //IConsumer does not have all necesary events defined to handle eof's
+            if (_settings.AddEofMessage && _consumer is Consumer<K, V> consumer)
             {
-                _consumer.OnPartitionEOF -= HandleOnPartitionEOF;
+                consumer.OnPartitionEOF -= HandleOnPartitionEOF;
             }
 
             Log.Debug($"Consumer stopped: {_consumer.Name}");
@@ -112,34 +108,12 @@ namespace Akka.Streams.Kafka.Stages
         // Consumer's events
         //
 
-        private void HandleOnMessage(object sender, ConsumerRecord<K, V> message) => _messagesReceived(message);
-
-        private void HandleConsumeError(object sender, ConsumerRecord message)
-        {
-            Log.Error(message.Error.Reason);
-            var exception = new SerializationException(message.Error.Reason);
-            switch (_decider(exception))
-            {
-                case Directive.Stop:
-                    // Throw
-                    _completion.TrySetException(exception);
-                    FailStage(exception);
-                    break;
-                case Directive.Resume:
-                    // keep going
-                    break;
-                case Directive.Restart:
-                    // keep going
-                    break;
-            }
-        }
-
         private void HandleOnError(object sender, Error error)
         {
             Log.Error(error.Reason);
             //ANDSTE: I am in doubt; timeout exceptions are not reasons to fail the stage, as a closed connection
             //will stil work to produce messages on.
-            //no need to fail stage
+            //no need to fail stage?
             //return;
 
             if (!KafkaExtensions.IsBrokerErrorRetriable(error) && !KafkaExtensions.IsLocalErrorRetriable(error))
@@ -149,7 +123,7 @@ namespace Akka.Streams.Kafka.Stages
             }
         }
 
-        private void HandleOnPartitionsAssigned(object sender, List<TopicPartition> list)
+            private void HandleOnPartitionsAssigned(object sender, List<TopicPartition> list)
         {
             _partitionsAssigned(list);
         }
@@ -177,11 +151,6 @@ namespace Akka.Streams.Kafka.Stages
             }
         }
 
-        private void MessagesReceived(ConsumerRecord<K, V> message)
-        {
-            MessagesReceived(new ConsumerMessage<K, V>(MessageType.ConsumerRecord, message));
-        }
-
         private void PartitionsAssigned(IEnumerable<TopicPartition> partitions)
         {
             Log.Debug($"Partitions were assigned: {_consumer.Name}");
@@ -201,7 +170,7 @@ namespace Akka.Streams.Kafka.Stages
             Log.Debug($"Partition EOF triggered: {_consumer.Name}");
             if (_settings.AddEofMessage)
             {
-                var msg = new ConsumerRecord<K, V>
+                var msg = new ConsumeResult<K, V>
                 {
                     Topic = message.Topic,
                     Partition = message.Partition,
@@ -213,13 +182,17 @@ namespace Akka.Streams.Kafka.Stages
 
         private void PullQueue()
         {
-            _consumer.Poll(_settings.PollTimeout);
-
-            if (!_isPaused && _buffer.Count > _settings.BufferSize)
+            var record = _consumer.Consume(_settings.PollTimeout);
+            if (record != null)
             {
-                Log.Debug($"Polling paused, buffer is full");
-                _consumer.Pause(_assignedPartitions ?? _consumer.Assignment);
-                _isPaused = true;
+                MessagesReceived(new ConsumerMessage<K, V>(MessageType.ConsumerRecord, record));
+
+                if (!_isPaused && _buffer.Count > _settings.BufferSize)
+                {
+                    Log.Debug("Polling paused, buffer is full");
+                    _consumer.Pause(_assignedPartitions ?? _consumer.Assignment);
+                    _isPaused = true;
+                }
             }
         }
 

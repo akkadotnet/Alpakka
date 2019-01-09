@@ -1,15 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using Akka.Configuration;
 using Akka.Streams.Dsl;
 using Akka.Streams.Kafka.Dsl;
+using Akka.Streams.Kafka.Messages;
 using Akka.Streams.Kafka.Settings;
 using Akka.Streams.TestKit;
 using Confluent.Kafka;
-using Confluent.Kafka.Serialization;
 using FluentAssertions;
 using Xunit;
 using Xunit.Abstractions;
@@ -43,12 +42,12 @@ namespace Akka.Streams.Kafka.Tests.Integration
         }
 
         private ProducerSettings<Null, string> ProducerSettings =>
-            ProducerSettings<Null, string>.Create(Sys, null, new StringSerializer(Encoding.UTF8))
+            ProducerSettings<Null, string>.Create(Sys, null, StringSerializer.Serialize)
                 .WithBootstrapServers(KafkaUrl);
 
         private ConsumerSettings<Null, string> CreateConsumerSettings(string group)
         {
-            return ConsumerSettings<Null, string>.Create(Sys, null, new StringDeserializer(Encoding.UTF8))
+            return ConsumerSettings<Null, string>.Create(Sys, null, StringSerializer.Deserialize)
                 .WithBootstrapServers(KafkaUrl)
                 .WithProperty("auto.offset.reset", "earliest")
                 .WithGroupId(group);
@@ -69,17 +68,10 @@ namespace Akka.Streams.Kafka.Tests.Integration
             var task = new TaskCompletionSource<NotUsed>();
             int messagesReceived = 0;
 
-            consumer.OnRecord += (sender, message) =>
-            {
-                messagesReceived++;
-                if (messagesReceived == 100)
-                    task.SetResult(NotUsed.Instance);
-            };
-
             await Source
                 .From(Enumerable.Range(1, 100))
                 .Select(c => c.ToString())
-                .Select(elem => new MessageAndMeta<Null, string> { Topic = topic1, Message = new Message<Null, string> { Value = elem } })
+                .Select(elem => new ProduceMessage<Null, string>(topic1, new Message<Null, string> { Value = elem }))
                 .RunWith(KafkaProducer.PlainSink(ProducerSettings), _materializer);
 
             var dateTimeStart = DateTime.UtcNow;
@@ -91,7 +83,13 @@ namespace Akka.Streams.Kafka.Tests.Integration
 
             while (!task.Task.IsCompleted && CheckTimeout(TimeSpan.FromMinutes(1)))
             {
-                consumer.Poll(TimeSpan.FromSeconds(1));
+                var consumeResult = consumer.Consume(TimeSpan.FromSeconds(1));
+                if (consumeResult != null)
+                {
+                    messagesReceived++;
+                    if (messagesReceived == 100)
+                        task.SetResult(NotUsed.Instance);
+                }
             }
 
             messagesReceived.Should().Be(100);
@@ -104,13 +102,13 @@ namespace Akka.Streams.Kafka.Tests.Integration
 
             await GivenInitializedTopic(topic1);
 
-            var config = ProducerSettings<Null, string>.Create(Sys, null, new StringSerializer(Encoding.UTF8))
+            var config = ProducerSettings<Null, string>.Create(Sys, null, StringSerializer.Serialize)
                 .WithBootstrapServers("localhost:10092");
 
             var probe = Source
                 .From(Enumerable.Range(1, 100))
                 .Select(c => c.ToString())
-                .Select(elem => new MessageAndMeta<Null, string> { Topic = topic1, Message = new Message<Null, string> { Value = elem } })
+                .Select(elem => new ProduceMessage<Null, string> (topic1, new Message<Null, string> { Value = elem } ))
                 .Via(KafkaProducer.PlainFlow(config))
                 .RunWith(this.SinkProbe<DeliveryReport<Null, string>>(), _materializer);
 

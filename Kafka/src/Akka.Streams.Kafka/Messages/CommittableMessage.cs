@@ -11,17 +11,17 @@ namespace Akka.Streams.Kafka.Messages
     /// </summary>
     public sealed class CommittableMessage<K, V>
     {
-        public CommittableMessage(ConsumerRecord<K, V> record, CommitableOffset commitableOffset, MessageType messageType)
+        public CommittableMessage(ConsumeResult<K, V> record, CommitableOffset commitableOffset, MessageType messageType)
         {
             Record = record;
             CommitableOffset = commitableOffset;
             MessageType = messageType;
         }
-        
-        public ConsumerRecord<K, V> Record { get; }
+
+        public ConsumeResult<K, V> Record { get; }
 
         public CommitableOffset CommitableOffset { get; }
-        public MessageType MessageType { get; }        
+        public MessageType MessageType { get; }
     }
 
     /// <summary>
@@ -34,9 +34,9 @@ namespace Akka.Streams.Kafka.Messages
     /// </summary>
     public class CommitableOffset
     {
-        private readonly Func<CommittedOffsets> _task;
+        private readonly Func<IList<TopicPartitionOffset>> _task;
 
-        public CommitableOffset(Func<CommittedOffsets> task, PartitionOffset offset)
+        public CommitableOffset(Func<IList<TopicPartitionOffset>> task, PartitionOffset offset)
         {
             _task = task;
             Offset = offset;
@@ -44,7 +44,7 @@ namespace Akka.Streams.Kafka.Messages
 
         public PartitionOffset Offset { get; }
 
-        public CommittedOffsets Commit()
+        public IList<TopicPartitionOffset> Commit()
         {
             return _task();
         }

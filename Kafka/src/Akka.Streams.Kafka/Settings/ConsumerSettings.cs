@@ -2,21 +2,22 @@
 using System.Collections.Immutable;
 using Akka.Actor;
 using Akka.Configuration;
-using Confluent.Kafka.Serialization;
+using Confluent.Kafka;
 
 namespace Akka.Streams.Kafka.Settings
 {
     public sealed class ConsumerSettings<TKey, TValue>
     {
-        public static ConsumerSettings<TKey, TValue> Create(ActorSystem system, IDeserializer<TKey> keyDeserializer, IDeserializer<TValue> valueDeserializer)
+        public static ConsumerSettings<TKey, TValue> Create(ActorSystem system, Deserializer<TKey> keyDeserializer, Deserializer<TValue> valueDeserializer)
         {
             var config = system.Settings.Config.GetConfig("akka.kafka.consumer");
             return Create(config, keyDeserializer, valueDeserializer);
         }
 
-        public static ConsumerSettings<TKey, TValue> Create(Config config, IDeserializer<TKey> keyDeserializer, IDeserializer<TValue> valueDeserializer)
+        public static ConsumerSettings<TKey, TValue> Create(Config config, Deserializer<TKey> keyDeserializer, Deserializer<TValue> valueDeserializer)
         {
-            if (config == null) throw new ArgumentNullException(nameof(config), "Kafka config for Akka.NET consumer was not provided");
+            if (config == null)
+                throw new ArgumentNullException(nameof(config), "Kafka config for Akka.NET consumer was not provided");
 
             return new ConsumerSettings<TKey, TValue>(
                 keyDeserializer: keyDeserializer,
@@ -25,22 +26,22 @@ namespace Akka.Streams.Kafka.Settings
                 pollTimeout: config.GetTimeSpan("poll-timeout", TimeSpan.FromMilliseconds(50)),
                 bufferSize: config.GetInt("buffer-size", 50),
                 dispatcherId: config.GetString("use-dispatcher", "akka.kafka.default-dispatcher"),
-                properties: ImmutableDictionary<string, object>.Empty,
+                properties: ImmutableDictionary<string, string>.Empty,
                 addEofMessage: config.GetBoolean("add-eof-message", false));
         }
 
         public object this[string propertyKey] => this.Properties.GetValueOrDefault(propertyKey);
 
-        public IDeserializer<TKey> KeyDeserializer { get; }
-        public IDeserializer<TValue> ValueDeserializer { get; }
+        public Deserializer<TKey> KeyDeserializer { get; }
+        public Deserializer<TValue> ValueDeserializer { get; }
         public TimeSpan PollInterval { get; }
         public TimeSpan PollTimeout { get; }
         public int BufferSize { get; }
         public string DispatcherId { get; }
-        public IImmutableDictionary<string, object> Properties { get; }
+        public IImmutableDictionary<string, string> Properties { get; }
         public bool AddEofMessage { get; }
 
-        public ConsumerSettings(IDeserializer<TKey> keyDeserializer, IDeserializer<TValue> valueDeserializer, TimeSpan pollInterval, TimeSpan pollTimeout, int bufferSize, string dispatcherId, IImmutableDictionary<string, object> properties, bool addEofMessage)
+        public ConsumerSettings(Deserializer<TKey> keyDeserializer, Deserializer<TValue> valueDeserializer, TimeSpan pollInterval, TimeSpan pollTimeout, int bufferSize, string dispatcherId, IImmutableDictionary<string, string> properties, bool addEofMessage)
         {
             KeyDeserializer = keyDeserializer;
             ValueDeserializer = valueDeserializer;
@@ -49,7 +50,7 @@ namespace Akka.Streams.Kafka.Settings
             BufferSize = bufferSize;
             DispatcherId = dispatcherId;
             Properties = properties;
-            AddEofMessage = addEofMessage;        
+            AddEofMessage = addEofMessage;
         }
 
         public ConsumerSettings<TKey, TValue> WithBootstrapServers(string bootstrapServers) =>
@@ -61,7 +62,7 @@ namespace Akka.Streams.Kafka.Settings
         public ConsumerSettings<TKey, TValue> WithGroupId(string groupId) =>
             Copy(properties: Properties.SetItem("group.id", groupId));
 
-        public ConsumerSettings<TKey, TValue> WithProperty(string key, object value) =>
+        public ConsumerSettings<TKey, TValue> WithProperty(string key, string value) =>
             Copy(properties: Properties.SetItem(key, value));
 
         public ConsumerSettings<TKey, TValue> WithPollInterval(TimeSpan pollInterval) => Copy(pollInterval: pollInterval);
@@ -73,25 +74,25 @@ namespace Akka.Streams.Kafka.Settings
         public ConsumerSettings<TKey, TValue> WithEofMessages(bool addEofMessage) => Copy(addEofMessage: addEofMessage);
 
         private ConsumerSettings<TKey, TValue> Copy(
-            IDeserializer<TKey> keyDeserializer = null,
-            IDeserializer<TValue> valueDeserializer = null,
+            Deserializer<TKey> keyDeserializer = null,
+            Deserializer<TValue> valueDeserializer = null,
             TimeSpan? pollInterval = null,
             TimeSpan? pollTimeout = null,
             int? bufferSize = null,
             string dispatcherId = null,
-            IImmutableDictionary<string, object> properties = null,
+            IImmutableDictionary<string, string> properties = null,
             bool? addEofMessage = null) =>
             new ConsumerSettings<TKey, TValue>(
-                keyDeserializer: keyDeserializer ?? this.KeyDeserializer,
-                valueDeserializer: valueDeserializer ?? this.ValueDeserializer,
-                pollInterval: pollInterval ?? this.PollInterval,
-                pollTimeout: pollTimeout ?? this.PollTimeout,
-                bufferSize: bufferSize ?? this.BufferSize,
-                dispatcherId: dispatcherId ?? this.DispatcherId,
-                properties: properties ?? this.Properties,
-                addEofMessage: addEofMessage ?? this.AddEofMessage);
+                keyDeserializer: keyDeserializer ?? KeyDeserializer,
+                valueDeserializer: valueDeserializer ?? ValueDeserializer,
+                pollInterval: pollInterval ?? PollInterval,
+                pollTimeout: pollTimeout ?? PollTimeout,
+                bufferSize: bufferSize ?? BufferSize,
+                dispatcherId: dispatcherId ?? DispatcherId,
+                properties: properties ?? Properties,
+                addEofMessage: addEofMessage ?? AddEofMessage);
 
-        public Confluent.Kafka.IConsumer<TKey, TValue> CreateKafkaConsumer() =>
-            new Confluent.Kafka.Consumer<TKey, TValue>(this.Properties, this.KeyDeserializer, this.ValueDeserializer);
+        public IConsumer<TKey, TValue> CreateKafkaConsumer() =>
+            new Consumer<TKey, TValue>(Properties, KeyDeserializer, ValueDeserializer);
     }
 }

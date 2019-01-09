@@ -1,15 +1,14 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using Akka.Configuration;
 using Akka.Streams.Dsl;
 using Akka.Streams.Kafka.Dsl;
+using Akka.Streams.Kafka.Messages;
 using Akka.Streams.Kafka.Settings;
 using Akka.Streams.TestKit;
 using Confluent.Kafka;
-using Confluent.Kafka.Serialization;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -35,7 +34,7 @@ namespace Akka.Streams.Kafka.Tests.Integration
         private string CreateGroup(int number) => $"group-{number}-{Uuid}";
 
         private ProducerSettings<Null, string> ProducerSettings =>
-            ProducerSettings<Null, string>.Create(Sys, null, new StringSerializer(Encoding.UTF8))
+            ProducerSettings<Null, string>.Create(Sys, null, StringSerializer.Serialize)
                 .WithBootstrapServers(KafkaUrl);
 
         private async Task GivenInitializedTopic(string topic)
@@ -48,7 +47,7 @@ namespace Akka.Streams.Kafka.Tests.Integration
 
         private ConsumerSettings<Null, string> CreateConsumerSettings(string group)
         {
-            return ConsumerSettings<Null, string>.Create(Sys, null, new StringDeserializer(Encoding.UTF8))
+            return ConsumerSettings<Null, string>.Create(Sys, null, StringSerializer.Deserialize)
                 .WithBootstrapServers(KafkaUrl)
                 .WithProperty("auto.offset.reset", "earliest")
                 .WithGroupId(group);
@@ -65,7 +64,7 @@ namespace Akka.Streams.Kafka.Tests.Integration
 
             await Source
                 .From(Enumerable.Range(1, elementsCount))
-                .Select(elem => new MessageAndMeta<Null, string> { Topic = topic1, Message = new Message<Null, string> { Value = elem.ToString() } })
+                .Select(elem => new ProduceMessage<Null, string>(topic1, new Message<Null, string> { Value = elem.ToString() } ))
                 .RunWith(KafkaProducer.PlainSink(ProducerSettings), _materializer);
 
             var consumerSettings = CreateConsumerSettings(group1);
@@ -94,7 +93,7 @@ namespace Akka.Streams.Kafka.Tests.Integration
 
             await Source
                 .From(Enumerable.Range(1, 100))
-                .Select(elem => new MessageAndMeta<Null, string> { Topic = topic1, Message = new Message<Null, string> { Value = elem.ToString() } })
+                .Select(elem => new ProduceMessage<Null, string>(topic1, new Message<Null, string> { Value = elem.ToString() } ))
                 .RunWith(KafkaProducer.PlainSink(ProducerSettings), _materializer);
 
             var consumerSettings = CreateConsumerSettings(group1);
@@ -132,7 +131,7 @@ namespace Akka.Streams.Kafka.Tests.Integration
             // some concurrent publish
             await Source
                 .From(Enumerable.Range(101, 100))
-                .Select(elem => new MessageAndMeta<Null, string> { Topic = topic1, Message = new Message<Null, string> { Value = elem.ToString() } })
+                .Select(elem => new ProduceMessage<Null, string> ( topic1, new Message<Null, string> { Value = elem.ToString() } ))
                 .RunWith(KafkaProducer.PlainSink(ProducerSettings), _materializer);
 
             probe2.Request(100);

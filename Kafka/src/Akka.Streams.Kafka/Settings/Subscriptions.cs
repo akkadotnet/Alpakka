@@ -20,7 +20,7 @@ namespace Akka.Streams.Kafka.Settings
 
     internal sealed class TopicSubscription : Subscription
     {
-        public TopicSubscription(IImmutableSet<string> topics, Dictionary<string, object> kafkaConfiguration = null)
+        public TopicSubscription(IImmutableSet<string> topics, Dictionary<string, string> kafkaConfiguration = null)
         {
             Topics = topics;
             this.kafkaConfiguration = kafkaConfiguration;
@@ -28,7 +28,7 @@ namespace Akka.Streams.Kafka.Settings
 
         public IImmutableSet<string> Topics { get; }
 
-        private Dictionary<string, object> kafkaConfiguration;
+        private Dictionary<string, string> kafkaConfiguration;
 
         public override void AssignConsumer<K, V>(IConsumer<K, V> consumer)
         {
@@ -40,7 +40,7 @@ namespace Akka.Streams.Kafka.Settings
             if (kafkaConfiguration != null)
             {
                 var adminClient = new AdminClient(kafkaConfiguration);
-                var metadata = adminClient.GetMetadata(true, TimeSpan.FromSeconds(3));
+                Metadata metadata = adminClient.GetMetadata(TimeSpan.FromSeconds(3));
                 if (metadata != null)
                 {
                     var d = metadata.Topics.ToDictionary(x => x.Topic);
@@ -102,7 +102,7 @@ namespace Akka.Streams.Kafka.Settings
         public static ISubscription Topics(params string[] topics) =>
             new TopicSubscription(topics.ToImmutableHashSet());
 
-        public static ISubscription Topics(Dictionary<string, object> kafkaConfiguration, params string[] topics) =>
+        public static ISubscription Topics(Dictionary<string, string> kafkaConfiguration, params string[] topics) =>
             new TopicSubscription(topics.ToImmutableHashSet(), kafkaConfiguration);
 
         public static ISubscription Assignment(params TopicPartition[] topicPartitions) =>

@@ -6,72 +6,6 @@ using RabbitMQ.Client;
 
 namespace Akka.Streams.Amqp
 {
-    /// <summary>
-    /// Internal API
-    /// </summary>
-    internal class AmqpConnector
-    {
-        public static IConnectionFactory ConnectionFactoryFrom(IAmqpConnectionSettings settings)
-        {
-            var factory = new ConnectionFactory();
-            switch (settings)
-            {
-                case AmqpConnectionUri connectionUri:
-                    factory.Uri = connectionUri.Uri;
-                    break;
-                case AmqpConnectionDetails details:
-                {
-                    if (details.Credentials.HasValue)
-                    {
-                        factory.UserName = details.Credentials.Value.Username;
-                        factory.Password = details.Credentials.Value.Password;
-                    }
-                    if (!string.IsNullOrEmpty(details.VirtualHost))
-                        factory.VirtualHost = details.VirtualHost;
-                    if (details.Ssl != null)
-                        factory.Ssl = details.Ssl;
-                    if (details.AutomaticRecoveryEnabled.HasValue)
-                        factory.AutomaticRecoveryEnabled = details.AutomaticRecoveryEnabled.Value;
-                    if (details.RequestedHeartbeat.HasValue)
-                        factory.RequestedHeartbeat = details.RequestedHeartbeat.Value;
-                    if (details.NetworkRecoveryInterval.HasValue)
-                        factory.NetworkRecoveryInterval = details.NetworkRecoveryInterval.Value;
-                    if (details.TopologyRecoveryEnabled.HasValue)
-                        factory.TopologyRecoveryEnabled = details.TopologyRecoveryEnabled.Value;
-                    if (details.ConnectionTimeout.HasValue)
-                        factory.ContinuationTimeout = details.ConnectionTimeout.Value;
-                    if (details.HandshakeTimeout.HasValue)
-                        factory.HandshakeContinuationTimeout = details.HandshakeTimeout.Value;
-                    break;
-                }
-                case DefaultAmqpConnection defaultConnection:
-                    //leave it be as is
-                    break;
-            }
-            return factory;
-        }
-
-        public static IConnection NewConnection(IConnectionFactory factory, IAmqpConnectionSettings settings)
-        {
-            switch (settings)
-            {
-                case AmqpConnectionDetails details:
-                {
-                    if (details.HostAndPortList.Count > 0)
-                    {
-                        return factory.CreateConnection(details.HostAndPortList
-                            .Select(pair => new AmqpTcpEndpoint(pair.host, pair.port)).ToList());
-                    }
-                    else
-                    {
-                        throw new ArgumentException("You need to supply at least one host/port pair.");
-                    }
-                }
-                default:
-                    return factory.CreateConnection();
-            }
-        }
-    }
 
     /// <summary>
     /// Internal API
@@ -90,10 +24,6 @@ namespace Akka.Streams.Amqp
 
         public abstract IAmqpConnectorSettings Settings { get; }
 
-        public abstract IConnectionFactory ConnectionFactoryFrom(IAmqpConnectionSettings settings);
-
-        public abstract IConnection NewConnection(IConnectionFactory factory, IAmqpConnectionSettings settings);
-
         public abstract void WhenConnected();
 
         public abstract void OnFailure(Exception ex);
@@ -102,8 +32,7 @@ namespace Akka.Streams.Amqp
         {
             try
             {
-                var factory = ConnectionFactoryFrom(Settings.ConnectionSettings);
-                Connection = NewConnection(factory, Settings.ConnectionSettings);
+                Connection = Settings.ConnectionProvider.Get();
                 Channel = Connection.CreateModel();
                 ShutdownCallback = GetAsyncCallback<ShutdownEventArgs>(args =>
                 {
@@ -168,9 +97,8 @@ namespace Akka.Streams.Amqp
             }
             if (Connection != null)
             {
-                if(Connection.IsOpen)
-                    Connection.Close();
                 Connection.ConnectionShutdown -= OnConnectionShutdown;
+                Settings.ConnectionProvider.Release(Connection);
                 Connection = null;
             }
         }

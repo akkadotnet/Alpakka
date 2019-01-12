@@ -7,7 +7,7 @@ namespace Akka.Streams.Amqp
 {
     public interface IAmqpConnectorSettings
     {
-        IAmqpConnectionSettings ConnectionSettings { get; }
+        AmqpConnectionProvider ConnectionProvider { get; }
         IReadOnlyList<IDeclaration> Declarations { get; }
     }
 
@@ -17,12 +17,12 @@ namespace Akka.Streams.Amqp
 
     public sealed class NamedQueueSourceSettings : IAmqpSourceSettings
     {
-        private NamedQueueSourceSettings(IAmqpConnectionSettings connectionSettings, string queue,
+        private NamedQueueSourceSettings(AmqpConnectionProvider connectionProvider, string queue,
             IReadOnlyList<IDeclaration> declarations = null, bool noLocal = false, bool exclusive = false,
             string consumerTag = null,
             IReadOnlyDictionary<string, object> arguments = null)
         {
-            ConnectionSettings = connectionSettings;
+            ConnectionProvider = connectionProvider;
             Queue = queue;
             Declarations = declarations ?? new List<IDeclaration>();
             NoLocal = noLocal;
@@ -31,7 +31,7 @@ namespace Akka.Streams.Amqp
             Arguments = arguments ?? new Dictionary<string, object>();
         }
 
-        public IAmqpConnectionSettings ConnectionSettings { get; }
+        public AmqpConnectionProvider ConnectionProvider { get; }
         public string Queue { get; }
         public IReadOnlyList<IDeclaration> Declarations { get; }
         public bool NoLocal { get; }
@@ -39,282 +39,131 @@ namespace Akka.Streams.Amqp
         public string ConsumerTag { get; }
         public IReadOnlyDictionary<string, object> Arguments { get; }
 
-        public static NamedQueueSourceSettings Create(IAmqpConnectionSettings connectionSettings, string queue)
+        public static NamedQueueSourceSettings Create(AmqpConnectionProvider connectionProvider, string queue)
         {
-            return new NamedQueueSourceSettings(connectionSettings, queue);
+            return new NamedQueueSourceSettings(connectionProvider, queue);
         }
 
         public NamedQueueSourceSettings WithDeclarations(params IDeclaration[] declarations)
         {
-            return new NamedQueueSourceSettings(ConnectionSettings, Queue, declarations, NoLocal, Exclusive, ConsumerTag, Arguments);
+            return new NamedQueueSourceSettings(ConnectionProvider, Queue, declarations, NoLocal, Exclusive, ConsumerTag, Arguments);
         }
 
         public NamedQueueSourceSettings WithNoLocal(bool noLocal)
         {
-            return new NamedQueueSourceSettings(ConnectionSettings, Queue, Declarations, noLocal, Exclusive, ConsumerTag, Arguments);
+            return new NamedQueueSourceSettings(ConnectionProvider, Queue, Declarations, noLocal, Exclusive, ConsumerTag, Arguments);
         }
 
         public NamedQueueSourceSettings WithExclusive(bool exclusive)
         {
-            return new NamedQueueSourceSettings(ConnectionSettings, Queue, Declarations, NoLocal, exclusive, ConsumerTag, Arguments);
+            return new NamedQueueSourceSettings(ConnectionProvider, Queue, Declarations, NoLocal, exclusive, ConsumerTag, Arguments);
         }
 
         public NamedQueueSourceSettings WithConsumerTag(string consumerTag)
         {
-            return new NamedQueueSourceSettings(ConnectionSettings, Queue, Declarations, NoLocal, Exclusive, consumerTag, Arguments);
+            return new NamedQueueSourceSettings(ConnectionProvider, Queue, Declarations, NoLocal, Exclusive, consumerTag, Arguments);
         }
 
         public NamedQueueSourceSettings WithArguments(params KeyValuePair<string, object>[] arguments)
         {
-            return new NamedQueueSourceSettings(ConnectionSettings, Queue, Declarations, NoLocal, Exclusive, ConsumerTag,
+            return new NamedQueueSourceSettings(ConnectionProvider, Queue, Declarations, NoLocal, Exclusive, ConsumerTag,
                 arguments.ToDictionary(key => key.Key, val => val.Value));
         }
 
         public NamedQueueSourceSettings WithArguments(params (string paramName, object paramValue)[] arguments)
         {
-            return new NamedQueueSourceSettings(ConnectionSettings, Queue, Declarations, NoLocal, Exclusive, ConsumerTag,
+            return new NamedQueueSourceSettings(ConnectionProvider, Queue, Declarations, NoLocal, Exclusive, ConsumerTag,
                 arguments.ToDictionary(key => key.paramName, val => val.paramValue));
         }
 
         public NamedQueueSourceSettings WithArguments(string key, object value)
         {
-            return new NamedQueueSourceSettings(ConnectionSettings, Queue, Declarations, NoLocal, Exclusive,
+            return new NamedQueueSourceSettings(ConnectionProvider, Queue, Declarations, NoLocal, Exclusive,
                 ConsumerTag,
                 new Dictionary<string, object> {{key, value}});
         }
 
         public override string ToString() => 
-            $"NamedQueueSourceSettings(ConnectionSettings={ConnectionSettings}, Queue={Queue}, Declarations={Declarations.Count}, NoLocal={NoLocal}, Exclusive={Exclusive}, Arguments={Arguments.Count})";
+            $"NamedQueueSourceSettings(ConnectionSettings={ConnectionProvider}, Queue={Queue}, Declarations={Declarations.Count}, NoLocal={NoLocal}, Exclusive={Exclusive}, Arguments={Arguments.Count})";
     }
 
     public sealed class TemporaryQueueSourceSettings : IAmqpSourceSettings
     {
-        private TemporaryQueueSourceSettings(IAmqpConnectionSettings connectionSettings, string exchange,
+        private TemporaryQueueSourceSettings(AmqpConnectionProvider connectionProvider, string exchange,
             IReadOnlyList<IDeclaration> declarations = null, string routingKey = null)
         {
-            ConnectionSettings = connectionSettings;
+            ConnectionProvider = connectionProvider;
             Exchange = exchange;
             Declarations = declarations ?? new List<IDeclaration>();
             RoutingKey = routingKey;
         }
 
-        public IAmqpConnectionSettings ConnectionSettings { get; }
+        public AmqpConnectionProvider ConnectionProvider { get; }
         public string Exchange { get; }
         public IReadOnlyList<IDeclaration> Declarations { get; }
         public string RoutingKey { get; }
 
-        public static TemporaryQueueSourceSettings Create(IAmqpConnectionSettings connectionSettings, string exchange) => 
-            new TemporaryQueueSourceSettings(connectionSettings, exchange);
+        public static TemporaryQueueSourceSettings Create(AmqpConnectionProvider connectionProvider, string exchange) => 
+            new TemporaryQueueSourceSettings(connectionProvider, exchange);
 
         public TemporaryQueueSourceSettings WithRoutingKey(string routingKey) => 
-            new TemporaryQueueSourceSettings(ConnectionSettings, Exchange, Declarations, routingKey);
+            new TemporaryQueueSourceSettings(ConnectionProvider, Exchange, Declarations, routingKey);
 
         public TemporaryQueueSourceSettings WithDeclarations(params IDeclaration[] declarations) => 
-            new TemporaryQueueSourceSettings(ConnectionSettings, Exchange, declarations, RoutingKey);
+            new TemporaryQueueSourceSettings(ConnectionProvider, Exchange, declarations, RoutingKey);
 
         public override string ToString() => 
-            $"TemporaryQueueSourceSettings(ConnectionSettings={ConnectionSettings},Exchange={Exchange}, Declarations={Declarations.Count}, RoutingKey={RoutingKey})";
+            $"TemporaryQueueSourceSettings(ConnectionSettings={ConnectionProvider},Exchange={Exchange}, Declarations={Declarations.Count}, RoutingKey={RoutingKey})";
     }
 
     public sealed class AmqpReplyToSinkSettings : IAmqpConnectorSettings
     {
-        private AmqpReplyToSinkSettings(IAmqpConnectionSettings connectionSettings, bool failIfReplyToMissing = true)
+        private AmqpReplyToSinkSettings(AmqpConnectionProvider connectionProvider, bool failIfReplyToMissing = true)
         {
-            ConnectionSettings = connectionSettings;
+            ConnectionProvider = connectionProvider;
             FailIfReplyToMissing = failIfReplyToMissing;
             Declarations = new List<IDeclaration>();
         }
 
-        public IAmqpConnectionSettings ConnectionSettings { get; }
+        public AmqpConnectionProvider ConnectionProvider { get; }
         public bool FailIfReplyToMissing { get; }
         public IReadOnlyList<IDeclaration> Declarations { get; }
 
-        public static AmqpReplyToSinkSettings Create(IAmqpConnectionSettings connectionSettings, bool failIfReplyToMissing = true)
+        public static AmqpReplyToSinkSettings Create(AmqpConnectionProvider connectionProvider, bool failIfReplyToMissing = true)
         {
-            return new AmqpReplyToSinkSettings(connectionSettings, failIfReplyToMissing);
+            return new AmqpReplyToSinkSettings(connectionProvider, failIfReplyToMissing);
         }
     }
 
     public sealed class AmqpSinkSettings : IAmqpConnectorSettings
     {
-        private AmqpSinkSettings(IAmqpConnectionSettings connectionSettings, string exchange = null,
+        private AmqpSinkSettings(AmqpConnectionProvider connectionProvider, string exchange = null,
             string routingKey = null, IReadOnlyList<IDeclaration> declarations = null)
         {
-            ConnectionSettings = connectionSettings;
+            ConnectionProvider = connectionProvider;
             Exchange = exchange;
             RoutingKey = routingKey;
             Declarations = declarations ?? new List<IDeclaration>();
         }
 
-        public IAmqpConnectionSettings ConnectionSettings { get; }
+        public AmqpConnectionProvider ConnectionProvider { get; }
         public string Exchange { get; }
         public string RoutingKey { get; }
         public IReadOnlyList<IDeclaration> Declarations { get; }
 
-        public static AmqpSinkSettings Create(IAmqpConnectionSettings connectionSettings = null) => 
-            new AmqpSinkSettings(connectionSettings ?? DefaultAmqpConnection.Instance);
+        public static AmqpSinkSettings Create(AmqpConnectionProvider connectionProvider) => 
+            new AmqpSinkSettings(connectionProvider);
 
-        public AmqpSinkSettings WithExchange(string exchange) => new AmqpSinkSettings(ConnectionSettings, exchange, RoutingKey, Declarations);
+        public AmqpSinkSettings WithExchange(string exchange) => new AmqpSinkSettings(ConnectionProvider, exchange, RoutingKey, Declarations);
 
-        public AmqpSinkSettings WithRoutingKey(string routingKey) => new AmqpSinkSettings(ConnectionSettings, Exchange, routingKey, Declarations);
+        public AmqpSinkSettings WithRoutingKey(string routingKey) => new AmqpSinkSettings(ConnectionProvider, Exchange, routingKey, Declarations);
 
         public AmqpSinkSettings WithDeclarations(params IDeclaration[] declarations) => 
-            new AmqpSinkSettings(ConnectionSettings, Exchange, RoutingKey, declarations);
+            new AmqpSinkSettings(ConnectionProvider, Exchange, RoutingKey, declarations);
 
         public override string ToString() => 
-            $"AmqpSinkSettings(ConnectionSettings={ConnectionSettings}, Exchange={Exchange}, RoutingKey={RoutingKey}, Delcarations={Declarations.Count})";
+            $"AmqpSinkSettings(ConnectionSettings={ConnectionProvider}, Exchange={Exchange}, RoutingKey={RoutingKey}, Delcarations={Declarations.Count})";
     }
-
-    /// <summary>
-    /// Only for internal implementations
-    /// </summary>
-    public interface IAmqpConnectionSettings
-    {
-    }
-
-    /// <summary>
-    /// Connects to a local AMQP broker at the default port with no password.
-    /// </summary>
-    // ReSharper disable once InheritdocConsiderUsage
-    public class DefaultAmqpConnection : IAmqpConnectionSettings
-    {
-        public static IAmqpConnectionSettings Instance => new DefaultAmqpConnection();
-    }
-
-    public sealed class AmqpConnectionUri : IAmqpConnectionSettings
-    {
-        private AmqpConnectionUri(Uri uri)
-        {
-            Uri = uri;
-        }
-
-        public Uri Uri { get; }
-
-        public static AmqpConnectionUri Create(string uri) => new AmqpConnectionUri(new Uri(uri));
-        public static AmqpConnectionUri Create(Uri uri) => new AmqpConnectionUri(uri);
-
-        public override string ToString() => $"AmqpConnectionUri(Uri={Uri})";
-    }
-
-    public sealed class AmqpConnectionDetails : IAmqpConnectionSettings
-    {
-        private AmqpConnectionDetails(IReadOnlyList<(string host, int port)> hostAndPortList,
-            AmqpCredentials? credentials = null,
-            string virtualHost = null,
-            SslOption ssl = null,
-            ushort? requestedHeartbeat = null,
-            TimeSpan? connectionTimeout = null,
-            TimeSpan? handshakeTimeout = null,
-            TimeSpan? networkRecoveryInterval = null,
-            bool? automaticRecoveryEnabled = null,
-            bool? topologyRecoveryEnabled = null)
-        {
-            HostAndPortList = hostAndPortList;
-            Credentials = credentials;
-            VirtualHost = virtualHost;
-            Ssl = ssl;
-            RequestedHeartbeat = requestedHeartbeat;
-            ConnectionTimeout = connectionTimeout;
-            HandshakeTimeout = handshakeTimeout;
-            NetworkRecoveryInterval = networkRecoveryInterval;
-            AutomaticRecoveryEnabled = automaticRecoveryEnabled;
-            TopologyRecoveryEnabled = topologyRecoveryEnabled;
-        }
-
-        public IReadOnlyList<(string host, int port)> HostAndPortList { get; }
-        public AmqpCredentials? Credentials { get; }
-        public string VirtualHost { get; }
-        public SslOption Ssl { get; }
-        public ushort? RequestedHeartbeat { get; }
-        public TimeSpan? ConnectionTimeout { get; }
-        public TimeSpan? HandshakeTimeout { get; }
-        public TimeSpan? NetworkRecoveryInterval { get; }
-        public bool? AutomaticRecoveryEnabled { get; }
-        public bool? TopologyRecoveryEnabled { get; }
-
-        public static AmqpConnectionDetails Create(string host, int port) => 
-            new AmqpConnectionDetails(new List<(string host, int port)> {(host, port)});
-
-        public AmqpConnectionDetails WithHostsAndPorts((string host, int port) hostAndPort,
-            params (string host, int port)[] hostAndPortList)
-        {
-            return new AmqpConnectionDetails(new List<(string host, int port)>(hostAndPortList.ToList()) {hostAndPort},
-                Credentials, VirtualHost, Ssl, RequestedHeartbeat,
-                ConnectionTimeout, HandshakeTimeout, NetworkRecoveryInterval, AutomaticRecoveryEnabled,
-                TopologyRecoveryEnabled);
-        }
-
-        public AmqpConnectionDetails WithCredentials(AmqpCredentials credentials)
-        {
-            return new AmqpConnectionDetails(HostAndPortList, credentials, VirtualHost, Ssl, RequestedHeartbeat,
-                ConnectionTimeout, HandshakeTimeout, NetworkRecoveryInterval, AutomaticRecoveryEnabled,
-                TopologyRecoveryEnabled);
-        }
-
-        public AmqpConnectionDetails WithVirtualHost(string virtualHost)
-        {
-            return new AmqpConnectionDetails(HostAndPortList, Credentials, virtualHost, Ssl, RequestedHeartbeat,
-                ConnectionTimeout, HandshakeTimeout, NetworkRecoveryInterval, AutomaticRecoveryEnabled,
-                TopologyRecoveryEnabled);
-        }
-
-        public AmqpConnectionDetails WithSsl(SslOption sslOption)
-        {
-            return new AmqpConnectionDetails(HostAndPortList, Credentials, VirtualHost, sslOption, RequestedHeartbeat,
-                ConnectionTimeout, HandshakeTimeout, NetworkRecoveryInterval, AutomaticRecoveryEnabled,
-                TopologyRecoveryEnabled);
-        }
-
-        public AmqpConnectionDetails WithRequestedHeartbeat(ushort requestedHeartbeat)
-        {
-            return new AmqpConnectionDetails(HostAndPortList, Credentials, VirtualHost, Ssl, requestedHeartbeat,
-                ConnectionTimeout, HandshakeTimeout, NetworkRecoveryInterval, AutomaticRecoveryEnabled,
-                TopologyRecoveryEnabled);
-        }
-
-        public AmqpConnectionDetails WithConnectionTimeout(TimeSpan connectionTimeout)
-        {
-            return new AmqpConnectionDetails(HostAndPortList, Credentials, VirtualHost, Ssl, RequestedHeartbeat,
-                connectionTimeout, HandshakeTimeout, NetworkRecoveryInterval, AutomaticRecoveryEnabled,
-                TopologyRecoveryEnabled);
-        }
-
-        public AmqpConnectionDetails WithHandshakeTimeout(TimeSpan handshakeTimeout)
-        {
-            return new AmqpConnectionDetails(HostAndPortList, Credentials, VirtualHost, Ssl, RequestedHeartbeat,
-                ConnectionTimeout, handshakeTimeout, NetworkRecoveryInterval, AutomaticRecoveryEnabled,
-                TopologyRecoveryEnabled);
-        }
-
-        public AmqpConnectionDetails WithNetworkRecoveryInterval(TimeSpan networkRecoveryInterval)
-        {
-            return new AmqpConnectionDetails(HostAndPortList, Credentials, VirtualHost, Ssl, RequestedHeartbeat,
-                ConnectionTimeout, HandshakeTimeout, networkRecoveryInterval, AutomaticRecoveryEnabled,
-                TopologyRecoveryEnabled);
-        }
-
-        public AmqpConnectionDetails WithAutomaticRecoveryEnabled(bool automaticRecoveryEnabled)
-        {
-            return new AmqpConnectionDetails(HostAndPortList, Credentials, VirtualHost, Ssl, RequestedHeartbeat,
-                ConnectionTimeout, HandshakeTimeout, NetworkRecoveryInterval, automaticRecoveryEnabled,
-                TopologyRecoveryEnabled);
-        }
-
-        public AmqpConnectionDetails WithTopologyRecoveryEnabled(bool topologyRecoveryEnabled)
-        {
-            return new AmqpConnectionDetails(HostAndPortList, Credentials, VirtualHost, Ssl, RequestedHeartbeat,
-                ConnectionTimeout, HandshakeTimeout, NetworkRecoveryInterval, AutomaticRecoveryEnabled,
-                topologyRecoveryEnabled);
-        }
-
-
-        public override string ToString()
-        {
-            return
-                $"AmqpConnectionDetails(HostAndPortList=({HostAndPortList.Select(x => $"[{x.host}:{x.port}]").Aggregate((left, right) => $"{right}, {left}")}), Credentials={Credentials}, VirtualHost={VirtualHost})";
-        }
-    }
-
     public struct AmqpCredentials : IEquatable<AmqpCredentials>
     {
         public string Username { get; }

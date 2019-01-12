@@ -18,14 +18,14 @@ namespace Akka.Streams.Amqp.Tests
     /// <inheritdoc />
     public class AmqpConnectorsTest : Akka.TestKit.Xunit2.TestKit
     {
-        private readonly AmqpConnectionDetails _connectionSettings;
+        private readonly AmqpConnectionProvider _connectionProvider;
         private readonly ActorMaterializer _mat;
 
         public AmqpConnectorsTest()
         {
             _mat = ActorMaterializer.Create(Sys);
-            _connectionSettings =
-                AmqpConnectionDetails.Create("localhost", 5672)
+            _connectionProvider =
+                AmqpDetailsConnectionProvider.Create("localhost", 5672)
                                      .WithAutomaticRecoveryEnabled(true)
                                      .WithNetworkRecoveryInterval(TimeSpan.FromSeconds(1));
         }
@@ -41,13 +41,13 @@ namespace Akka.Streams.Amqp.Tests
 
             //create sink
             var amqpSink = AmqpSink.CreateSimple(
-                AmqpSinkSettings.Create(_connectionSettings)
+                AmqpSinkSettings.Create(_connectionProvider)
                                 .WithRoutingKey(queueName)
                                 .WithDeclarations(queueDeclaration));
 
             //create source
             var amqpSource = AmqpSource.AtMostOnceSource(
-                NamedQueueSourceSettings.Create(DefaultAmqpConnection.Instance, queueName).WithDeclarations(queueDeclaration),
+                NamedQueueSourceSettings.Create(AmqpLocalConnectionProvider.Instance, queueName).WithDeclarations(queueDeclaration),
                 bufferSize: 10);
 
             //run sink
@@ -72,10 +72,10 @@ namespace Akka.Streams.Amqp.Tests
 
             //#create-rpc-flow
             var amqpRpcFlow = AmqpRpcFlow.CreateSimple(
-                AmqpSinkSettings.Create(_connectionSettings).WithRoutingKey(queueName).WithDeclarations(queueDeclaration));
+                AmqpSinkSettings.Create(_connectionProvider).WithRoutingKey(queueName).WithDeclarations(queueDeclaration));
 
             //#create-rpc-flow
-            var amqpSource = AmqpSource.AtMostOnceSource(NamedQueueSourceSettings.Create(_connectionSettings, queueName), bufferSize: 1);
+            var amqpSource = AmqpSource.AtMostOnceSource(NamedQueueSourceSettings.Create(_connectionProvider, queueName), bufferSize: 1);
 
             var input = new[] {"one", "two", "three", "four", "five"};
 
@@ -92,7 +92,7 @@ namespace Akka.Streams.Amqp.Tests
             //#run-rpc-flow
             rpcQueueNameTask.Result.Should().NotBeNullOrWhiteSpace("RPC flow materializes into response queue name");
 
-            var amqpSink = AmqpSink.ReplyTo(AmqpReplyToSinkSettings.Create(_connectionSettings));
+            var amqpSink = AmqpSink.ReplyTo(AmqpReplyToSinkSettings.Create(_connectionProvider));
 
             amqpSource
                 .Select(msg => new OutgoingMessage(msg.Bytes.Concat(ByteString.FromString("a")), false, false, msg.Properties))
@@ -111,9 +111,9 @@ namespace Akka.Streams.Amqp.Tests
             var queueDeclaration = QueueDeclaration.Create(queueName);
 
             var amqpRpcFlow = AmqpRpcFlow.CreateSimple(
-                AmqpSinkSettings.Create(_connectionSettings).WithRoutingKey(queueName).WithDeclarations(queueDeclaration), repliesPerMessage: 2);
+                AmqpSinkSettings.Create(_connectionProvider).WithRoutingKey(queueName).WithDeclarations(queueDeclaration), repliesPerMessage: 2);
 
-            var amqpSource = AmqpSource.AtMostOnceSource(NamedQueueSourceSettings.Create(_connectionSettings, queueName), bufferSize: 1);
+            var amqpSource = AmqpSource.AtMostOnceSource(NamedQueueSourceSettings.Create(_connectionProvider, queueName), bufferSize: 1);
 
             var input = new[] {"one", "two", "three", "four", "five"};
 
@@ -128,7 +128,7 @@ namespace Akka.Streams.Amqp.Tests
             var probe = t.Item2;
             rpcQueueF.Result.Should().NotBeNullOrWhiteSpace("RPC flow materializes into response queue name");
 
-            var amqpSink = AmqpSink.ReplyTo(AmqpReplyToSinkSettings.Create(_connectionSettings));
+            var amqpSink = AmqpSink.ReplyTo(AmqpReplyToSinkSettings.Create(_connectionProvider));
 
             amqpSource
                 .SelectMany(b =>
@@ -149,7 +149,7 @@ namespace Akka.Streams.Amqp.Tests
         public void Correctly_close_a_AmqpRpcFlow_when_stream_is_closed_without_passing_any_elements()
         {
             Source.Empty<ByteString>()
-                  .Via(AmqpRpcFlow.CreateSimple(AmqpSinkSettings.Create(_connectionSettings)))
+                  .Via(AmqpRpcFlow.CreateSimple(AmqpSinkSettings.Create(_connectionProvider)))
                   .RunWith(this.SinkProbe<ByteString>(), _mat)
                   .EnsureSubscription()
                   .ExpectComplete();
@@ -163,7 +163,7 @@ namespace Akka.Streams.Amqp.Tests
             Source
                 .Single(outgoingMessage)
                 .WatchTermination(Keep.Right)
-                .To(AmqpSink.ReplyTo(AmqpReplyToSinkSettings.Create(_connectionSettings)))
+                .To(AmqpSink.ReplyTo(AmqpReplyToSinkSettings.Create(_connectionProvider)))
                 .Run(_mat)
                 .Wait();
 
@@ -171,7 +171,7 @@ namespace Akka.Streams.Amqp.Tests
             {
                 Source
                     .Single(outgoingMessage)
-                    .ToMaterialized(AmqpSink.ReplyTo(AmqpReplyToSinkSettings.Create(_connectionSettings, failIfReplyToMissing: true)), Keep.Right)
+                    .ToMaterialized(AmqpSink.ReplyTo(AmqpReplyToSinkSettings.Create(_connectionProvider, failIfReplyToMissing: true)), Keep.Right)
                     .Run(_mat)
                     .Wait();
 
@@ -190,9 +190,9 @@ namespace Akka.Streams.Amqp.Tests
             var queueDeclaration = QueueDeclaration.Create(queueName);
 
             var amqpSource = AmqpSource.AtMostOnceSource(
-                NamedQueueSourceSettings.Create(_connectionSettings, queueName).WithDeclarations(queueDeclaration), bufferSize: 2);
+                NamedQueueSourceSettings.Create(_connectionProvider, queueName).WithDeclarations(queueDeclaration), bufferSize: 2);
 
-            var amqpSink = AmqpSink.CreateSimple(AmqpSinkSettings.Create(_connectionSettings).WithRoutingKey(queueName).WithDeclarations(queueDeclaration));
+            var amqpSink = AmqpSink.CreateSimple(AmqpSinkSettings.Create(_connectionProvider).WithRoutingKey(queueName).WithDeclarations(queueDeclaration));
             var publisher = this.CreatePublisherProbe<ByteString>();
             var subscriber = this.CreateSubscriberProbe<IncomingMessage>();
             amqpSink.AddAttributes(Attributes.CreateInputBuffer(1, 1)).RunWith(Source.FromPublisher(publisher), _mat);
@@ -241,7 +241,7 @@ namespace Akka.Streams.Amqp.Tests
             var exchangeDeclaration = ExchangeDeclaration.Create(exchangeName, "fanout");
 
             //#create-exchange-sink
-            var amqpSink = AmqpSink.CreateSimple(AmqpSinkSettings.Create(_connectionSettings).WithExchange(exchangeName).WithDeclarations(exchangeDeclaration));
+            var amqpSink = AmqpSink.CreateSimple(AmqpSinkSettings.Create(_connectionProvider).WithExchange(exchangeName).WithDeclarations(exchangeDeclaration));
 
             //#create-exchange-source
             const int fanoutSize = 4;
@@ -251,7 +251,7 @@ namespace Akka.Streams.Amqp.Tests
                           .Aggregate(Source.Empty<(int, string)>(), (source, fanoutBranch) =>
                               source.Merge(
                                   AmqpSource.AtMostOnceSource(
-                                                TemporaryQueueSourceSettings.Create(_connectionSettings, exchangeName).WithDeclarations(exchangeDeclaration),
+                                                TemporaryQueueSourceSettings.Create(_connectionProvider, exchangeName).WithDeclarations(exchangeDeclaration),
                                                 bufferSize: 1)
                                             .Select(msg => (branch: fanoutBranch, message: msg.Bytes.ToString())))
                           );
@@ -277,11 +277,11 @@ namespace Akka.Streams.Amqp.Tests
         {
             var queueName = "amqp-conn-it-spec-simple-queue-" + Environment.TickCount;
             var queueDeclaration = QueueDeclaration.Create(queueName);
-            var amqpSink = AmqpSink.CreateSimple(AmqpSinkSettings.Create(_connectionSettings).WithRoutingKey(queueName).WithDeclarations(queueDeclaration));
+            var amqpSink = AmqpSink.CreateSimple(AmqpSinkSettings.Create(_connectionProvider).WithRoutingKey(queueName).WithDeclarations(queueDeclaration));
 
             //#create-source-withoutautoack
             var amqpSource = AmqpSource.CommittableSource(
-                NamedQueueSourceSettings.Create(_connectionSettings, queueName).WithDeclarations(queueDeclaration),
+                NamedQueueSourceSettings.Create(_connectionProvider, queueName).WithDeclarations(queueDeclaration),
                 bufferSize: 10);
 
             //#create-source-withoutautoack
@@ -308,13 +308,13 @@ namespace Akka.Streams.Amqp.Tests
         {
             var queueName = "amqp-conn-it-spec-simple-queue-" + Environment.TickCount;
             var queueDeclaration = QueueDeclaration.Create(queueName);
-            var amqpSink = AmqpSink.CreateSimple(AmqpSinkSettings.Create(_connectionSettings).WithRoutingKey(queueName).WithDeclarations(queueDeclaration));
+            var amqpSink = AmqpSink.CreateSimple(AmqpSinkSettings.Create(_connectionProvider).WithRoutingKey(queueName).WithDeclarations(queueDeclaration));
 
             var input = new[] {"one", "two", "three", "four", "five"};
             Source.From(input).Select(ByteString.FromString).RunWith(amqpSink, _mat).Wait();
 
             var amqpSource = AmqpSource.CommittableSource(
-                NamedQueueSourceSettings.Create(_connectionSettings, queueName).WithDeclarations(queueDeclaration), bufferSize: 10);
+                NamedQueueSourceSettings.Create(_connectionProvider, queueName).WithDeclarations(queueDeclaration), bufferSize: 10);
 
             //#run-source-withoutautoack-and-nack
             var result1 = amqpSource
@@ -347,10 +347,10 @@ namespace Akka.Streams.Amqp.Tests
             var queueName = "amqp-conn-it-spec-simple-queue-" + Environment.TickCount;
             var queueDeclaration = QueueDeclaration.Create(queueName);
 
-            var amqpSink = AmqpSink.CreateSimple(AmqpSinkSettings.Create(_connectionSettings).WithRoutingKey(queueName).WithDeclarations(queueDeclaration));
+            var amqpSink = AmqpSink.CreateSimple(AmqpSinkSettings.Create(_connectionProvider).WithRoutingKey(queueName).WithDeclarations(queueDeclaration));
 
             var amqpSource = AmqpSource.CommittableSource(
-                NamedQueueSourceSettings.Create(_connectionSettings, queueName).WithDeclarations(queueDeclaration), bufferSize: 10);
+                NamedQueueSourceSettings.Create(_connectionProvider, queueName).WithDeclarations(queueDeclaration), bufferSize: 10);
 
             var input = new[] {"one", "two", "three", "four", "five"};
             Source.From(input).Select(ByteString.FromString).RunWith(amqpSink, _mat).Wait();
@@ -367,12 +367,12 @@ namespace Akka.Streams.Amqp.Tests
         {
             var queueName = "amqp-conn-it-spec-simple-queue-" + Environment.TickCount;
             var queueDeclaration = QueueDeclaration.Create(queueName);
-            var amqpSink = AmqpSink.CreateSimple(AmqpSinkSettings.Create(_connectionSettings).WithRoutingKey(queueName).WithDeclarations(queueDeclaration));
+            var amqpSink = AmqpSink.CreateSimple(AmqpSinkSettings.Create(_connectionProvider).WithRoutingKey(queueName).WithDeclarations(queueDeclaration));
             var input = new[] {"one", "two", "three", "four", "five"};
             Source.From(input).Select(ByteString.FromString).RunWith(amqpSink, _mat).Wait();
 
             var amqpSource = AmqpSource.CommittableSource(
-                NamedQueueSourceSettings.Create(_connectionSettings, queueName).WithDeclarations(queueDeclaration), bufferSize: 10);
+                NamedQueueSourceSettings.Create(_connectionProvider, queueName).WithDeclarations(queueDeclaration), bufferSize: 10);
 
             var result1 = amqpSource
                           .SelectAsync(1, async cm =>
@@ -406,7 +406,7 @@ namespace Akka.Streams.Amqp.Tests
             var input = new[] {"one", "two", "three", "four", "five"};
 
             var amqpRpcFlow = AmqpRpcFlow.CommittableFlow(
-                AmqpSinkSettings.Create(_connectionSettings).WithRoutingKey(queueName).WithDeclarations(queueDeclaration), bufferSize: 10);
+                AmqpSinkSettings.Create(_connectionProvider).WithRoutingKey(queueName).WithDeclarations(queueDeclaration), bufferSize: 10);
 
             var t =
                 Source.From(input)
@@ -425,9 +425,9 @@ namespace Akka.Streams.Amqp.Tests
             var probe = t.Item2;
             rpcQueueF.Wait();
 
-            var amqpSink = AmqpSink.ReplyTo(AmqpReplyToSinkSettings.Create(_connectionSettings));
+            var amqpSink = AmqpSink.ReplyTo(AmqpReplyToSinkSettings.Create(_connectionProvider));
 
-            var amqpSource = AmqpSource.AtMostOnceSource(NamedQueueSourceSettings.Create(_connectionSettings, queueName), bufferSize: 1);
+            var amqpSource = AmqpSource.AtMostOnceSource(NamedQueueSourceSettings.Create(_connectionProvider, queueName), bufferSize: 1);
 
             amqpSource
                 .Select(b => new OutgoingMessage(b.Bytes, false, false, b.Properties))
@@ -448,12 +448,12 @@ namespace Akka.Streams.Amqp.Tests
             var bindingDeclaration = BindingDeclaration.Create(queueName, exchangeName).WithRoutingKey(GetRoutingKey("*"));
 
             var amqpSink = AmqpSink.Create(
-                AmqpSinkSettings.Create(_connectionSettings)
+                AmqpSinkSettings.Create(_connectionProvider)
                                 .WithExchange(exchangeName)
                                 .WithDeclarations(exchangeDeclaration, queueDeclaration, bindingDeclaration));
 
             var amqpSource = AmqpSource.AtMostOnceSource(
-                NamedQueueSourceSettings.Create(_connectionSettings, queueName).WithDeclarations(exchangeDeclaration, queueDeclaration, bindingDeclaration),
+                NamedQueueSourceSettings.Create(_connectionProvider, queueName).WithDeclarations(exchangeDeclaration, queueDeclaration, bindingDeclaration),
                 bufferSize: 10);
 
             var input = new[] {"one", "two", "three", "four", "five"};
@@ -479,7 +479,7 @@ namespace Akka.Streams.Amqp.Tests
             var queueName = "amqp-conn-it-spec-work-queues-" + Environment.TickCount;
             var queueDeclaration = QueueDeclaration.Create(queueName);
             var amqpSink = AmqpSink.CreateSimple(
-                AmqpSinkSettings.Create(_connectionSettings)
+                AmqpSinkSettings.Create(_connectionProvider)
                                 .WithRoutingKey(queueName)
                                 .WithDeclarations(queueDeclaration));
 
@@ -494,7 +494,7 @@ namespace Akka.Streams.Amqp.Tests
                 {
                     var source = b.Add(
                         AmqpSource.AtMostOnceSource(
-                            NamedQueueSourceSettings.Create(_connectionSettings, queueName).WithDeclarations(queueDeclaration),
+                            NamedQueueSourceSettings.Create(_connectionProvider, queueName).WithDeclarations(queueDeclaration),
                             bufferSize: 1));
 
                     b.From(source.Outlet).To(merge.In(n));
@@ -517,7 +517,7 @@ namespace Akka.Streams.Amqp.Tests
 
             var amqpFlow =
                 AmqpFlow.Create<string>(
-                    AmqpSinkSettings.Create(_connectionSettings)
+                    AmqpSinkSettings.Create(_connectionProvider)
                                     .WithRoutingKey(queueName)
                                     .WithDeclarations(queueDeclaration));
 
@@ -536,7 +536,7 @@ namespace Akka.Streams.Amqp.Tests
 
             var consumed =
                 AmqpSource.AtMostOnceSource(
-                              NamedQueueSourceSettings.Create(DefaultAmqpConnection.Instance, queueName).WithDeclarations(queueDeclaration),
+                              NamedQueueSourceSettings.Create(AmqpLocalConnectionProvider.Instance, queueName).WithDeclarations(queueDeclaration),
                               bufferSize: 10)
                           .Select(m => m.Bytes.ToString(Encoding.UTF8))
                           .Take(input.Length)
@@ -551,7 +551,7 @@ namespace Akka.Streams.Amqp.Tests
         public void Correctly_close_a_AmqpFlow_when_stream_is_closed_without_passing_any_elements()
         {
             Source.Empty<(OutgoingMessage, int)>()
-                  .Via(AmqpFlow.Create<int>(AmqpSinkSettings.Create(_connectionSettings)))
+                  .Via(AmqpFlow.Create<int>(AmqpSinkSettings.Create(_connectionProvider)))
                   .RunWith(this.SinkProbe<int>(), _mat)
                   .EnsureSubscription()
                   .ExpectComplete();
@@ -569,12 +569,12 @@ namespace Akka.Streams.Amqp.Tests
             var bindingDeclaration = BindingDeclaration.Create(queueName, exchangeName).WithRoutingKey(GetRoutingKey("*"));
 
             var amqpFlow = AmqpFlow.Create<string>(
-                AmqpSinkSettings.Create(_connectionSettings)
+                AmqpSinkSettings.Create(_connectionProvider)
                                 .WithExchange(exchangeName)
                                 .WithDeclarations(exchangeDeclaration, queueDeclaration, bindingDeclaration));
 
             var amqpSource = AmqpSource.AtMostOnceSource(
-                NamedQueueSourceSettings.Create(_connectionSettings, queueName).WithDeclarations(exchangeDeclaration, queueDeclaration, bindingDeclaration),
+                NamedQueueSourceSettings.Create(_connectionProvider, queueName).WithDeclarations(exchangeDeclaration, queueDeclaration, bindingDeclaration),
                 bufferSize: 10);
 
             var input = new[] {"one", "two", "three", "four", "five"};

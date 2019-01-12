@@ -17,8 +17,13 @@ namespace Akka.Streams.Amqp
 
     public sealed class NamedQueueSourceSettings : IAmqpSourceSettings
     {
-        private NamedQueueSourceSettings(IAmqpConnectionSettings connectionSettings, string queue,
-            IReadOnlyList<IDeclaration> declarations = null, bool noLocal = false, bool exclusive = false,
+        private NamedQueueSourceSettings(
+            IAmqpConnectionSettings connectionSettings, 
+            string queue,
+            IReadOnlyList<IDeclaration> declarations = null, 
+            bool noLocal = false, 
+            bool exclusive = false,
+            bool ackRequired = true,
             string consumerTag = null,
             IReadOnlyDictionary<string, object> arguments = null)
         {
@@ -27,6 +32,7 @@ namespace Akka.Streams.Amqp
             Declarations = declarations ?? new List<IDeclaration>();
             NoLocal = noLocal;
             Exclusive = exclusive;
+            AckRequired = ackRequired;
             ConsumerTag = consumerTag ?? "default";
             Arguments = arguments ?? new Dictionary<string, object>();
         }
@@ -36,6 +42,7 @@ namespace Akka.Streams.Amqp
         public IReadOnlyList<IDeclaration> Declarations { get; }
         public bool NoLocal { get; }
         public bool Exclusive { get; }
+        public bool AckRequired { get; }
         public string ConsumerTag { get; }
         public IReadOnlyDictionary<string, object> Arguments { get; }
 
@@ -46,40 +53,44 @@ namespace Akka.Streams.Amqp
 
         public NamedQueueSourceSettings WithDeclarations(params IDeclaration[] declarations)
         {
-            return new NamedQueueSourceSettings(ConnectionSettings, Queue, declarations, NoLocal, Exclusive, ConsumerTag, Arguments);
+            return new NamedQueueSourceSettings(ConnectionSettings, Queue, declarations, NoLocal, Exclusive, AckRequired, ConsumerTag, Arguments);
         }
 
         public NamedQueueSourceSettings WithNoLocal(bool noLocal)
         {
-            return new NamedQueueSourceSettings(ConnectionSettings, Queue, Declarations, noLocal, Exclusive, ConsumerTag, Arguments);
+            return new NamedQueueSourceSettings(ConnectionSettings, Queue, Declarations, noLocal, Exclusive, AckRequired, ConsumerTag, Arguments);
         }
 
         public NamedQueueSourceSettings WithExclusive(bool exclusive)
         {
-            return new NamedQueueSourceSettings(ConnectionSettings, Queue, Declarations, NoLocal, exclusive, ConsumerTag, Arguments);
+            return new NamedQueueSourceSettings(ConnectionSettings, Queue, Declarations, NoLocal, exclusive, AckRequired, ConsumerTag, Arguments);
+        }
+
+        public NamedQueueSourceSettings WithAckRequired(bool ackRequired)
+        {
+            return new NamedQueueSourceSettings(ConnectionSettings, Queue, Declarations, NoLocal, Exclusive, ackRequired, ConsumerTag, Arguments);
         }
 
         public NamedQueueSourceSettings WithConsumerTag(string consumerTag)
         {
-            return new NamedQueueSourceSettings(ConnectionSettings, Queue, Declarations, NoLocal, Exclusive, consumerTag, Arguments);
+            return new NamedQueueSourceSettings(ConnectionSettings, Queue, Declarations, NoLocal, Exclusive, AckRequired, consumerTag, Arguments);
         }
 
         public NamedQueueSourceSettings WithArguments(params KeyValuePair<string, object>[] arguments)
         {
-            return new NamedQueueSourceSettings(ConnectionSettings, Queue, Declarations, NoLocal, Exclusive, ConsumerTag,
+            return new NamedQueueSourceSettings(ConnectionSettings, Queue, Declarations, NoLocal, Exclusive, AckRequired, ConsumerTag,
                 arguments.ToDictionary(key => key.Key, val => val.Value));
         }
 
         public NamedQueueSourceSettings WithArguments(params (string paramName, object paramValue)[] arguments)
         {
-            return new NamedQueueSourceSettings(ConnectionSettings, Queue, Declarations, NoLocal, Exclusive, ConsumerTag,
+            return new NamedQueueSourceSettings(ConnectionSettings, Queue, Declarations, NoLocal, Exclusive, AckRequired, ConsumerTag,
                 arguments.ToDictionary(key => key.paramName, val => val.paramValue));
         }
 
         public NamedQueueSourceSettings WithArguments(string key, object value)
         {
-            return new NamedQueueSourceSettings(ConnectionSettings, Queue, Declarations, NoLocal, Exclusive,
-                ConsumerTag,
+            return new NamedQueueSourceSettings(ConnectionSettings, Queue, Declarations, NoLocal, Exclusive, AckRequired, ConsumerTag,
                 new Dictionary<string, object> {{key, value}});
         }
 

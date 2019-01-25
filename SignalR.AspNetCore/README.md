@@ -6,21 +6,24 @@ SignalR integration can be achieved by inheriting from `StreamHub` and `StreamCo
 `StreamConnector` allows you to wire-up the Source and Sink to send/receive messages to/from server/client.
 `StreamHub` is a special version of SignalR Hub, it simply passes incoming messages to the `StreamConnector`
 
-SignalR makes a new instance of the Hub on each incoming invocation, nor does it have the concept of a 
-persistent connection, unlike the previous version. As such, the design of this connector follows the same 
-design decision. There is one single stream instance for each Hub type.
+SignalR for ASP.NET Core makes a new instance of the Hub on each incoming invocation. It also doesn't have the 
+concept of a persistent connection unlike the previous version. As such, the design of this connector follows 
+the same design decision. There is **one single stream instance for each Hub type** as defined by the subclass of 
+StreamConnector, and many instances of StreamHub will receive calls that dispatches to StreamConnector. The 
+dispatcher maintains the list of streams. Note that only one client-called method on the hub is dispatched, 
+namely the "Send" method which takes a single 'message' argument from the client.
+
 
 ### Example
 
 Example echo websocket connection. Basic workflow is to take stream of incoming SignalR events, filter only those 
-send by client and broadcast them back to the SignalR sink.  You will want to consider choosing a 
-suitable supervision strategy so that if any processing stage throws an exception, it will continue to process 
-other messages.
+send by client and broadcast them back to the SignalR sink.
 
 ```csharp
-public class EchoStreamHub : StreamConnector
+public class EchoStream : StreamConnector
 {
-    public EchoStreamHub()
+    public EchoStream(IHubClients clients, ConnectionSourceSettings sourceSettings = null, ConnectionSinkSettings sinkSettings = null) 
+        : base(clients, sourceSettings, sinkSettings)
     {
         this.Source
             .Collect(x => x as Received) // filter out lifecycle events
@@ -31,13 +34,20 @@ public class EchoStreamHub : StreamConnector
     }
 }
 
+public class EchoHub : StreamHub<EchoStream>
+{
+    public EchoHub(IStreamDispatcher dispatcher)
+        : base(dispatcher)
+    { }
+}
+
 // Startup.cs
 public class Startup
 {
     public void ConfigureServices(IServiceCollection services)
     {
         services.AddSignalR();
-        services.AddSignalRAkkaStream(); // Makes the dispatcher available
+        services.AddSignalRAkkaStream(); // Makes IStreamDispatcher available
     }
 
     public void Configure(IApplicationBuilder app)
@@ -48,23 +58,40 @@ public class Startup
     }
 }
 ```
-
 For actual example take a look at [sample project](./src/SignalRSample).
 
-### StreamHub.Connect - source
+Some extra considerations you may need to take:
 
-`Source` is an Akka.Streams source for events comming from the client side. Source can contain both user-defined data and connection lifecycle events:
+- Because there's only one stream per hub type, choose an appropriate supervision strategy so, for example, that if 
+any processing stage throws an exception, the stream stays up and continues processing other client's messages
+- SignalR has its own serialization mechanisms that this connector is agnostic to. While server-to-client messages 
+will have all the necessary CLR type to carry out serializtion, client-to-server messages may not have all the 
+information required for deserialization.
+
+### StreamConnector.Source
+
+`Source` is an Akka.Streams source for events comming from the client side. Source can contain both user-defined data and 
+connection lifecycle events which maps to those available in SignalR:
 
 - `Received(HubCallerContext request, object data)` for messages send by the client.
 - `Connected(HubCallerContext request)` when new client connects.
 - `Disconnected(HubCallerContext request, Exception ex)` when existing client disconnects.
 
-### StreamHub.Connect - sink
+Note that current version of SignalR no longer supports automatic reconnect. Downstream stages must be able to 
+handle multiple connections from the same browser instance in the event of a disconnect.
 
-`Sink` is an Akka.Streams sink for messages send back to the client. Sink can accept following messages:
+### StreamConnector.Sink
 
-- `Signals.Send(string connectionId, object data)` or `Signals.SendToGroup(string group, object data, IList<string> excluded)` to send to a specific connection, or entire group with excluded connection ids.
+`Sink` is an Akka.Streams sink for messages to be sent back to the client. Sink can accept following messages, which maps 
+to a subset of those offered by SignalR:
+
+- `Signals.Send(string connectionId, object data)` or `Signals.SendToGroup(string group, object data, IList<string> excluded)` 
+to send to a specific connection, or entire group with excluded connection ids.
 - `Signals.Broadcast(object data, string[] excluded = null)` used to send data to all corresponding connections.
+
+Note the lack of a "send to caller" message since there's only 1 stream instance for potentially many different clients. The 
+downstream stages of the Source is required to keep track of `request.ConnectionId` to construct a `Signals.Send` in order to 
+reply to caller.
 
 ### Configuration
 

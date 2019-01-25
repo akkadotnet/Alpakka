@@ -1,5 +1,6 @@
 ﻿using Akka.Actor;
 using Akka.Streams.Dsl;
+using Akka.Streams.SignalR.AspNetCore.Internals;
 using Akka.Streams.TestKit;
 using Akka.TestKit;
 using Microsoft.AspNetCore.SignalR;

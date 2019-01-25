@@ -7,9 +7,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Akka.Streams.SignalR\Akka.Streams.SignalR.csproj" />
-    <PackageReference Include="Microsoft.Owin.StaticFiles" Version="3.0.1" />
-    <PackageReference Include="Microsoft.AspNet.WebApi.OwinSelfHost" Version="5.2.3" />
-    <PackageReference Include="Microsoft.Owin.Cors" Version="3.0.1" />
+    <PackageReference Include="Microsoft.Owin.StaticFiles" Version="4.0.1" />
+    <PackageReference Include="Microsoft.AspNet.WebApi.OwinSelfHost" Version="5.2.7" />
+    <PackageReference Include="Microsoft.Owin.Cors" Version="4.0.1" />
   </ItemGroup>
 
   <ItemGroup>

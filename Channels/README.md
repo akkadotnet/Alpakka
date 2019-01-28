@@ -22,7 +22,7 @@ var cancellationTokenSource = new CancellationTokenSource();
 var channel = await hubConnection.StreamAsChannelAsync<int>(
     "Counter", 10, 500, cancellationTokenSource.Token);
 
-await ChannelSource.FromReader(channel)
+await ChannelSource.FromReader<int>(channel)
 	.RunForeach(Console.WriteLine, materializer);
 
 Console.WriteLine("Streaming completed");

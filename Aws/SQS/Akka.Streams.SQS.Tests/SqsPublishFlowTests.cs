@@ -1,10 +1,12 @@
 #region copyright
+
 //-----------------------------------------------------------------------
 // <copyright file="SqsPublishFlowTests.cs" company="Akka.NET Project">
 //     Copyright (C) 2009-2019 Lightbend Inc. <http://www.lightbend.com>
 //     Copyright (C) 2019-2019 .NET Foundation <https://github.com/akkadotnet/akka.net>
 // </copyright>
 //-----------------------------------------------------------------------
+
 #endregion
 
 using System.Collections.Generic;
@@ -38,8 +40,8 @@ namespace Akka.Streams.SQS.Tests
         public void SqsPublishFlow_default_should_send_messages_to_SQS()
         {
             client.SendMessageAsync(Arg.Any<SendMessageRequest>()).Returns(req =>
-                Task.FromResult(new SendMessageResponse{}));
-            
+                Task.FromResult(new SendMessageResponse { }));
+
             var publisher = this.CreatePublisherProbe<string>();
             var subscriber = this.CreateSubscriberProbe<SqsPublishResult>();
             Source.FromPublisher(publisher)
@@ -53,12 +55,14 @@ namespace Akka.Streams.SQS.Tests
             publisher.SendNext("a-1");
             publisher.SendNext("a-2");
 
-            subscriber.ExpectNext<SqsPublishResult>(r => r.Request.MessageBody == "a-1" && r.Request.QueueUrl == TestQueueUrl);
-            subscriber.ExpectNext<SqsPublishResult>(r => r.Request.MessageBody == "a-2" && r.Request.QueueUrl == TestQueueUrl);
+            subscriber.ExpectNext<SqsPublishResult>(r =>
+                r.Request.MessageBody == "a-1" && r.Request.QueueUrl == TestQueueUrl);
+            subscriber.ExpectNext<SqsPublishResult>(r =>
+                r.Request.MessageBody == "a-2" && r.Request.QueueUrl == TestQueueUrl);
 
             subscriber.Cancel();
         }
-        
+
         [Fact]
         public void SqsPublishFlow_grouped_should_send_messages_to_SQS_in_batches()
         {
@@ -66,13 +70,13 @@ namespace Akka.Streams.SQS.Tests
                 Task.FromResult(new SendMessageBatchResponse
                 {
                     Failed = new List<BatchResultErrorEntry>(0),
-                    Successful = ((SendMessageBatchRequest)req[0]).Entries
+                    Successful = ((SendMessageBatchRequest) req[0]).Entries
                         .Select(e => new SendMessageBatchResultEntry
                         {
-                            Id = e.Id 
+                            Id = e.Id
                         }).ToList()
                 }));
-            
+
             var publisher = this.CreatePublisherProbe<string>();
             var subscriber = this.CreateSubscriberProbe<SqsPublishResultEntry>();
             Source.FromPublisher(publisher)
@@ -86,10 +90,49 @@ namespace Akka.Streams.SQS.Tests
             publisher.SendNext("a-1");
             publisher.SendNext("a-2");
 
-            subscriber.ExpectNext<SqsPublishResultEntry>(r => r.Request.MessageBody == "a-1" && r.Request.QueueUrl == TestQueueUrl);
-            subscriber.ExpectNext<SqsPublishResultEntry>(r => r.Request.MessageBody == "a-2" && r.Request.QueueUrl == TestQueueUrl);
+            subscriber.ExpectNext<SqsPublishResultEntry>(r =>
+                r.Request.MessageBody == "a-1" && r.Request.QueueUrl == TestQueueUrl);
+            subscriber.ExpectNext<SqsPublishResultEntry>(r =>
+                r.Request.MessageBody == "a-2" && r.Request.QueueUrl == TestQueueUrl);
 
             subscriber.Cancel();
+        }
+
+        [Fact]
+        public void SqsPublishFlow_grouped_should_fail_downstream_on_partial_failure()
+        {
+            client.SendMessageBatchAsync(Arg.Any<SendMessageBatchRequest>()).Returns(req =>
+            {
+                var request = ((SendMessageBatchRequest) req[0]);
+                var success = request.Entries[0];
+                var failure = request.Entries[1];
+                return Task.FromResult(new SendMessageBatchResponse
+                {
+                    Failed = new List<BatchResultErrorEntry>
+                    {
+                        new BatchResultErrorEntry {Code = "Test Error", Id = failure.Id}
+                    },
+                    Successful = new List<SendMessageBatchResultEntry>
+                    {
+                        new SendMessageBatchResultEntry {Id = success.Id}
+                    }
+                });
+            });
+
+            var publisher = this.CreatePublisherProbe<string>();
+            var subscriber = this.CreateSubscriberProbe<SqsPublishResultEntry>();
+            Source.FromPublisher(publisher)
+                .Select(msg => new SendMessageRequest(TestQueueUrl, msg))
+                .Via(SqsPublishFlow.Grouped(client, TestQueueUrl))
+                .To(Sink.FromSubscriber(subscriber))
+                .Run(materializer);
+
+            subscriber.Request(2);
+
+            publisher.SendNext("a-1");
+            publisher.SendNext("a-2");
+
+            subscriber.ExpectError();
         }
         
         [Fact]
@@ -99,13 +142,13 @@ namespace Akka.Streams.SQS.Tests
                 Task.FromResult(new SendMessageBatchResponse
                 {
                     Failed = new List<BatchResultErrorEntry>(0),
-                    Successful = ((SendMessageBatchRequest)req[0]).Entries
+                    Successful = ((SendMessageBatchRequest) req[0]).Entries
                         .Select(e => new SendMessageBatchResultEntry
                         {
-                            Id = e.Id 
+                            Id = e.Id
                         }).ToList()
                 }));
-            
+
             var publisher = this.CreatePublisherProbe<string[]>();
             var subscriber = this.CreateSubscriberProbe<string[]>();
             Source.FromPublisher(publisher)
@@ -117,14 +160,51 @@ namespace Akka.Streams.SQS.Tests
 
             subscriber.Request(2);
 
-            publisher.SendNext(new []{"a-1", "a-2"});
-            publisher.SendNext(new []{"b-1", "b-2", "b-3"});
+            publisher.SendNext(new[] {"a-1", "a-2"});
+            publisher.SendNext(new[] {"b-1", "b-2", "b-3"});
 
-            subscriber.ExpectNext<string[]>(x => x.SequenceEqual(new []{"a-1", "a-2"}));
-            subscriber.ExpectNext<string[]>(x => x.SequenceEqual(new []{"b-1", "b-2", "b-3"}));
+            subscriber.ExpectNext<string[]>(x => x.SequenceEqual(new[] {"a-1", "a-2"}));
+            subscriber.ExpectNext<string[]>(x => x.SequenceEqual(new[] {"b-1", "b-2", "b-3"}));
 
             subscriber.Cancel();
         }
-        
+
+        [Fact]
+        public void SqsPublishFlow_batch_should_fail_downstream_on_partial_failures()
+        {
+            client.SendMessageBatchAsync(Arg.Any<SendMessageBatchRequest>()).Returns(req =>
+            {
+                var request = ((SendMessageBatchRequest) req[0]);
+                var success = request.Entries[0];
+                var failure = request.Entries[1];
+                return Task.FromResult(new SendMessageBatchResponse
+                {
+                    Failed = new List<BatchResultErrorEntry>
+                    {
+                        new BatchResultErrorEntry {Code = "Test Error", Id = failure.Id}
+                    },
+                    Successful = new List<SendMessageBatchResultEntry>
+                    {
+                        new SendMessageBatchResultEntry {Id = success.Id}
+                    }
+                });
+            });
+
+            var publisher = this.CreatePublisherProbe<string[]>();
+            var subscriber = this.CreateSubscriberProbe<string[]>();
+            Source.FromPublisher(publisher)
+                .Select(msgs => msgs.Select(msg => new SendMessageRequest(TestQueueUrl, msg)))
+                .Via(SqsPublishFlow.Batch(client, TestQueueUrl))
+                .Select(list => list.Select(x => x.Request.MessageBody).ToArray())
+                .To(Sink.FromSubscriber(subscriber))
+                .Run(materializer);
+
+            subscriber.Request(2);
+
+            publisher.SendNext(new[] {"a-1", "a-2"});
+            publisher.SendNext(new[] {"b-1", "b-2"});
+
+            subscriber.ExpectError();
+        }
     }
 }

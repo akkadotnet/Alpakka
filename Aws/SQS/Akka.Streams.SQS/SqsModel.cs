@@ -94,7 +94,7 @@ namespace Akka.Streams.SQS
     {
         public ResponseMetadata ResponseMetadata => Response.ResponseMetadata;
         public object Result => Response;
-        public AmazonSQSRequest Request { get; }
+        public SendMessageRequest Request { get; }
         public SendMessageResponse Response { get; }
 
         public SqsPublishResult(SendMessageRequest request, SendMessageResponse response)
@@ -163,8 +163,9 @@ namespace Akka.Streams.SQS
         }
 
         public ResponseMetadata ResponseMetadata => new Amazon.Runtime.ResponseMetadata();
-        public object Result => NotUsed.Instance;
-        public MessageAction Action { get; }
+        object ISqsResult.Result => NotUsed.Instance;
+        public Ignore Action { get; }
+        MessageAction ISqsAckResult.Action => Action;
     }
 
     /// <summary>

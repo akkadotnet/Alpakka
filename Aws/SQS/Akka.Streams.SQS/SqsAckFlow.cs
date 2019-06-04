@@ -114,7 +114,7 @@ namespace Akka.Streams.SQS
 
                     var response = await client.DeleteMessageBatchAsync(request);
 
-                    if (response.Failed.Count != 0)
+                    if (response.Failed.Count == 0)
                     {
                         var responseMetadata = response.ResponseMetadata;
                         var resultEntries = response.Successful.ToDictionary(e => int.Parse(e.Id), e => e);
@@ -170,7 +170,7 @@ namespace Akka.Streams.SQS
 
                     var response = await client.ChangeMessageVisibilityBatchAsync(request);
 
-                    if (response.Failed.Count != 0)
+                    if (response.Failed.Count == 0)
                     {
                         var responseMetadata = response.ResponseMetadata;
                         var resultEntries = response.Successful.ToDictionary(e => int.Parse(e.Id), e => e);

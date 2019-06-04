@@ -33,7 +33,7 @@ namespace Akka.Streams.SQS
         /// Creates a <see cref="Sink{TIn,TMat}"/> that accepts strings and publishes them as messages
         /// to a SQS queue using a <paramref name="client"/>.
         /// </summary>
-        private static Sink<SendMessageRequest, Task> MessageSink(IAmazonSQS client, string queueUrl, SqsPublishSettings settings = null) =>
+        public static Sink<SendMessageRequest, Task> MessageSink(IAmazonSQS client, string queueUrl, SqsPublishSettings settings = null) =>
             SqsPublishFlow.Default(client, queueUrl, settings)
                 .ToMaterialized(Sink.Ignore<SqsPublishResult>(), Keep.Right);
 

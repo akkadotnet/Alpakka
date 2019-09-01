@@ -1,6 +1,6 @@
 ﻿using System.Threading.Tasks;
 using Akka.Streams.Dsl;
-using Microsoft.WindowsAzure.Storage.Queue;
+using Microsoft.Azure.Storage.Queue;
 
 namespace Akka.Streams.Azure.StorageQueue
 {

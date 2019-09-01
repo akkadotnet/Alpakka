@@ -1,6 +1,6 @@
+using Microsoft.Azure.Storage;
+using Microsoft.Azure.Storage.Queue;
 using System;
-using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Queue;
 
 namespace Akka.Streams.Azure.StorageQueue
 {

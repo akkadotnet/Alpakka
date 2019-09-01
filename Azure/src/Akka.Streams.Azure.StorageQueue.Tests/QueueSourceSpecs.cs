@@ -3,7 +3,7 @@ using Akka.Streams.Dsl;
 using Akka.Streams.Supervision;
 using Akka.Streams.TestKit;
 using FluentAssertions;
-using Microsoft.WindowsAzure.Storage.Queue;
+using Microsoft.Azure.Storage.Queue;
 using Xunit;
 
 namespace Akka.Streams.Azure.StorageQueue.Tests

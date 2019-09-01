@@ -1,5 +1,6 @@
-﻿using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Queue;
+﻿using System;
+using Microsoft.Azure.Storage;
+using Microsoft.Azure.Storage.Queue;
 
 namespace Akka.Streams.Azure.StorageQueue.Tests
 {
@@ -10,7 +11,7 @@ namespace Akka.Streams.Azure.StorageQueue.Tests
             Materializer = Sys.Materializer();
 
             var client = CloudStorageAccount.DevelopmentStorageAccount.CreateCloudQueueClient();
-            Queue = client.GetQueueReference("testqueue");
+            Queue = client.GetQueueReference($"testqueue-{Guid.NewGuid()}");
             Queue.CreateIfNotExists();
         }
 

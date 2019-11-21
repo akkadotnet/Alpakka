@@ -42,6 +42,8 @@ Target "RestorePackages" (fun _ ->
                    ++ "./**/Akka.Streams.Csv.Tests.csproj"
                    ++ "./**/Akka.Streams.SignalR.csproj"
                    ++ "./**/Akka.Streams.SignalR.Tests.csproj"
+                   ++ "./**/Akka.Streams.SignalR.AspNetCore.csproj"
+                   ++ "./**/Akka.Streams.SignalR.AspNetCore.Tests.csproj"
                    ++ "./**/Akka.Streams.Azure.EventHub.csproj"
                    ++ "./**/Akka.Streams.Azure.ServiceBus.csproj"
                    ++ "./**/Akka.Streams.Azure.StorageQueue.csproj"
@@ -69,6 +71,8 @@ Target "Build" (fun _ ->
                    ++ "./**/Akka.Streams.Csv.Tests.csproj"
                    ++ "./**/Akka.Streams.SignalR.csproj"
                    ++ "./**/Akka.Streams.SignalR.Tests.csproj"
+                   ++ "./**/Akka.Streams.SignalR.AspNetCore.csproj"
+                   ++ "./**/Akka.Streams.SignalR.AspNetCore.Tests.csproj"
                    ++ "./**/Akka.Streams.Azure.EventHub.csproj"
                    ++ "./**/Akka.Streams.Azure.ServiceBus.csproj"
                    ++ "./**/Akka.Streams.Azure.StorageQueue.csproj"
@@ -98,6 +102,7 @@ Target "RunTests" (fun _ ->
                    ++ "./**/Akka.Streams.Csv.Tests.csproj"
                    //++ "./**/Akka.Streams.SignalR.Tests.csproj"
                    //++ "./**/Akka.Streams.Amqp.Tests.csproj"
+                   ++ "./**/Akka.Streams.SignalR.AspNetCore.Tests.csproj"
                    ++ "./**/Akka.Streams.SNS.Tests.csproj"
 
     let runSingleProject project =
@@ -123,6 +128,7 @@ Target "CreateNuget" (fun _ ->
     let projects = !! "./**/Akka.Streams.Xml.csproj"
                    ++ "./**/Akka.Streams.Csv.csproj"
                    ++ "./**/Akka.Streams.SignalR.csproj"
+                   ++ "./**/Akka.Streams.SignalR.AspNetCore.csproj"
                    ++ "./**/Akka.Streams.Azure.EventHub.csproj"
                    ++ "./**/Akka.Streams.Azure.ServiceBus.csproj"
                    ++ "./**/Akka.Streams.Azure.StorageQueue.csproj"

@@ -1,0 +1,36 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>Akka.Streams SignalR sample</title>
+	<meta charset="utf-8" />
+    <script src="http://code.jquery.com/jquery-1.7.min.js" type="text/javascript"></script>
+    <script src="signalr.js"></script>
+    <script type="text/javascript">
+    $(function () {
+        const connection = new signalR.HubConnectionBuilder()
+            .withUrl("/echo")
+            .configureLogging(signalR.LogLevel.Trace)
+            .build();
+        
+        connection.on("Receive", function (data) {
+            console.log(data);
+            $('#messages').append('<li>' + data.payload + '</li>');
+        });
+
+        connection.start().then(function () {
+            $("#broadcast").click(function () {
+                connection.invoke("Send", { type: "String", payload: $('#msg').val() });
+            });
+        });
+
+    });
+    </script>
+</head>
+<body>
+
+    <input type="text" id="msg" />
+    <input type="button" id="broadcast" value="broadcast" />
+
+    <ul id="messages"></ul>
+</body>
+</html>

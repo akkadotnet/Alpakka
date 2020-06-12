@@ -44,12 +44,12 @@ namespace Akka.Streams.Csv.Dsl
 
         static ByteOrderMark()
         {
-            ByteString ZeroZero = ByteString.Create(new byte[]{0x00, 0x00});
-            UTF16_BE = ByteString.Create(new byte[] { 0xfe, 0xff });
-            UTF16_LE = ByteString.Create(new byte[] { 0xff, 0xfe });
+            ByteString ZeroZero = ByteString.FromBytes(new byte[]{0x00, 0x00});
+            UTF16_BE = ByteString.FromBytes(new byte[] { 0xfe, 0xff });
+            UTF16_LE = ByteString.FromBytes(new byte[] { 0xff, 0xfe });
             UTF32_BE = ZeroZero + UTF16_BE;
             UTF32_LE = UTF16_LE + ZeroZero;
-            UTF8 = ByteString.Create(new byte[]{0xEF, 0xBB, 0xBF});
+            UTF8 = ByteString.FromBytes(new byte[]{0xEF, 0xBB, 0xBF});
             None = ByteString.Empty;
         }
     }

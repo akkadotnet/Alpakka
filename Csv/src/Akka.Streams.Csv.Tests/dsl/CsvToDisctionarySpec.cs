@@ -27,12 +27,12 @@ namespace Akka.Streams.Csv.Tests.dsl
                 .RunWith(Sink.First<Dictionary<string, ByteString>>(), Materializer);
 
             fut.Wait(TimeSpan.FromSeconds(3));
-            fut.Result.ShouldAllBeEquivalentTo(new Dictionary<string, ByteString>
+            fut.Result.Should().BeEquivalentTo(new Dictionary<string, ByteString>
             {
                 {"eins", ByteString.FromString("1") },
                 {"zwei", ByteString.FromString("2") },
                 {"drei", ByteString.FromString("3") },
-            });
+            }, options => options.WithStrictOrdering());
         }
 
         [Fact]
@@ -44,11 +44,11 @@ namespace Akka.Streams.Csv.Tests.dsl
                 .RunWith(Sink.First<Dictionary<string, ByteString>>(), Materializer);
 
             fut.Wait(TimeSpan.FromSeconds(3));
-            fut.Result.ShouldAllBeEquivalentTo(new Dictionary<string, ByteString>
+            fut.Result.Should().BeEquivalentTo(new Dictionary<string, ByteString>
             {
                 {"eins", ByteString.FromString("1") },
                 {"zwei", ByteString.FromString("2") },
-            });
+            }, options => options.WithStrictOrdering());
         }
 
         [Fact]
@@ -60,12 +60,12 @@ namespace Akka.Streams.Csv.Tests.dsl
                 .RunWith(Sink.First<Dictionary<string, ByteString>>(), Materializer);
 
             fut.Wait(TimeSpan.FromSeconds(3));
-            fut.Result.ShouldAllBeEquivalentTo(new Dictionary<string, ByteString>
-            {
-                {"eins", ByteString.FromString("1") },
-                {"zwei", ByteString.FromString("2") },
-                {"drei", ByteString.FromString("3") },
-            });
+            fut.Result.Should().BeEquivalentTo(new Dictionary<string, ByteString>
+                                                 {
+                                                     {"eins", ByteString.FromString("1") },
+                                                     {"zwei", ByteString.FromString("2") },
+                                                     {"drei", ByteString.FromString("3") },
+                                                 }, options => options.WithStrictOrdering());
         }
 
         [Fact]
@@ -77,12 +77,12 @@ namespace Akka.Streams.Csv.Tests.dsl
                 .RunWith(Sink.First<Dictionary<string, ByteString>>(), Materializer);
 
             fut.Wait(TimeSpan.FromSeconds(3));
-            fut.Result.ShouldAllBeEquivalentTo(new Dictionary<string, ByteString>
-            {
-                {"eins", ByteString.FromString("1") },
-                {"zwei", ByteString.FromString("2") },
-                {"drei", ByteString.FromString("3") },
-            });
+            fut.Result.Should().BeEquivalentTo(new Dictionary<string, ByteString>
+                                                 {
+                                                     {"eins", ByteString.FromString("1") },
+                                                     {"zwei", ByteString.FromString("2") },
+                                                     {"drei", ByteString.FromString("3") },
+                                                 }, options => options.WithStrictOrdering());
 
         }
     }

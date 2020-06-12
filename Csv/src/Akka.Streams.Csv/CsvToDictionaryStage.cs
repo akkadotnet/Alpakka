@@ -49,7 +49,7 @@ namespace Akka.Streams.Csv
                     var headers = new List<string>();
                     foreach (var elem in elements)
                     {
-                        headers.Add(elem.DecodeString(_encoding));
+                        headers.Add(elem.ToString(_encoding));
                     }
                     _headers = headers.ToImmutableList();
                     Pull(_stage.In);

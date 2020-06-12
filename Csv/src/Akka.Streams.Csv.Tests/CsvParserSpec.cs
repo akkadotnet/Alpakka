@@ -38,7 +38,7 @@ namespace Akka.Streams.Csv.Tests
         {
             var parser = new CsvParser(CsvParsing.Comma, 0x2d, 0x2e);
             parser.Offer(ByteString.Empty);
-            parser.Poll(true).ShouldBeEquivalentTo(null);
+            parser.Poll(true).Should().BeEquivalentTo(null);
         }
 
         [Fact]
@@ -120,7 +120,7 @@ namespace Akka.Streams.Csv.Tests
             var parser = new CsvParser(CsvParsing.Comma, CsvParsing.DoubleQuote, CsvParsing.Backslash);
             parser.Offer(ByteString.FromString("a,\\\",c\n"));
             parser.Invoking(p => p.Poll(true))
-                .ShouldThrowExactly<MalformedCsvException>()
+                .Should().ThrowExactly<MalformedCsvException>()
                 .WithMessage("wrong escaping at 1:2, only escape or delimiter may be escaped");
         }
 
@@ -130,7 +130,7 @@ namespace Akka.Streams.Csv.Tests
             var parser = new CsvParser(CsvParsing.Comma, CsvParsing.DoubleQuote, CsvParsing.Backslash);
             parser.Offer(ByteString.FromString("a,\\"));
             parser.Invoking(p => p.Poll(true))
-                .ShouldThrowExactly<MalformedCsvException>()
+                .Should().ThrowExactly<MalformedCsvException>()
                 .WithMessage("wrong escaping at 1:2, no character after escape");
         }
 
@@ -140,7 +140,7 @@ namespace Akka.Streams.Csv.Tests
             var parser = new CsvParser(CsvParsing.Comma, CsvParsing.DoubleQuote, CsvParsing.Backslash);
             parser.Offer(ByteString.FromString("a,b\\"));
             parser.Invoking(p => p.Poll(true))
-                .ShouldThrowExactly<MalformedCsvException>()
+                .Should().ThrowExactly<MalformedCsvException>()
                 .WithMessage("wrong escaping at 1:3, no character after escape");
         }
 
@@ -150,7 +150,7 @@ namespace Akka.Streams.Csv.Tests
             var parser = new CsvParser(CsvParsing.Comma, CsvParsing.DoubleQuote, CsvParsing.Backslash);
             parser.Offer(ByteString.FromString("a,\"\\"));
             parser.Invoking(p => p.Poll(true))
-                .ShouldThrowExactly<MalformedCsvException>()
+                .Should().ThrowExactly<MalformedCsvException>()
                 .WithMessage("wrong escaping at 1:3, no character after escape");
         }
 
@@ -184,7 +184,7 @@ namespace Akka.Streams.Csv.Tests
             var parser = new CsvParser(CsvParsing.Comma, CsvParsing.DoubleQuote, CsvParsing.Backslash);
             parser.Offer(ByteString.FromString("abc\u2028"));
             var res = parser.Poll(true);
-            res[0].DecodeString().ShouldBeEquivalentTo("abc");
+            res[0].ToString().Should().BeEquivalentTo("abc");
         }
 
         [Fact]
@@ -250,7 +250,7 @@ namespace Akka.Streams.Csv.Tests
         {
             var bsIn = ByteOrderMark.UTF16_LE + ByteString.FromString("one,two,three\n", Encoding.Unicode);
             this.Invoking(t => t.ExpectBsInOut(bsIn, new[,] {{"one", "two", "three"}}))
-                .ShouldThrowExactly<UnsupportedCharsetException>();
+                .Should().ThrowExactly<UnsupportedCharsetException>();
         }
 
         [Fact]
@@ -258,7 +258,7 @@ namespace Akka.Streams.Csv.Tests
         {
             var bsIn = ByteOrderMark.UTF16_BE + ByteString.FromString("one,two,three\n", Encoding.BigEndianUnicode);
             this.Invoking(t => t.ExpectBsInOut(bsIn, new[,] { { "one", "two", "three" } }))
-                .ShouldThrowExactly<UnsupportedCharsetException>();
+                .Should().ThrowExactly<UnsupportedCharsetException>();
         }
 
         [Fact]
@@ -266,7 +266,7 @@ namespace Akka.Streams.Csv.Tests
         {
             var bsIn = ByteOrderMark.UTF32_LE + ByteString.FromString("one,two,three\n", Encoding.UTF32);
             this.Invoking(t => t.ExpectBsInOut(bsIn, new[,] { { "one", "two", "three" } }))
-                .ShouldThrowExactly<UnsupportedCharsetException>();
+                .Should().ThrowExactly<UnsupportedCharsetException>();
         }
 
         [Fact]
@@ -274,7 +274,7 @@ namespace Akka.Streams.Csv.Tests
         {
             var bsIn = ByteOrderMark.UTF32_BE + ByteString.FromString("one,two,three\n", Encoding.UTF32);
             this.Invoking(t => t.ExpectBsInOut(bsIn, new[,] { { "one", "two", "three" } }))
-                .ShouldThrowExactly<UnsupportedCharsetException>();
+                .Should().ThrowExactly<UnsupportedCharsetException>();
         }
 
         private void ExpectInOut(string strIn, 
@@ -307,13 +307,13 @@ namespace Akka.Streams.Csv.Tests
 
                     for (int j = 0; j < expected.GetLength(1); ++j)
                     {
-                        var resStr = res[j].DecodeString();
-                        resStr.ShouldBeEquivalentTo(expected[i, j]);
+                        var resStr = res[j].ToString();
+                        resStr.Should().BeEquivalentTo(expected[i, j]);
                     }
                 }
             }
 
-            parser.Poll(true).ShouldBeEquivalentTo(null);
+            parser.Poll(true).Should().BeEquivalentTo(null);
         }
     }
 }

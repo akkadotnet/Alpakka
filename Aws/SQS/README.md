@@ -28,8 +28,9 @@ using (var materializer = system.Materializer())
             // after we handled the message we need to take if off from the queue
             return MessageAction.Delete(msg);
         })
-        .To(SqsAckSink.Grouped(client, QueueUrl)) // we delete messages in batches
-        .Run(_materializer);
+        .ToMaterialized(SqsAckSink.Grouped(client, QueueUrl), Keep.Right)
+        // we delete messages in batches
+        .Run(materializer);
 }
 ```
 

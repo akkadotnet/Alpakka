@@ -40,7 +40,9 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{EEA93301-F97B-49F0-BB08-33F7CC5A24BB}"
 	ProjectSection(SolutionItems) = preProject
 		.editorconfig = .editorconfig
+		..\build.fsx = ..\build.fsx
 		common.props = common.props
+		..\RELEASE_NOTES.md = ..\RELEASE_NOTES.md
 		xunit.runner.json = xunit.runner.json
 	EndProjectSection
 EndProject
@@ -78,13 +80,13 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Akka.Streams.Sns", "AWS\SNS
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Akka.Streams.Sns.Tests", "AWS\SNS\Akka.Streams.Sns.Tests\Akka.Streams.Sns.Tests.csproj", "{0D75972B-5426-4D3D-866F-B6BE8BF6B369}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Akka.Streams.Kinesis", "AWS\Kinesis\Akka.Streams.Kinesis\Akka.Streams.Kinesis.csproj", "{E703376C-6A79-4E96-87DA-AC188DBC51E0}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Akka.Streams.Kinesis", "AWS\Kinesis\Akka.Streams.Kinesis\Akka.Streams.Kinesis.csproj", "{E703376C-6A79-4E96-87DA-AC188DBC51E0}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Akka.Streams.Kinesis.Tests", "AWS\Kinesis\Akka.Streams.Kinesis.Tests\Akka.Streams.Kinesis.Tests.csproj", "{45CEF0FF-6EF9-4A65-92A0-BC872DF04D1D}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Akka.Streams.Kinesis.Tests", "AWS\Kinesis\Akka.Streams.Kinesis.Tests\Akka.Streams.Kinesis.Tests.csproj", "{45CEF0FF-6EF9-4A65-92A0-BC872DF04D1D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Akka.Streams.SQS", "AWS\SQS\Akka.Streams.SQS\Akka.Streams.SQS.csproj", "{AF51F88B-BE49-43C9-A204-E3117C95C6E2}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Akka.Streams.SQS", "AWS\SQS\Akka.Streams.SQS\Akka.Streams.SQS.csproj", "{AF51F88B-BE49-43C9-A204-E3117C95C6E2}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Akka.Streams.SQS.Tests", "AWS\SQS\Akka.Streams.SQS.Tests\Akka.Streams.SQS.Tests.csproj", "{9FB24FFA-C15A-4BD0-AF56-1D05F5917D5B}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Akka.Streams.SQS.Tests", "AWS\SQS\Akka.Streams.SQS.Tests\Akka.Streams.SQS.Tests.csproj", "{9FB24FFA-C15A-4BD0-AF56-1D05F5917D5B}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Channels", "Channels", "{0BA6B6E2-6946-45C9-9409-0522016B4070}"
 EndProject
@@ -101,6 +103,16 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Examples", "Examples", "{61B9A718-FBF4-4297-83A0-E693A458435F}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Akka.Streams.SignalR.AspNetCore.Examples", "SignalR.AspNetCore\Examples\Akka.Streams.SignalR.AspNetCore.Examples\Akka.Streams.SignalR.AspNetCore.Examples.csproj", "{B0D5EA66-C997-464D-A655-15592CA2E79B}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "build-system", "build-system", "{1773F9EE-ABAA-4266-9336-CD4FB8833703}"
+	ProjectSection(SolutionItems) = preProject
+		..\build-system\azure-pipeline.template.yaml = ..\build-system\azure-pipeline.template.yaml
+		..\..\akka.net\build-system\linux-pr-validation.yaml = ..\..\akka.net\build-system\linux-pr-validation.yaml
+		..\build-system\nightly-builds.yaml = ..\build-system\nightly-builds.yaml
+		..\build-system\README.md = ..\build-system\README.md
+		..\build-system\windows-pr-validation.yaml = ..\build-system\windows-pr-validation.yaml
+		..\build-system\windows-release.yaml = ..\build-system\windows-release.yaml
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -391,6 +403,7 @@ Global
 		{8DF21727-42A3-4DAA-ADEB-4528BF38FBBF} = {DAB5C318-24D3-4B31-BEE0-EC0FAFC00F82}
 		{61B9A718-FBF4-4297-83A0-E693A458435F} = {DAB5C318-24D3-4B31-BEE0-EC0FAFC00F82}
 		{B0D5EA66-C997-464D-A655-15592CA2E79B} = {61B9A718-FBF4-4297-83A0-E693A458435F}
+		{1773F9EE-ABAA-4266-9336-CD4FB8833703} = {EEA93301-F97B-49F0-BB08-33F7CC5A24BB}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {BE1A9436-C6F6-4C73-9EB4-32DEC9C841A5}

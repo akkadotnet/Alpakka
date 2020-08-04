@@ -1,0 +1,37 @@
+# Pull request validation for Windows against the `dev` and `master` branches
+# See https://docs.microsoft.com/en-us/azure/devops/pipelines/yaml-schema for reference
+trigger:
+  branches:
+    include:
+      - dev
+      - v1.*
+      - master
+      - feature/*
+
+pr:
+  autoCancel: true # indicates whether additional pushes to a PR should cancel in-progress runs for the same PR. Defaults to true
+  branches:
+    include: [ dev, v1.*, master, feature/* ] # branch names which will trigger a build
+
+name: $(Year:yyyy).$(Month).$(DayOfMonth)$(Rev:.r)
+
+jobs:
+  - template: azure-pipeline.template.yaml
+    parameters:
+      name: 'netfx_tests_windows'
+      displayName: '.NET Framework Unit Tests (Windows)'
+      vmImage: 'windows-2019'
+      scriptFileName: build.cmd
+      scriptArgs: runTests incremental
+      outputDirectory: 'TestResults'
+      artifactName: 'netfx_tests_windows-$(Build.BuildId)'
+
+  - template: azure-pipeline.template.yaml
+    parameters:
+      name: 'net_core_tests_windows'
+      displayName: '.NET Core Unit Tests (Windows)'
+      vmImage: 'windows-2019'
+      scriptFileName: build.cmd
+      scriptArgs: runTestsNetCore incremental
+      outputDirectory: 'TestResults'
+      artifactName: 'net_core_tests_windows-$(Build.BuildId)'

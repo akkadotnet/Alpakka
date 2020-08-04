@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <Import Project="..\..\common.props" />
+
+    <PropertyGroup>
+        <AssemblyTitle>Akka.Streams.Azure.ServiceBus</AssemblyTitle>
+        <Description>Azure ServiceBus adapter for Akka.NET Streams</Description>
+        <TargetFramework>$(NetStandardLibVersion)</TargetFramework>
+        <PackageTags>$(AkkaPackageTags);azure;ServiceBus</PackageTags>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Akka.Streams" Version="$(AkkaVersion)" />
+        <PackageReference Include="WindowsAzure.ServiceBus" Version="6.0.2" />
+    </ItemGroup>
+
+</Project>

@@ -1,0 +1,20 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+    <Import Project="..\..\common.props" />
+
+    <PropertyGroup>
+        <AssemblyTitle>Akka.Streams.Kafka</AssemblyTitle>
+        <Description>Kafka adapter for Akka.NET Streams</Description>
+        <TargetFramework>$(NetStandardLibVersion)</TargetFramework>
+        <PackageTags>$(AkkaPackageTags);kafka;reactive</PackageTags>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <EmbeddedResource Include="reference.conf" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Akka.Streams" Version="$(AkkaVersion)" />
+        <PackageReference Include="Confluent.Kafka" Version="1.0.0-experimental-2" />
+    </ItemGroup>
+
+</Project>

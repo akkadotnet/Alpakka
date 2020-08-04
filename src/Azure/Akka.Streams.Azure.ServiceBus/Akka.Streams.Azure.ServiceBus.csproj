@@ -10,7 +10,7 @@
 
     <ItemGroup>
         <PackageReference Include="Akka.Streams" Version="$(AkkaVersion)" />
-        <PackageReference Include="WindowsAzure.ServiceBus" Version="6.0.2" />
+        <PackageReference Include="WindowsAzure.ServiceBus" Version="5.1.0" />
     </ItemGroup>
 
 </Project>

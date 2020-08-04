@@ -12,9 +12,13 @@
         <PackageReference Include="FluentAssertions" Version="$(FluentAssertionsVersion)" />
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="$(TestSdkVersion)" />
         <PackageReference Include="xunit" Version="$(XunitVersion)" />
-        <PackageReference Include="xunit.runner.visualstudio" Version="$(XunitVersion)" />
+        <PackageReference Include="xunit.runner.visualstudio" Version="$(XunitVersion)">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+		</PackageReference>
+        <PackageReference Include="Microsoft.Owin.Testing" Version="4.0.1" />
         <PackageReference Include="coverlet.collector" Version="1.2.0" />
-        <PackageReference Include="Microsoft.Owin.Testing" Version="3.0.1" />
+		<DotNetCliToolReference Include="dotnet-xunit" Version="2.3.0-*" />
     </ItemGroup>
 
     <ItemGroup>

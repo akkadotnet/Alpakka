@@ -136,7 +136,7 @@ namespace Akka.Streams.Amqp
                         break;
                     case TemporaryQueueSourceSettings _:
                         var tempSettings = (TemporaryQueueSourceSettings) Settings;
-                        SetupTmeporaryQueue(tempSettings);
+                        SetupTemporaryQueue(tempSettings);
                         break;
                 }
             }
@@ -147,15 +147,16 @@ namespace Akka.Streams.Amqp
 
             private void SetupNamedQueue(NamedQueueSourceSettings settings)
             {
-                Channel.BasicConsume(settings.Queue,
-                    false, // never auto-ack
+                Channel.BasicConsume(
+                    settings.Queue,
+                    !settings.AckRequired,
                     settings.ConsumerTag, // consumer tag
                     settings.NoLocal,
                     settings.Exclusive,
                     settings.Arguments.ToDictionary(k => k.Key, val => val.Value), _amqpSourceConsumer);
             }
 
-            private void SetupTmeporaryQueue(TemporaryQueueSourceSettings settings)
+            private void SetupTemporaryQueue(TemporaryQueueSourceSettings settings)
             {
                 // this is a weird case that required dynamic declaration, the queue name is not known
                 // up front, it is only useful for sources, so that's why it's not placed in the AmqpConnectorLogic

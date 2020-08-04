@@ -6,6 +6,7 @@
         <Description>XML Parser and Formatter for Akka.NET Streams</Description>
         <TargetFramework>$(NetStandardLibVersion)</TargetFramework>
         <PackageTags>$(AkkaPackageTags);csv</PackageTags>
+        <Platforms>AnyCPU;x64</Platforms>
     </PropertyGroup>
 
     <ItemGroup>

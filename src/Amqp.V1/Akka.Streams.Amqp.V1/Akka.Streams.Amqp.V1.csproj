@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <Import Project="..\..\common.props" />
+
+  <PropertyGroup>
+      <AssemblyTitle>Akka.Streams.Amqp.V1</AssemblyTitle>
+      <Description>AMQP V1 adapter for Akka.NET Streams</Description>
+      <TargetFramework>$(NetStandardLibVersion)</TargetFramework>
+      <PackageTags>$(AkkaPackageTags);AMQP;RabbitMQ</PackageTags>
+      <Platforms>AnyCPU;x64</Platforms>
+  </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Akka.Streams" Version="$(AkkaVersion)" />
+        <PackageReference Include="AMQPNetLite.Core" Version="2.1.3" />
+        <PackageReference Include="AMQPNetLite.Serialization" Version="2.1.3" />
+    </ItemGroup>
+
+</Project>

@@ -25,7 +25,7 @@ namespace Akka.Streams.Csv.Tests.dsl
                 .RunWith(Sink.First<ByteString>(), Materializer);
 
             fut.Wait(TimeSpan.FromSeconds(3));
-            fut.Result.Should().BeEquivalentTo(ByteString.FromString("eins,zwei,drei\r\n"));
+            fut.Result.Should().BeEquivalentTo(ByteString.FromString("eins,zwei,drei\r\n"), opt => opt.WithStrictOrdering());
         }
 
         [Fact]
@@ -44,9 +44,9 @@ namespace Akka.Streams.Csv.Tests.dsl
             var res = fut.Result;
             res.Should().NotBeNull();
             res.Count.Should().Be(3);
-            res[0].Should().BeEquivalentTo(ByteOrderMark.UTF8);
-            res[1].Should().BeEquivalentTo(ByteString.FromString("eins,zwei,drei\r\n"));
-            res[2].Should().BeEquivalentTo(ByteString.FromString("uno,dos,tres\r\n"));
+            res[0].Should().BeEquivalentTo(ByteOrderMark.UTF8, opt => opt.WithStrictOrdering());
+            res[1].Should().BeEquivalentTo(ByteString.FromString("eins,zwei,drei\r\n"), opt => opt.WithStrictOrdering());
+            res[2].Should().BeEquivalentTo(ByteString.FromString("uno,dos,tres\r\n"), opt => opt.WithStrictOrdering());
         }
     }
 }

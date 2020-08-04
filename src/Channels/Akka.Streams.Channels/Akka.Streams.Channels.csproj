@@ -2,8 +2,8 @@
     <Import Project="..\..\common.props" />
 
     <PropertyGroup>
-        <AssemblyTitle>Akka.Streams.Xml</AssemblyTitle>
-        <Description>XML Parser for Akka.NET Streams</Description>
+        <AssemblyTitle>Akka.Streams.Channels</AssemblyTitle>
+        <Description>.NET Core Channels adapter for Akka.NET Streams</Description>
         <TargetFramework>$(NetStandardLibVersion)</TargetFramework>
         <PackageTags>$(AkkaPackageTags);csv</PackageTags>
         <Platforms>AnyCPU;x64</Platforms>
@@ -11,6 +11,7 @@
 
     <ItemGroup>
         <PackageReference Include="Akka.Streams" Version="$(AkkaVersion)" />
+        <PackageReference Include="System.Threading.Channels" Version="4.5.0" />
     </ItemGroup>
 
 </Project>

@@ -1,0 +1,16 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+    <Import Project="..\..\..\common.props" />
+
+    <PropertyGroup>
+        <AssemblyTitle>Akka.Streams.Kinesis</AssemblyTitle>
+        <Description>AWS Kinesis adapter for Akka.NET Streams</Description>
+        <TargetFramework>$(NetStandardLibVersion)</TargetFramework>
+        <PackageTags>$(AkkaPackageTags);Amazon;AWS;Kinesis</PackageTags>
+        <Platforms>AnyCPU;x64</Platforms>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Akka.Streams" Version="$(AkkaVersion)" />
+        <PackageReference Include="AWSSDK.Kinesis" Version="3.3.6.31" />
+    </ItemGroup>
+</Project>

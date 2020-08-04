@@ -6,6 +6,7 @@
         <Description>Kafka adapter for Akka.NET Streams</Description>
         <TargetFramework>$(NetStandardLibVersion)</TargetFramework>
         <PackageTags>$(AkkaPackageTags);kafka;reactive</PackageTags>
+        <Platforms>AnyCPU;x64</Platforms>
     </PropertyGroup>
 
     <ItemGroup>

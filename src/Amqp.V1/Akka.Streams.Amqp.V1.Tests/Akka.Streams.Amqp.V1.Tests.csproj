@@ -1,8 +1,8 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
     <Import Project="..\..\common.props" />
 
     <PropertyGroup>
-        <TargetFrameworks>$(NetFrameworkTestVersion)</TargetFrameworks>
+        <TargetFrameworks>$(NetCoreTestVersion)</TargetFrameworks>
         <IsPackable>false</IsPackable>
         <Platforms>AnyCPU;x64</Platforms>
     </PropertyGroup>
@@ -18,7 +18,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\Akka.Streams.Kafka\Akka.Streams.Kafka.csproj" />
+        <ProjectReference Include="..\Akka.Streams.Amqp.V1\Akka.Streams.Amqp.V1.csproj" />
     </ItemGroup>
 
 </Project>

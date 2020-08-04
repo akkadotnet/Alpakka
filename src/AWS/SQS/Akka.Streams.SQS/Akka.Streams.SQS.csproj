@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <Import Project="..\..\..\common.props" />
+
+    <PropertyGroup>
+        <AssemblyTitle>Akka.Streams.SQS</AssemblyTitle>
+        <Description>Amazon SQS adapter for Akka.NET Streams</Description>
+        <TargetFramework>$(NetStandardLibVersion)</TargetFramework>
+        <PackageTags>$(AkkaPackageTags);Amazon;AWS;SQS</PackageTags>
+        <Platforms>AnyCPU;x64</Platforms>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Akka.Streams" Version="$(AkkaVersion)" />
+        <PackageReference Include="AWSSDK.SQS" Version="3.3.100.29" />
+    </ItemGroup>
+
+</Project>

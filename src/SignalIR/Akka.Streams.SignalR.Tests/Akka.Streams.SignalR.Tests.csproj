@@ -4,6 +4,7 @@
     <PropertyGroup>
         <TargetFrameworks>$(NetFrameworkTestVersion)</TargetFrameworks>
         <IsPackable>false</IsPackable>
+        <Platforms>AnyCPU;x64</Platforms>
     </PropertyGroup>
 
     <ItemGroup>

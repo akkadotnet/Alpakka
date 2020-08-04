@@ -128,7 +128,7 @@ namespace Akka.Streams.Csv.Tests
         {
             var formatter = new CsvFormatter(';', '"', '\\', "\r\n", CsvQuotingStyle.Required, Encoding.Unicode);
             var csv = formatter.ToCsv(new[] { "ett", "två", "อักษรไทย" });
-            csv.Should().BeEquivalentTo(ByteString.FromString("ett;två;อักษรไทย\r\n", Encoding.Unicode));
+            csv.Should().BeEquivalentTo(ByteString.FromString("ett;två;อักษรไทย\r\n", Encoding.Unicode), opt => opt.WithStrictOrdering());
         }
 
         private void ExpectInOut(CsvFormatter formatter, string[] strIn, string strOut)

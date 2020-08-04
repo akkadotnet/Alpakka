@@ -6,6 +6,7 @@
         <Description>AMQP adapter for Akka.NET Streams</Description>
         <TargetFramework>$(NetStandardLibVersion)</TargetFramework>
         <PackageTags>$(AkkaPackageTags);AMQP;RabbitMQ</PackageTags>
+        <Platforms>AnyCPU;x64</Platforms>
     </PropertyGroup>
 
     <ItemGroup>

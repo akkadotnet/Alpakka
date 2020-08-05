@@ -11,7 +11,7 @@ parameters:
 jobs:
   - job: ${{ parameters.name }}
     variables:
-      - Alpakka.Azure.Test.UseDocker: true # Flag for azure storage queue test to use docker
+      - alpakka_azure_test_usedocker: true # Flag for azure storage queue test to use docker
     displayName: ${{ parameters.displayName }}
     timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
     pool:

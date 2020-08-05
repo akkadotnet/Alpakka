@@ -1,0 +1,21 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+    <Import Project="..\..\common.props" />
+
+    <PropertyGroup>
+        <AssemblyTitle>Akka.Streams.SignalR.AspNetCore</AssemblyTitle>
+        <Description>SignalR ASP.Net Core connector for Akka.NET Streams</Description>
+        <TargetFramework>$(NetStandardLibVersion)</TargetFramework>
+        <PackageTags>$(AkkaPackageTags);signalr</PackageTags>
+        <Platforms>AnyCPU;x64</Platforms>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Akka.Streams" Version="$(AkkaVersion)" />
+        <PackageReference Include="microsoft.aspnetcore.signalr" Version="1.1.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <EmbeddedResource Include="reference.conf" />
+    </ItemGroup>
+
+</Project>

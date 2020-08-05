@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <Import Project="..\..\common.props" />
+
+    <PropertyGroup>
+        <AssemblyTitle>Akka.Streams.Xml</AssemblyTitle>
+        <Description>XML Parser for Akka.NET Streams</Description>
+        <TargetFramework>$(NetStandardLibVersion)</TargetFramework>
+        <PackageTags>$(AkkaPackageTags);csv</PackageTags>
+        <Platforms>AnyCPU;x64</Platforms>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Akka.Streams" Version="$(AkkaVersion)" />
+    </ItemGroup>
+
+</Project>

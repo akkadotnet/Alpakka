@@ -1,0 +1,28 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+    <Import Project="..\..\common.props" />
+
+    <PropertyGroup>
+        <TargetFrameworks>$(NetFrameworkTestVersion);$(NetCoreTestVersion)</TargetFrameworks>
+        <IsPackable>false</IsPackable>
+        <Platforms>AnyCPU;x64</Platforms>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Akka.Streams.TestKit" Version="$(AkkaVersion)" />
+        <PackageReference Include="Akka.TestKit.Xunit2" Version="$(AkkaVersion)" />
+        <PackageReference Include="FluentAssertions" Version="$(FluentAssertionsVersion)" />
+        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="$(TestSdkVersion)" />
+        <PackageReference Include="xunit" Version="$(XunitVersion)" />
+        <PackageReference Include="xunit.runner.visualstudio" Version="$(XunitVersion)" />
+        <PackageReference Include="coverlet.collector" Version="1.2.0" />
+    </ItemGroup>
+
+    <ItemGroup Condition=" '$(TargetFramework)' == '$(NetFrameworkLibVersion)'">
+        <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="4.7.1" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Akka.Streams.Channels\Akka.Streams.Channels.csproj" />
+    </ItemGroup>
+
+</Project>

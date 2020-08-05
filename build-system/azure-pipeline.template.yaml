@@ -10,6 +10,8 @@ parameters:
 
 jobs:
   - job: ${{ parameters.name }}
+    variables:
+      - Alpakka.Azure.Test.UseDocker: true # Flag for azure storage queue test to use docker
     displayName: ${{ parameters.displayName }}
     timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
     pool:
@@ -27,22 +29,6 @@ jobs:
           version: 3.1.105
 
       # Linux
-      # Start Azurite (Azure simulator) in Linux
-      - task: ShellScript@3
-        displayName: 'Install Azurite'
-        inputs:
-          targetType: inline
-          script: |
-            sudo npm install -g azurite
-        condition: in( variables['Agent.OS'], 'Linux', 'Darwin' )
-      - task: ShellScript@3
-        displayName: 'Run Azurite'
-        inputs:
-          targetType: inline
-          script: |
-            sudo azurite --silent --location /tmp --debug /tmp/debug.log &
-        condition: in( variables['Agent.OS'], 'Linux', 'Darwin' )
-      
       # Do build
       - task: Bash@3 
         displayName: Linux / OSX Build
@@ -54,15 +40,6 @@ jobs:
 
 
       # Windows
-      # Start Azure Storage Emulator in windows
-      - task: CmdLine@2
-        displayName: 'Run Azure Storage Emulator'
-        inputs:
-          script: |
-            "%ProgramFiles(x86)%\Microsoft SDKs\Azure\Storage Emulator\AzureStorageEmulator.exe" init /server "(localdb)\MsSqlLocalDb"
-            "%ProgramFiles(x86)%\Microsoft SDKs\Azure\Storage Emulator\AzureStorageEmulator.exe" start
-        condition: eq( variables['Agent.OS'], 'Windows_NT' )
-
       # Do build
       - task: BatchScript@1
         displayName: Windows Build

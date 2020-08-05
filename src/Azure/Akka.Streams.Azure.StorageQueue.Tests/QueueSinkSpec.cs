@@ -7,11 +7,19 @@ using Akka.Streams.TestKit;
 using FluentAssertions;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace Akka.Streams.Azure.StorageQueue.Tests
 {
+    [Collection("StorageQueueSpec")]
     public class QueueSinkSpec : QueueSpecBase
     {
+        private readonly AzureFixture _fixture;
+        public QueueSinkSpec(AzureFixture fixture, ITestOutputHelper output) : base(fixture, output)
+        {
+            _fixture = fixture;
+        }
+
         [Fact]
         public void A_QueueSink_should_add_elements_to_the_queue()
         {

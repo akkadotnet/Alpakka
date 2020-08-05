@@ -103,8 +103,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "build-system", "build-syste
 		..\build-system\azure-pipeline.template.yaml = ..\build-system\azure-pipeline.template.yaml
 		..\..\akka.net\build-system\linux-pr-validation.yaml = ..\..\akka.net\build-system\linux-pr-validation.yaml
 		..\build-system\nightly-builds.yaml = ..\build-system\nightly-builds.yaml
+		..\build-system\pr-validation.yaml = ..\build-system\pr-validation.yaml
 		..\build-system\README.md = ..\build-system\README.md
-		..\build-system\windows-pr-validation.yaml = ..\build-system\windows-pr-validation.yaml
 		..\build-system\windows-release.yaml = ..\build-system\windows-release.yaml
 	EndProjectSection
 EndProject

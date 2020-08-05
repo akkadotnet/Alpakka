@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data.Common;
+using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -8,6 +9,8 @@ using System.Threading.Tasks;
 using Akka.Util;
 using Docker.DotNet;
 using Docker.DotNet.Models;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -26,10 +29,11 @@ namespace Akka.Streams.Azure.StorageQueue.Tests
         Unknown
     }
 
-    public class AzureFixture : IAsyncLifetime, IClassFixture<EnvironmentVariableFixture>
+    public sealed class AzureFixture : IAsyncLifetime, IDisposable
     {
-        private OperatingSystem _os;
+        private readonly List<string> _variables = new List<string>();
 
+        private OperatingSystem _os;
         protected OperatingSystem OperatingSystem
         {
             get
@@ -67,7 +71,10 @@ namespace Akka.Streams.Azure.StorageQueue.Tests
             get
             {
                 var env = Environment.GetEnvironmentVariable("ALPAKKA_AZURE_TEST_USEDOCKER")?.ToLowerInvariant();
-                return (env != null && (env == "true" || env == "yes" || env == "on"));
+
+                // defaults to use docker, only turn off docker support if it is exactly set.
+                if (env == null) return true;
+                return env != "false" && env != "no" && env == "off";
             }
         }
 
@@ -119,6 +126,29 @@ namespace Akka.Streams.Azure.StorageQueue.Tests
                         throw new NotSupportedException($"Unsupported OS [{RuntimeInformation.OSDescription}]");
                 }
             }
+        }
+
+        public AzureFixture()
+        {
+            if (!File.Exists("environment.json"))
+                return;
+
+            using (var file = File.OpenText("environment.json"))
+            {
+                var reader = new JsonTextReader(file);
+                var jObject = JObject.Load(reader);
+
+                var variables = jObject.Children<JProperty>();
+                foreach (var variable in variables)
+                {
+                    var value = Environment.GetEnvironmentVariable(variable.Name);
+                    if (value != null) continue;
+
+                    _variables.Add(variable.Name);
+                    Environment.SetEnvironmentVariable(variable.Name, variable.Value.ToString());
+                }
+            }
+
         }
 
         public async Task InitializeAsync()
@@ -187,6 +217,14 @@ namespace Akka.Streams.Azure.StorageQueue.Tests
                 await Client.Containers.RemoveContainerAsync(AzuriteContainerName,
                     new ContainerRemoveParameters { Force = true });
                 Client.Dispose();
+            }
+        }
+
+        public void Dispose()
+        {
+            foreach (var variable in _variables)
+            {
+                Environment.SetEnvironmentVariable(variable, null);
             }
         }
     }

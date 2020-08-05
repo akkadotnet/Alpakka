@@ -1,0 +1,45 @@
+# Release task for PbLib projects
+# See https://docs.microsoft.com/en-us/azure/devops/pipelines/yaml-schema for reference
+
+pool:
+  vmImage: windows-2019
+  demands: Cmd
+
+trigger:
+  branches:
+    include:
+      - refs/tags/*
+
+pr: none
+
+variables:
+  - group: signingSecrets #create this group with SECRET variables `signingUsername` and `signingPassword`
+  - group: nugetKeys #create this group with SECRET variables `nugetKey`
+  - name: githubConnectionName
+    value: Alpakka_Releases
+  - name: projectName
+    value: Alpakka
+  - name: githubRepositoryName
+    value: akkadotnet/Alpakka
+steps:
+  - task: UseDotNet@2
+    displayName: 'Use .NET Core SDK 3.1.105'
+    inputs:
+      packageType: sdk
+      version: 3.1.105
+
+  - task: BatchScript@1
+    displayName: 'FAKE Build'
+    inputs:
+      filename: build.cmd
+      arguments: 'nuget nugetpublishurl=https://api.nuget.org/v3/index.json nugetkey=$(nugetKey)'
+
+  - task: GitHubRelease@0
+    displayName: 'GitHub release (create)'
+    inputs:
+      gitHubConnection: $(githubConnectionName)
+      repositoryName: $(githubRepositoryName)
+      title: '$(projectName) v$(Build.SourceBranchName)'
+      releaseNotesFile: 'RELEASE_NOTES.md'
+      assets: |
+        bin\nuget\*.nupkg

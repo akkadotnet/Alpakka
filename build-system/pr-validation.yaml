@@ -22,7 +22,7 @@ jobs:
       displayName: '.NET Framework Unit Tests (Windows)'
       vmImage: 'windows-2019'
       scriptFileName: build.cmd
-      scriptArgs: runTests incremental
+      scriptArgs: runTests
       outputDirectory: 'TestResults'
       artifactName: 'netfx_tests_windows-$(Build.BuildId)'
 
@@ -32,6 +32,6 @@ jobs:
       displayName: '.NET Core Unit Tests (Windows)'
       vmImage: 'windows-2019'
       scriptFileName: build.cmd
-      scriptArgs: runTestsNetCore incremental
+      scriptArgs: runTestsNetCore
       outputDirectory: 'TestResults'
       artifactName: 'net_core_tests_windows-$(Build.BuildId)'

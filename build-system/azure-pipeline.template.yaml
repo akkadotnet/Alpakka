@@ -7,10 +7,10 @@ parameters:
   outputDirectory : ''
   artifactName: ''
   timeoutInMinutes: 120
-  - name: Alpakka.Azure.Test.Usedocker
-    displayName: Flag for Akka.Streams.Azure.StorageQueue.Test to use docker
-    type: boolean
-    default: false
+- name: Alpakka.Azure.Test.Usedocker
+  displayName: Flag for Akka.Streams.Azure.StorageQueue.Test to use docker
+  type: boolean
+  default: false
 
 jobs:
   - job: ${{ parameters.name }}

@@ -16,6 +16,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
 using Xunit.Abstractions;
+using Address = Amqp.Address;
 
 namespace Akka.Streams.Amqp.Tests
 {
@@ -105,12 +106,13 @@ namespace Akka.Streams.Amqp.Tests
             }
         }
 
-        public int AmqpPort2 => UseDockerContainer ? AmqpPort + 1 : 5671;
+        public int AmqpSslPort => UseDockerContainer ? AmqpPort + 1 : 5671;
 
         public int EpmdPort => UseDockerContainer ? AmqpPort + 2 : 4369;
 
 
-        public string Address => $"amqp://{UserName}:{Password}@{HostName}:{AmqpPort}";
+        public Address Address => new Address(HostName, AmqpPort, UserName, Password, scheme:"AMQP");
+        public Address SslAddress => new Address(HostName, AmqpPort, UserName, Password);
 
         private DockerClientConfiguration Config
         {
@@ -170,11 +172,15 @@ namespace Akka.Streams.Amqp.Tests
 
             var exposedPorts = new Dictionary<string, EmptyStruct>
             {
-                { "5672/tcp", new EmptyStruct() }
+                { "4369/tcp", new EmptyStruct() },
+                { "5671/tcp", new EmptyStruct() },
+                { "5672/tcp", new EmptyStruct() },
             };
 
             var portBindings = new Dictionary<string, IList<PortBinding>>
             {
+                { "4369/tcp", new List<PortBinding> { new PortBinding { HostPort = $"{EpmdPort}" } } },
+                { "5671/tcp", new List<PortBinding> { new PortBinding { HostPort = $"{AmqpSslPort}" } } },
                 { "5672/tcp", new List<PortBinding> { new PortBinding { HostPort = $"{AmqpPort}" } } },
             };
 

@@ -28,7 +28,7 @@ namespace Akka.Streams.Amqp.V1.Tests
             _serializer = Sys.Serialization.FindSerializerForType(typeof(string));
             _fixture = fixture;
 
-            _address = new Address(fixture.HostName, fixture.AmqpPort, fixture.UserName, fixture.Password, scheme:"AMQP");
+            _address = _fixture.Address;
         }
 
         [Fact]

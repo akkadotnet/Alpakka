@@ -27,7 +27,7 @@ namespace Akka.Streams.Amqp.V1.Tests
         {
             //strange, works using regular activeMQ and the amqp test broker from here: http://azure.github.io/amqpnetlite/articles/hello_amqp.html
             //but this does not work in ActiveMQ Artemis
-            var address = new Address(_fixture.Address);
+            var address = _fixture.Address;
             var connection = await Connection.Factory.CreateAsync(address);
             var session = new Session(connection);
             

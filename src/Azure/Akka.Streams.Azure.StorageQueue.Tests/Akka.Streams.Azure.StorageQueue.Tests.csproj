@@ -14,11 +14,18 @@
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="$(TestSdkVersion)" />
         <PackageReference Include="xunit" Version="$(XunitVersion)" />
         <PackageReference Include="xunit.runner.visualstudio" Version="$(XunitVersion)" />
+        <PackageReference Include="Docker.DotNet" Version="$(DockerDotNetVersion)" />
         <PackageReference Include="coverlet.collector" Version="1.2.0" />
     </ItemGroup>
 
     <ItemGroup>
       <ProjectReference Include="..\Akka.Streams.Azure.StorageQueue\Akka.Streams.Azure.StorageQueue.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Update="environment.json">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </None>
     </ItemGroup>
 
 </Project>

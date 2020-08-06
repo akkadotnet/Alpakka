@@ -10,8 +10,6 @@ parameters:
 
 jobs:
   - job: ${{ parameters.name }}
-    variables:
-      Alpakka.Azure.Test.Usedocker: true # Flag for azure storage queue test to use docker
     displayName: ${{ parameters.displayName }}
     timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
     pool:
@@ -32,6 +30,8 @@ jobs:
       # Do build
       - task: Bash@3 
         displayName: Linux / OSX Build
+        variables:
+          Alpakka.Azure.Test.Usedocker: true # Flag for azure storage queue test to use docker
         inputs:
           filePath: ${{ parameters.scriptFileName }}
           arguments: ${{ parameters.scriptArgs }}
@@ -40,15 +40,25 @@ jobs:
 
 
       # Windows
+      # Start Azure Storage Emulator in windows
+      - task: CmdLine@2
+        displayName: 'Run Azure Storage Emulator'
+        inputs:
+          script: |
+            "%ProgramFiles(x86)%\Microsoft SDKs\Azure\Storage Emulator\AzureStorageEmulator.exe" init /server "(localdb)\MsSqlLocalDb"
+            "%ProgramFiles(x86)%\Microsoft SDKs\Azure\Storage Emulator\AzureStorageEmulator.exe" start
+        condition: eq( variables['Agent.OS'], 'Windows_NT' )
+
       # Do build
       - task: BatchScript@1
         displayName: Windows Build
+        variables:
+          Alpakka.Azure.Test.Usedocker: false # Flag for azure storage queue test to use docker
         inputs:
           filename: ${{ parameters.scriptFileName }}
           arguments: ${{ parameters.scriptArgs }}
         continueOnError: true
         condition: eq( variables['Agent.OS'], 'Windows_NT' )
-
 
       # Common steps
       - task: CopyFiles@2

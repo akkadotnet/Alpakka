@@ -51,23 +51,24 @@ jobs:
 
 
       # Common steps
-      - task: PublishTestResults@2
-        inputs:
-          testRunner: VSTest
-          testResultsFiles: '**/*.trx' #TestResults folder usually
-          testRunTitle: ${{ parameters.name }}
-          mergeTestResults: true
       - task: CopyFiles@2
         displayName: 'Copy Build Output'
         inputs:
           sourceFolder: ${{ parameters.outputDirectory }}
           contents: '**\*'
           targetFolder: $(Build.ArtifactStagingDirectory)
-          continueOnError: boolean  # 'true' if future steps should run even if this step fails; defaults to 'false'
+          continueOnError: false  # 'true' if future steps should run even if this step fails; defaults to 'false'
       - task: PublishBuildArtifacts@1
         inputs:
           pathtoPublish: '$(Build.ArtifactStagingDirectory)'
           artifactName: ${{ parameters.artifactName }}
+      - task: PublishTestResults@2
+        inputs:
+          testRunner: VSTest
+          testResultsFiles: '**/*.trx' #TestResults folder usually
+          testRunTitle: ${{ parameters.name }}
+          mergeTestResults: true
+          failTaskOnFailedTests: true
       - script: 'echo 1>&2'
         failOnStderr: true
         displayName: 'If above is partially succeeded, then fail'

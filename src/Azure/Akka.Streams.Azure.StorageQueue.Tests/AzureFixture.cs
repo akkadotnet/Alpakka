@@ -59,22 +59,27 @@ namespace Akka.Streams.Azure.StorageQueue.Tests
                     case OperatingSystem.Linux:
                         return "mcr.microsoft.com/azure-storage/azurite";
                     case OperatingSystem.Windows:
-                        return "microsoft/azure-storage-emulator";
+                        return "arkatufus/azure-storage-emulator";
                     default:
                         throw new NotSupportedException($"Unsupported OS [{RuntimeInformation.OSDescription}]");
                 }
             }
         }
 
+        private bool? _useDocker = null;
         public bool UseDockerContainer
         {
             get
             {
-                var env = Environment.GetEnvironmentVariable("ALPAKKA_AZURE_TEST_USEDOCKER")?.ToLowerInvariant();
+                if (!_useDocker.HasValue)
+                {
+                    var env = Environment.GetEnvironmentVariable("ALPAKKA_AZURE_TEST_USEDOCKER")?.ToLowerInvariant();
 
-                // defaults to use docker, only turn off docker support if it is exactly set.
-                if (env == null) return true;
-                return env != "false" && env != "no" && env == "off";
+                    // defaults to use docker, only turn off docker support if it is exactly set.
+                    _useDocker = env == null || (env != "false" && env != "no" && env != "off");
+                }
+
+                return _useDocker.Value;
             }
         }
 
@@ -200,7 +205,7 @@ namespace Akka.Streams.Azure.StorageQueue.Tests
             await Client.Containers.StartContainerAsync(AzuriteContainerName, new ContainerStartParameters());
 
             // Provide a 30 second startup delay
-            await Task.Delay(TimeSpan.FromSeconds(30));
+            //await Task.Delay(TimeSpan.FromSeconds(30));
         }
 
         public async Task<bool> StopContainer()

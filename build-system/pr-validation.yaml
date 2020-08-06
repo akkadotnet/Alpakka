@@ -25,6 +25,7 @@ jobs:
       scriptArgs: runTests
       outputDirectory: 'TestResults'
       artifactName: 'netfx_tests_windows-$(Build.BuildId)'
+      Alpakka.Azure.Test.Usedocker: false # Flag for azure storage queue test to use docker
 
   - template: azure-pipeline.template.yaml
     parameters:
@@ -35,3 +36,4 @@ jobs:
       scriptArgs: runTestsNetCore
       outputDirectory: 'TestResults'
       artifactName: 'net_core_tests_windows-$(Build.BuildId)'
+      Alpakka.Azure.Test.Usedocker: false # Flag for azure storage queue test to use docker

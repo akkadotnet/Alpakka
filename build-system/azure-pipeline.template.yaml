@@ -7,6 +7,10 @@ parameters:
   outputDirectory : ''
   artifactName: ''
   timeoutInMinutes: 120
+  - name: Alpakka.Azure.Test.Usedocker
+    displayName: Flag for Akka.Streams.Azure.StorageQueue.Test to use docker
+    type: boolean
+    default: false
 
 jobs:
   - job: ${{ parameters.name }}
@@ -30,14 +34,11 @@ jobs:
       # Do build
       - task: Bash@3 
         displayName: Linux / OSX Build
-        variables:
-          Alpakka.Azure.Test.Usedocker: true # Flag for azure storage queue test to use docker
         inputs:
           filePath: ${{ parameters.scriptFileName }}
           arguments: ${{ parameters.scriptArgs }}
         continueOnError: true
         condition: in( variables['Agent.OS'], 'Linux', 'Darwin' )
-
 
       # Windows
       # Start Azure Storage Emulator in windows
@@ -52,8 +53,6 @@ jobs:
       # Do build
       - task: BatchScript@1
         displayName: Windows Build
-        variables:
-          Alpakka.Azure.Test.Usedocker: false # Flag for azure storage queue test to use docker
         inputs:
           filename: ${{ parameters.scriptFileName }}
           arguments: ${{ parameters.scriptArgs }}
@@ -78,7 +77,7 @@ jobs:
           testResultsFiles: '**/*.trx' #TestResults folder usually
           testRunTitle: ${{ parameters.name }}
           mergeTestResults: true
-          failTaskOnFailedTests: true
+          failTaskOnFailedTests: true # 'true' if the build process should fail if any of the tests fails; defaults to 'false'
       - script: 'echo 1>&2'
         failOnStderr: true
         displayName: 'If above is partially succeeded, then fail'

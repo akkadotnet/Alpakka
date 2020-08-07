@@ -81,8 +81,9 @@ namespace Akka.Streams.Amqp.Tests
                 if (!_useDocker.HasValue)
                 {
                     var env = Environment.GetEnvironmentVariable("ALPAKKA_AMQP_TEST_USEDOCKER")?.ToLowerInvariant();
-
+                    
                     _useDocker = env == null || (env != "false" && env != "no" && env != "off");
+                    Console.WriteLine($"Environment Variable: ALPAKKA_AMQP_TEST_USEDOCKER = {env ?? "null"}");
                 }
 
                 return _useDocker.Value;
@@ -152,6 +153,8 @@ namespace Akka.Streams.Amqp.Tests
         {
             if (!UseDockerContainer)
                 return;
+
+            Console.WriteLine("Using Dockerized RabbitMQ Broker");
 
             Client = Config.CreateClient();
 

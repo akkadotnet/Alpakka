@@ -7,7 +7,8 @@ parameters:
   outputDirectory : ''
   artifactName: ''
   timeoutInMinutes: 120
-  Alpakka.Azure.Test.Usedocker : false # Flag for Akka.Streams.Azure.StorageQueue.Test to use docker
+  azureTestUseDocker : false # Flag for Akka.Streams.Azure.StorageQueue.Test to use docker
+  amqpTestUseDocker : false # Flag for Akka.Streams.Azure.StorageQueue.Test to use docker
 
 jobs:
   - job: ${{ parameters.name }}
@@ -15,6 +16,9 @@ jobs:
     timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
     pool:
       vmImage: ${{ parameters.vmImage }}
+    variables:
+      Alpakka_Azure_Test_UseDocker: ${{ parameters.azureTestUseDocker }}
+      Alpakka_AMQP_Test_UseDocker: ${{ parameters.amqpTestUseDocker }}
     steps:
       - checkout: self  # self represents the repo where the initial Pipelines YAML file was found
         clean: false  # whether to fetch clean each time
@@ -46,7 +50,7 @@ jobs:
             "%ProgramFiles(x86)%\Microsoft SDKs\Azure\Storage Emulator\AzureStorageEmulator.exe" init /server "(localdb)\MsSqlLocalDb"
             "%ProgramFiles(x86)%\Microsoft SDKs\Azure\Storage Emulator\AzureStorageEmulator.exe" start
         condition: eq( variables['Agent.OS'], 'Windows_NT' )
-
+      
       # Do build
       - task: BatchScript@1
         displayName: Windows Build

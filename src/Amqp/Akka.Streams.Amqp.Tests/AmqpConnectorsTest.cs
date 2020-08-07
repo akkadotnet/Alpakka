@@ -3,31 +3,36 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Akka.Actor;
 using Akka.IO;
 using Akka.Streams.Amqp.Dsl;
 using Akka.Streams.Dsl;
 using Akka.Streams.TestKit;
 using FluentAssertions;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace Akka.Streams.Amqp.Tests
 {
-    /// <summary>
-    /// Needs a local running AMQP server on the default port with no password.
-    /// </summary>
     /// <inheritdoc />
+    [Collection("AmqpSpec")]
     public class AmqpConnectorsTest : Akka.TestKit.Xunit2.TestKit
     {
         private readonly AmqpConnectionDetails _connectionSettings;
         private readonly ActorMaterializer _mat;
+        private readonly AmqpFixture _fixture;
 
-        public AmqpConnectorsTest()
+        public AmqpConnectorsTest(AmqpFixture fixture, ITestOutputHelper output) : 
+            base((ActorSystem)null, output)
         {
             _mat = ActorMaterializer.Create(Sys);
             _connectionSettings =
-                AmqpConnectionDetails.Create("localhost", 5672)
-                                     .WithAutomaticRecoveryEnabled(true)
-                                     .WithNetworkRecoveryInterval(TimeSpan.FromSeconds(1));
+                AmqpConnectionDetails
+                    .Create(fixture.HostName, fixture.AmqpPort)
+                    .WithCredentials(AmqpCredentials.Create(fixture.UserName, fixture.Password))
+                    .WithAutomaticRecoveryEnabled(true)
+                    .WithNetworkRecoveryInterval(TimeSpan.FromSeconds(1));
+            _fixture = fixture;
         }
 
         [Fact]
@@ -47,7 +52,7 @@ namespace Akka.Streams.Amqp.Tests
 
             //create source
             var amqpSource = AmqpSource.AtMostOnceSource(
-                NamedQueueSourceSettings.Create(DefaultAmqpConnection.Instance, queueName).WithDeclarations(queueDeclaration),
+                NamedQueueSourceSettings.Create(_connectionSettings, queueName).WithDeclarations(queueDeclaration),
                 bufferSize: 10);
 
             //run sink
@@ -536,7 +541,7 @@ namespace Akka.Streams.Amqp.Tests
 
             var consumed =
                 AmqpSource.AtMostOnceSource(
-                              NamedQueueSourceSettings.Create(DefaultAmqpConnection.Instance, queueName).WithDeclarations(queueDeclaration),
+                              NamedQueueSourceSettings.Create(_connectionSettings, queueName).WithDeclarations(queueDeclaration),
                               bufferSize: 10)
                           .Select(m => m.Bytes.ToString(Encoding.UTF8))
                           .Take(input.Length)
@@ -599,16 +604,16 @@ namespace Akka.Streams.Amqp.Tests
         [Fact]
         public void Declare_connection_that_does_not_require_server_acks()
         {
-            var connectionSettings = AmqpConnectionDetails.Create("localhost", 5672);
+            //var connectionSettings = AmqpConnectionDetails.Create("localhost", 5672);
 
             var queueName = "amqp-conn-it-spec-fire-and-forget-" + Environment.TickCount;
             var queueDeclaration = QueueDeclaration.Create(queueName);
 
-            var amqpSink = AmqpSink.CreateSimple(AmqpSinkSettings.Create(connectionSettings)
+            var amqpSink = AmqpSink.CreateSimple(AmqpSinkSettings.Create(_connectionSettings)
                 .WithRoutingKey(queueName)
                 .WithDeclarations(queueDeclaration));
 
-            var amqpSource = AmqpSource.CommittableSource(NamedQueueSourceSettings.Create(connectionSettings, queueName)
+            var amqpSource = AmqpSource.CommittableSource(NamedQueueSourceSettings.Create(_connectionSettings, queueName)
                 .WithAckRequired(false)
                 .WithDeclarations(queueDeclaration), bufferSize: 10);
 

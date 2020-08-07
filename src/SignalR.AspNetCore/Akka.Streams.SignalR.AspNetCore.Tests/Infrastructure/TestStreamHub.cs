@@ -1,14 +1,7 @@
-﻿using Akka.Actor;
-using Akka.Streams.Dsl;
-using Akka.Streams.SignalR.AspNetCore.Internals;
-using Akka.Streams.TestKit;
-using Akka.TestKit;
+﻿using Akka.Streams.SignalR.AspNetCore.Internals;
 using Microsoft.AspNetCore.SignalR;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
-namespace Akka.Streams.SignalR.AspNetCore.Tests
+namespace Akka.Streams.SignalR.AspNetCore.Tests.Infrastructure
 {
     /// <summary>
     /// Hubs rely on DI to get references.

@@ -26,7 +26,7 @@ jobs:
       outputDirectory: 'TestResults'
       artifactName: 'netfx_tests_windows-$(Build.BuildId)'
       azureTestUseDocker: false # Flag for Azure storage queue test to use docker
-      amqpTestUseDocker: false # Flag for AQMP test to use RabbitMQ docker
+      amqpTestUseDocker: true # Flag for AQMP test to use RabbitMQ docker
 
   - template: azure-pipeline.template.yaml
     parameters:
@@ -38,7 +38,7 @@ jobs:
       outputDirectory: 'TestResults'
       artifactName: 'net_core_tests_windows-$(Build.BuildId)'
       azureTestUseDocker: false # Flag for azure storage queue test to use docker
-      amqpTestUseDocker: false # Flag for AQMP test to use RabbitMQ docker
+      amqpTestUseDocker: true # Flag for AQMP test to use RabbitMQ docker
 
   - template: azure-pipeline.template.yaml
     parameters:

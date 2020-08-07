@@ -71,7 +71,22 @@ namespace Akka.Streams.Amqp.Tests
                 }
             }
         }
-        protected string AmqpImageTag => "latest";
+
+        protected string AmqpImageTag
+        {
+            get
+            {
+                switch (OperatingSystem)
+                {
+                    case OperatingSystem.Windows:
+                        return "latest";
+                    case OperatingSystem.Linux:
+                        return "3";
+                    default:
+                        throw new NotSupportedException($"Unsupported OS [{RuntimeInformation.OSDescription}]");
+                }
+            }
+        }
 
         private bool? _useDocker = null;
         public bool UseDockerContainer

@@ -28,7 +28,7 @@ namespace Akka.Streams.Amqp.V1.Tests
             _serializer = Sys.Serialization.FindSerializerForType(typeof(string));
             _fixture = fixture;
 
-            _address = _fixture.Address;
+            _address = new Address(_fixture.HostName, _fixture.AmqpPort, _fixture.UserName, _fixture.Password, scheme: "AMQP");
         }
 
         [Fact]
@@ -47,19 +47,19 @@ namespace Akka.Streams.Amqp.V1.Tests
 
             //run sink
             var input = new[] { "one", "two", "three", "four", "five" };
-            Source.From(input).RunWith(amqpSink, _materializer).Wait();
+            await Source.From(input).RunWith(amqpSink, _materializer);
             
             //run source
             var result = amqpSource
                             .Take(input.Length)
                             .RunWith(Sink.Seq<string>(), _materializer);
 
-            result.Wait(TimeSpan.FromSeconds(30));
+            await result;
             Assert.True(result.IsCompleted);
             Assert.Equal(input, result.Result);
 
-            session.Close();
-            connection.Close();
+            await session.CloseAsync();
+            await connection.CloseAsync();
         }
     }
 }

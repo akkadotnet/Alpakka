@@ -110,10 +110,6 @@ namespace Akka.Streams.Amqp.Tests
 
         public int EpmdPort => UseDockerContainer ? AmqpPort + 2 : 4369;
 
-
-        public Address Address => new Address(HostName, AmqpPort, UserName, Password, scheme:"AMQP");
-        public Address SslAddress => new Address(HostName, AmqpPort, UserName, Password);
-
         private DockerClientConfiguration Config
         {
             get

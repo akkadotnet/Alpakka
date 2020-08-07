@@ -25,8 +25,8 @@ jobs:
       scriptArgs: runTests
       outputDirectory: 'TestResults'
       artifactName: 'netfx_tests_windows-$(Build.BuildId)'
-      Alpakka.Azure.Test.Usedocker: false # Flag for azure storage queue test to use docker
-      Alpakka.AMQP.Test.Usedocker: false
+      azureTestUseDocker: false # Flag for Azure storage queue test to use docker
+      amqpTestUseDocker: false # Flag for AQMP test to use RabbitMQ docker
 
   - template: azure-pipeline.template.yaml
     parameters:
@@ -37,8 +37,8 @@ jobs:
       scriptArgs: runTestsNetCore
       outputDirectory: 'TestResults'
       artifactName: 'net_core_tests_windows-$(Build.BuildId)'
-      Alpakka.Azure.Test.Usedocker: false # Flag for azure storage queue test to use docker
-      Alpakka.AMQP.Test.Usedocker: false
+      azureTestUseDocker: false # Flag for azure storage queue test to use docker
+      amqpTestUseDocker: false # Flag for AQMP test to use RabbitMQ docker
 
   - template: azure-pipeline.template.yaml
     parameters:
@@ -49,5 +49,5 @@ jobs:
       scriptArgs: runTestsNetCore
       outputDirectory: 'TestResults'
       artifactName: 'net_core_tests_linux-$(Build.BuildId)'
-      Alpakka.Azure.Test.Usedocker: true # Flag for azure storage queue test to use docker
-      Alpakka.AMQP.Test.Usedocker: true
+      azureTestUseDocker: true # Flag for azure storage queue test to use docker
+      amqpTestUseDocker: true # Flag for AQMP test to use RabbitMQ docker

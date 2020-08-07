@@ -2,7 +2,7 @@
     <Import Project="..\..\common.props" />
 
     <PropertyGroup>
-        <TargetFrameworks>$(NetFrameworkTestVersion);$(NetCoreTestVersion)</TargetFrameworks>
+        <TargetFrameworks>$(NetCoreTestVersion);$(NetFrameworkTestVersion)</TargetFrameworks>
         <IsPackable>false</IsPackable>
         <Platforms>AnyCPU;x64</Platforms>
     </PropertyGroup>
@@ -15,10 +15,18 @@
         <PackageReference Include="xunit" Version="$(XunitVersion)" />
         <PackageReference Include="xunit.runner.visualstudio" Version="$(XunitVersion)" />
         <PackageReference Include="coverlet.collector" Version="1.2.0" />
+        <PackageReference Include="Docker.DotNet" Version="3.125.2" />
     </ItemGroup>
 
     <ItemGroup>
         <ProjectReference Include="..\Akka.Streams.Amqp\Akka.Streams.Amqp.csproj" />
+        <ProjectReference Include="..\Akka.Streams.Amqp.V1\Akka.Streams.Amqp.V1.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Update="environment.json">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </None>
     </ItemGroup>
 
 </Project>

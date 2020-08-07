@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
     <Import Project="..\..\common.props" />
 
   <PropertyGroup>
@@ -11,8 +11,8 @@
 
     <ItemGroup>
         <PackageReference Include="Akka.Streams" Version="$(AkkaVersion)" />
-        <PackageReference Include="AMQPNetLite.Core" Version="2.1.3" />
-        <PackageReference Include="AMQPNetLite.Serialization" Version="2.1.3" />
+        <PackageReference Include="AMQPNetLite.Core" Version="2.2.0" />
+        <PackageReference Include="AMQPNetLite.Serialization" Version="2.2.0" />
     </ItemGroup>
 
 </Project>

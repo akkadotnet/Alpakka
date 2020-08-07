@@ -33,7 +33,7 @@ namespace Akka.Streams.Amqp
                     if (details.AutomaticRecoveryEnabled.HasValue)
                         factory.AutomaticRecoveryEnabled = details.AutomaticRecoveryEnabled.Value;
                     if (details.RequestedHeartbeat.HasValue)
-                        factory.RequestedHeartbeat = details.RequestedHeartbeat.Value;
+                        factory.RequestedHeartbeat = new TimeSpan(details.RequestedHeartbeat.Value);
                     if (details.NetworkRecoveryInterval.HasValue)
                         factory.NetworkRecoveryInterval = details.NetworkRecoveryInterval.Value;
                     if (details.TopologyRecoveryEnabled.HasValue)

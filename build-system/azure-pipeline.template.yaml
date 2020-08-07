@@ -60,6 +60,8 @@ jobs:
             choco install -y erlang --version 19.3
             choco install -y rabbitmq --version 3.8.5
             "%ProgramFiles%\RabbitMQ Server\rabbitmq_server-3.8.5\sbin\rabbitmq-plugins.bat" enable rabbitmq_amqp1_0
+            "%ProgramFiles%\RabbitMQ Server\rabbitmq_server-3.8.5\sbin\rabbitmq-service.bat" stop
+            "%ProgramFiles%\RabbitMQ Server\rabbitmq_server-3.8.5\sbin\rabbitmq-service.bat" start
         condition: eq( variables['Agent.OS'], 'Windows_NT' )
 
       # Do build

@@ -66,7 +66,11 @@ namespace Akka.Streams.Channels.Tests
             probe.ExpectError().InnerException.Should().Be(failure);
         }
 
+#if NETCORE
+        [Fact(Skip = "Test is very racy in .NET Core 3.1")]
+#else
         [Fact]
+#endif
         public async Task ChannelSource_must_read_incoming_events()
         {
             var tcs = new CancellationTokenSource(TimeSpan.FromSeconds(5));

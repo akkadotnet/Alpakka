@@ -11,7 +11,7 @@
 
     <ItemGroup>
         <PackageReference Include="Akka.Streams" Version="$(AkkaVersion)" />
-        <PackageReference Include="System.Threading.Channels" Version="4.5.0" />
+        <PackageReference Include="System.Threading.Channels" Version="4.7.1" />
     </ItemGroup>
 
 </Project>

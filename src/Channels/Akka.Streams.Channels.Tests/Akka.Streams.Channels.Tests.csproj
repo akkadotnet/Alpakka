@@ -19,7 +19,12 @@
 
     <ItemGroup Condition="'$(TargetFramework)'=='$(NetCoreTestVersion)'">
         <PackageReference Include="System.Threading.Tasks.Extensions" Version="4.5.0">
-          <ExcludeAssets>all</ExcludeAssets>
+            <PrivateAssets>all</PrivateAssets>
+            <ExcludeAssets>all</ExcludeAssets>
+        </PackageReference>
+        <PackageReference Include="System.Threading.Tasks.Extensions" Version="4.2.0">
+            <PrivateAssets>all</PrivateAssets>
+            <ExcludeAssets>all</ExcludeAssets>
         </PackageReference>
     </ItemGroup>
 

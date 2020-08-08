@@ -13,12 +13,10 @@
         <PackageReference Include="Akka.TestKit.Xunit2" Version="$(AkkaVersion)" />
         <PackageReference Include="FluentAssertions" Version="$(FluentAssertionsVersion)" />
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="$(TestSdkVersion)" />
+        <PackageReference Include="System.Threading.Tasks.Extensions" Version="4.5.4" />
         <PackageReference Include="xunit" Version="$(XunitVersion)" />
         <PackageReference Include="xunit.runner.visualstudio" Version="$(XunitVersion)" />
         <PackageReference Include="coverlet.collector" Version="1.2.0" />
-    </ItemGroup>
-
-    <ItemGroup Condition=" '$(TargetFramework)' == '$(NetFrameworkLibVersion)'">
         <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="4.7.1" />
     </ItemGroup>
 

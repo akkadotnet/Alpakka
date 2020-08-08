@@ -566,7 +566,6 @@ namespace Akka.Streams.Amqp.Tests
         public void Set_routing_key_per_message_while_publishing_with_flow_and_consume_them_in_the_same_process()
         {
             string GetRoutingKey(string s) => $"key.{s}";
-
             var exchangeName = "amqp.topic." + Environment.TickCount;
             var queueName = "amqp-conn-it-spec-simple-queue-" + Environment.TickCount;
             var exchangeDeclaration = ExchangeDeclaration.Create(exchangeName, "topic");

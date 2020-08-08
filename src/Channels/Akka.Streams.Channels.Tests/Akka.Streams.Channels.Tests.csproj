@@ -18,7 +18,9 @@
     </ItemGroup>
 
     <ItemGroup Condition="'$(TargetFramework)'=='$(NetCoreTestVersion)'">
-        <PackageReference Remove="mscorlib" Version="4.0.0.0" />
+        <PackageReference Include="System.Threading.Tasks.Extensions" Version="4.5.0">
+          <ExcludeAssets>all</ExcludeAssets>
+        </PackageReference>
     </ItemGroup>
 
     <ItemGroup>

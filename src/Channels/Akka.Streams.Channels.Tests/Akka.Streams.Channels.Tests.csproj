@@ -5,7 +5,6 @@
         <TargetFrameworks>$(NetFrameworkTestVersion);$(NetCoreTestVersion)</TargetFrameworks>
         <IsPackable>false</IsPackable>
         <Platforms>AnyCPU;x64</Platforms>
-        <LangVersion>7.2</LangVersion>
     </PropertyGroup>
 
     <ItemGroup>
@@ -13,11 +12,13 @@
         <PackageReference Include="Akka.TestKit.Xunit2" Version="$(AkkaVersion)" />
         <PackageReference Include="FluentAssertions" Version="$(FluentAssertionsVersion)" />
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="$(TestSdkVersion)" />
-        <PackageReference Include="System.Threading.Tasks.Extensions" Version="4.5.4" />
         <PackageReference Include="xunit" Version="$(XunitVersion)" />
         <PackageReference Include="xunit.runner.visualstudio" Version="$(XunitVersion)" />
         <PackageReference Include="coverlet.collector" Version="1.2.0" />
-        <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="4.7.1" />
+    </ItemGroup>
+
+    <ItemGroup Condition="'$(TargetFramework)'=='$(NetCoreTestVersion)'">
+        <PackageReference Remove="mscorlib" Version="4.0.0.0" />
     </ItemGroup>
 
     <ItemGroup>

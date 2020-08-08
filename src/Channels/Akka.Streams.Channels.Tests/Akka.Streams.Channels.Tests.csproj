@@ -7,10 +7,6 @@
         <Platforms>AnyCPU;x64</Platforms>
     </PropertyGroup>
 
-    <PropertyGroup Condition="'$(TargetFramework)'=='$(NetCoreTestVersion)'">
-      <DefineConstants>NETCORE</DefineConstants>
-    </PropertyGroup>
-
     <ItemGroup>
         <PackageReference Include="Akka.Streams.TestKit" Version="$(AkkaVersion)" />
         <PackageReference Include="Akka.TestKit.Xunit2" Version="$(AkkaVersion)" />

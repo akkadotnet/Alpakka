@@ -21,10 +21,4 @@
         <ProjectReference Include="..\Akka.Streams.Channels\Akka.Streams.Channels.csproj" />
     </ItemGroup>
 
-    <ItemGroup Condition="'$(TargetFramework)' == 'netcoreapp3.1'">
-      <PackageReference Include="Microsoft.NETCore.App">
-        <Version>2.2.8</Version>
-      </PackageReference>
-    </ItemGroup>
-
 </Project>

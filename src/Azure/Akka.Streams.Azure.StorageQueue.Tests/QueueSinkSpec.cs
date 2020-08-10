@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using Akka.Streams.Dsl;
 using Akka.Streams.Supervision;
 using Akka.Streams.TestKit;
@@ -21,7 +22,7 @@ namespace Akka.Streams.Azure.StorageQueue.Tests
         }
 
         [Fact]
-        public void A_QueueSink_should_add_elements_to_the_queue()
+        public async Task A_QueueSink_should_add_elements_to_the_queue()
         {
             var messages = new[] {"1", "2"};
             var t = Source.From(messages)
@@ -29,27 +30,25 @@ namespace Akka.Streams.Azure.StorageQueue.Tests
                 .ToStorageQueue(Queue, Materializer);
 
             t.Wait(TimeSpan.FromSeconds(3)).Should().BeTrue();
-            Queue.GetMessages(2).Select(x => x.AsString).Should().BeEquivalentTo(messages);
+            (await Queue.GetMessagesAsync(2)).Select(x => x.AsString).Should().BeEquivalentTo(messages);
         }
 
         [Fact]
-        public void A_QueueSink_should_set_the_exception_of_the_task_when_an_error_occurs()
+        public async Task A_QueueSink_should_set_the_exception_of_the_task_when_an_error_occurs()
         {
-            var t = this.SourceProbe<string>()
+            var (probe, task) = this.SourceProbe<string>()
                 .Select(x => new CloudQueueMessage(x))
                 .ToMaterialized(QueueSink.Create(Queue), Keep.Both)
                 .Run(Materializer);
-            var probe = t.Item1;
-            var task = t.Item2;
 
             probe.SendError(new Exception("Boom"));
-            task.Invoking(x => x.Wait(TimeSpan.FromSeconds(3))).Should().Throw<Exception>().WithMessage("Boom");
+            task.Invoking(async x => await x).Should().Throw<Exception>().WithMessage("Boom");
         }
 
         [Fact]
-        public void A_QueueSink_should_retry_failing_messages_if_supervision_strategy_is_resume()
+        public async Task A_QueueSink_should_retry_failing_messages_if_supervision_strategy_is_resume()
         {
-            Queue.DeleteIfExists();
+            await Queue.DeleteIfExistsAsync();
             var messages = new[] { "1", "2" };
             var queueSink = QueueSink.Create(Queue)
                 .WithAttributes(ActorAttributes.CreateSupervisionStrategy(Deciders.ResumingDecider));
@@ -58,16 +57,16 @@ namespace Akka.Streams.Azure.StorageQueue.Tests
                 .Select(x => new CloudQueueMessage(x))
                 .RunWith(queueSink, Materializer);
 
-            Thread.Sleep(1000);
-            Queue.Create();
+            await Task.Delay(1000);
+            await Queue.CreateAsync();
             t.Wait(TimeSpan.FromSeconds(3)).Should().BeTrue();
-            Queue.GetMessages(2).Select(x => x.AsString).Should().BeEquivalentTo(messages);
+            (await Queue.GetMessagesAsync(2)).Select(x => x.AsString).Should().BeEquivalentTo(messages);
         }
 
         [Fact]
-        public void A_QueueSink_should_skip_failing_messages_if_supervision_strategy_is_restart()
+        public async Task A_QueueSink_should_skip_failing_messages_if_supervision_strategy_is_restart()
         {
-            Queue.DeleteIfExists();
+            await Queue.DeleteIfExistsAsync();
             var queueSink = QueueSink.Create(Queue)
                 .WithAttributes(ActorAttributes.CreateSupervisionStrategy(Deciders.RestartingDecider));
 
@@ -81,11 +80,11 @@ namespace Akka.Streams.Azure.StorageQueue.Tests
             
             probe.SendNext("1");
             Thread.Sleep(500);
-            Queue.Create();
+            await Queue.CreateAsync();
             probe.SendNext("2");
             probe.SendComplete();
-            task.Wait(TimeSpan.FromSeconds(3)).Should().BeTrue();
-            Queue.GetMessage().AsString.Should().Be("2");
+            await task;
+            (await Queue.GetMessageAsync()).AsString.Should().Be("2");
         }
     }
 }

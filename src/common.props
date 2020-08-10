@@ -16,7 +16,7 @@
     <NetStandardLibVersion>netstandard2.0</NetStandardLibVersion>
     <NetFrameworkLibVersion>net461</NetFrameworkLibVersion>
     <NetCoreTestVersion>netcoreapp3.1</NetCoreTestVersion>
-    <NetFrameworkTestVersion>net461</NetFrameworkTestVersion>
+    <NetFrameworkTestVersion>net472</NetFrameworkTestVersion>
     <XunitVersion>2.4.1</XunitVersion>
     <FluentAssertionsVersion>5.10.3</FluentAssertionsVersion>
     <TestSdkVersion>16.6.1</TestSdkVersion>

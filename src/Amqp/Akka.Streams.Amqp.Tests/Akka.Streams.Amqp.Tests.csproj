@@ -5,7 +5,6 @@
         <TargetFrameworks>$(NetCoreTestVersion);$(NetFrameworkTestVersion)</TargetFrameworks>
         <IsPackable>false</IsPackable>
         <Platforms>AnyCPU;x64</Platforms>
-        <LangVersion>7.2</LangVersion>
     </PropertyGroup>
 
     <ItemGroup>

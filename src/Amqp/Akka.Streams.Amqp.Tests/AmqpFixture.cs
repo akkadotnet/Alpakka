@@ -65,7 +65,7 @@ namespace Akka.Streams.Amqp.Tests
                     case OperatingSystem.Windows:
                         return "arkatufus/rabbitmq";
                     case OperatingSystem.Linux:
-                        return "rabbitmq";
+                        return "arkatufus/rabbitmq-linux";
                     default:
                         throw new NotSupportedException($"Unsupported OS [{RuntimeInformation.OSDescription}]");
                 }
@@ -81,7 +81,7 @@ namespace Akka.Streams.Amqp.Tests
                     case OperatingSystem.Windows:
                         return "latest";
                     case OperatingSystem.Linux:
-                        return "3";
+                        return "latest";
                     default:
                         throw new NotSupportedException($"Unsupported OS [{RuntimeInformation.OSDescription}]");
                 }

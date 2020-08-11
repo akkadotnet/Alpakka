@@ -270,7 +270,7 @@ namespace Akka.Streams.Amqp.Tests
             }), _mat);
 
             Sys.Scheduler.Advanced.ScheduleOnce(
-                TimeSpan.FromSeconds(10),
+                TimeSpan.FromSeconds(5),
                 () => completion.TrySetException(new Exception("Did not get at least one element from every fanout branch")));
 
             Source.Repeat("stuff").Select(ByteString.FromString).RunWith(amqpSink, _mat);
@@ -563,7 +563,7 @@ namespace Akka.Streams.Amqp.Tests
         }
 
         [Fact]
-        public async Task Set_routing_key_per_message_while_publishing_with_flow_and_consume_them_in_the_same_process()
+        public void Set_routing_key_per_message_while_publishing_with_flow_and_consume_them_in_the_same_process()
         {
             string GetRoutingKey(string s) => $"key.{s}";
 
@@ -585,14 +585,17 @@ namespace Akka.Streams.Amqp.Tests
             var input = new[] {"one", "two", "three", "four", "five"};
             var routingKeys = input.Select(GetRoutingKey);
 
-            await Source.From(input)
+            Source.From(input)
                   .Select(s => (new OutgoingMessage(ByteString.FromString(s), false, false, routingKey: GetRoutingKey(s)), s))
                   .Via(amqpFlow)
-                  .RunWith(Sink.Ignore<string>(), _mat);
+                  .RunWith(Sink.Ignore<string>(), _mat)
+                  .Wait();
 
-            var result = await amqpSource
+            var result =
+                amqpSource
                     .Take(input.Length)
-                    .RunWith(Sink.Seq<IncomingMessage>(), _mat);
+                    .RunWith(Sink.Seq<IncomingMessage>(), _mat)
+                    .Result;
 
             result.Select(x => x.Envelope.RoutingKey).Should().Equal(routingKeys);
             result.Select(x => x.Bytes.ToString()).Should().Equal(input);
@@ -601,6 +604,8 @@ namespace Akka.Streams.Amqp.Tests
         [Fact]
         public void Declare_connection_that_does_not_require_server_acks()
         {
+            //var connectionSettings = AmqpConnectionDetails.Create("localhost", 5672);
+
             var queueName = "amqp-conn-it-spec-fire-and-forget-" + Environment.TickCount;
             var queueDeclaration = QueueDeclaration.Create(queueName);
 

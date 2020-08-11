@@ -109,22 +109,11 @@ namespace Akka.Streams.Amqp.Tests
         public string Password { get; set; } = "guest";
         public string HostName { get; set; } = "127.0.0.1";
 
-        private int _port = -1;
-        public int AmqpPort
-        {
-            get
-            {
-                if (!UseDockerContainer) return 5672;
+        public int AmqpPort => 5672;
 
-                if(_port == -1)
-                    _port = ThreadLocalRandom.Current.Next(10000, 15000);
-                return _port;
-            }
-        }
+        public int AmqpsPort => 5671;
 
-        public int AmqpSslPort => UseDockerContainer ? AmqpPort + 1 : 5671;
-
-        public int EpmdPort => UseDockerContainer ? AmqpPort + 2 : 4369;
+        public int EpmdPort => 4369;
 
         private DockerClientConfiguration Config
         {
@@ -194,7 +183,7 @@ namespace Akka.Streams.Amqp.Tests
             var portBindings = new Dictionary<string, IList<PortBinding>>
             {
                 { "4369/tcp", new List<PortBinding> { new PortBinding { HostPort = $"{EpmdPort}" } } },
-                { "5671/tcp", new List<PortBinding> { new PortBinding { HostPort = $"{AmqpSslPort}" } } },
+                { "5671/tcp", new List<PortBinding> { new PortBinding { HostPort = $"{AmqpsPort}" } } },
                 { "5672/tcp", new List<PortBinding> { new PortBinding { HostPort = $"{AmqpPort}" } } },
             };
 

@@ -105,6 +105,7 @@ namespace Akka.Streams.Azure.StorageQueue.Tests
         public int TableHostPort => UseDockerContainer ? BlobHostPort + 2 : 10002;
         public Uri BlobEndpoint => new Uri($"http://{HostName}:{BlobHostPort}/devstoreaccount1");
         public Uri QueueEndpoint => new Uri($"http://{HostName}:{QueueHostPort}/devstoreaccount1");
+        public Uri QueueUri => new Uri($"http://{HostName}:{QueueHostPort}/devstoreaccount1/testqueue");
         public Uri TableEndpoint => new Uri($"http://{HostName}:{TableHostPort}/devstoreaccount1");
         public string ConnectionString { 
             get

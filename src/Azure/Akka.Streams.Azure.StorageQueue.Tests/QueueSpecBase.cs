@@ -1,7 +1,9 @@
 ﻿using System.Threading.Tasks;
-using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Queue;
+using Azure.Storage.Queues;
 using Akka.Actor;
+using Azure.Storage;
+using Azure.Storage.Sas;
+using Microsoft.Extensions.Azure;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -12,13 +14,10 @@ namespace Akka.Streams.Azure.StorageQueue.Tests
         protected QueueSpecBase(AzureFixture fixture, ITestOutputHelper output) : base((ActorSystem)null, output)
         {
             Materializer = Sys.Materializer();
-
-            var storageAccount = CloudStorageAccount.Parse(fixture.ConnectionString);
-            var client = storageAccount.CreateCloudQueueClient();
-            Queue = client.GetQueueReference("testqueue");
+            Queue = new QueueClient(fixture.QueueUri, new StorageSharedKeyCredential(fixture.AccountName, fixture.AccountKey));
         }
 
-        public CloudQueue Queue { get; }
+        public QueueClient Queue { get; }
 
         protected ActorMaterializer Materializer { get; }
 

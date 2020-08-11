@@ -4,14 +4,16 @@ using Akka.Streams.Azure.Utils;
 using Akka.Streams.Dsl;
 using Akka.Streams.Stage;
 using Akka.Streams.Supervision;
-using Microsoft.WindowsAzure.Storage.Queue;
+using Azure;
+using Azure.Storage.Queues;
+using Azure.Storage.Queues.Models;
 
 namespace Akka.Streams.Azure.StorageQueue
 {
     /// <summary>
     /// A <see cref="Sink{TIn,TMat}"/> for the Azure Storage Queue
     /// </summary>
-    public class QueueSink : GraphStageWithMaterializedValue<SinkShape<CloudQueueMessage>, Task>
+    public class QueueSink : GraphStageWithMaterializedValue<SinkShape<string>, Task>
     {
         #region Logic
 
@@ -19,7 +21,7 @@ namespace Akka.Streams.Azure.StorageQueue
         {
             private readonly QueueSink _sink;
             private readonly TaskCompletionSource<NotUsed> _completion;
-            private Action<Tuple<Task, CloudQueueMessage>> _messageAddedCallback;
+            private Action<(Task<Response<SendReceipt>>, string)> _messageAddedCallback;
             private bool _isAddInProgress;
             private readonly Decider _decider;
 
@@ -50,24 +52,30 @@ namespace Akka.Streams.Azure.StorageQueue
             {
                 // Keep going even if the upstream has finished so that we can process the task from the last element
                 SetKeepGoing(true);
-                _messageAddedCallback = GetAsyncCallback<Tuple<Task, CloudQueueMessage>>(OnMessageAdded);
+                _messageAddedCallback = GetAsyncCallback<(Task<Response<SendReceipt>>, string)>(OnMessageAdded);
                 // Request the first element
                 Pull(_sink.In);
             }
 
-            private void TryAdd(CloudQueueMessage message)
+            private void TryAdd(string message)
             {
                 _isAddInProgress = true;
-                _sink._queue.AddMessageAsync(message, _sink._options.TimeToLive, _sink._options.InitialVisibilityDelay,
+                _sink._queue.SendMessageAsync(
+                        message, 
+                        _sink._options.InitialVisibilityDelay, 
+                        _sink._options.TimeToLive)
+                    .ContinueWith(t => _messageAddedCallback((t, message)));
+                /*
+                _sink._queue.SendMessageAsync(message, _sink._options.TimeToLive, _sink._options.InitialVisibilityDelay,
                     _sink._options.QueueRequestOptions, _sink._options.OperationContext)
                     .ContinueWith(t => _messageAddedCallback(Tuple.Create(t, message)));
+                */
             }
             
-            private void OnMessageAdded(Tuple<Task, CloudQueueMessage> t)
+            private void OnMessageAdded((Task<Response<SendReceipt>>, string) t)
             {
                 _isAddInProgress = false;
-                var task = t.Item1;
-                var message = t.Item2;
+                var (task, message) = t;
 
                 if (task.IsFaulted || task.IsCanceled)
                 {
@@ -115,31 +123,31 @@ namespace Akka.Streams.Azure.StorageQueue
         /// Creates a <see cref="Sink{TIn,TMat}"/> for the Azure Storage Queue
         /// </summary>
         /// <param name="queue">The queue</param>
-        /// <param name="options">The options for the <see cref="CloudQueue.AddMessageAsync(CloudQueueMessage)"/> call</param>
+        /// <param name="options">The options for the <see cref="QueueClient.SendMessageAsync(string)"/> call</param>
         /// <returns>The <see cref="Sink{TIn,TMat}"/> for the Azure Storage Queue</returns>
-        public static Sink<CloudQueueMessage, Task> Create(CloudQueue queue, AddRequestOptions options = null)
+        public static Sink<string, Task> Create(QueueClient queue, AddRequestOptions options = null)
         {
             return Sink.FromGraph(new QueueSink(queue, options));
         }
 
-        private readonly CloudQueue _queue;
+        private readonly QueueClient _queue;
         private readonly AddRequestOptions _options;
 
         /// <summary>
         /// Create a new instance of the <see cref="QueueSink"/>
         /// </summary>
         /// <param name="queue">The queue</param>
-        /// <param name="options">The options for the <see cref="CloudQueue.AddMessageAsync(CloudQueueMessage)"/> call</param>
-        public QueueSink(CloudQueue queue, AddRequestOptions options = null)
+        /// <param name="options">The options for the <see cref="QueueClient.SendMessageAsync(string)"/> call</param>
+        public QueueSink(QueueClient queue, AddRequestOptions options = null)
         {
             _queue = queue;
             _options = options ?? new AddRequestOptions();
-            Shape = new SinkShape<CloudQueueMessage>(In);
+            Shape = new SinkShape<string>(In);
         }
 
-        public Inlet<CloudQueueMessage> In { get; } = new Inlet<CloudQueueMessage>("QueueSink.In");
+        public Inlet<string> In { get; } = new Inlet<string>("QueueSink.In");
 
-        public override SinkShape<CloudQueueMessage> Shape { get; }
+        public override SinkShape<string> Shape { get; }
 
         protected override Attributes InitialAttributes { get; } = Attributes.CreateName("QueueSink");
 

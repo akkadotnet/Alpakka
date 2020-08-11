@@ -1,11 +1,11 @@
 using System;
-using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Queue;
+using Azure.Storage;
+using Azure.Storage.Queues;
 
 namespace Akka.Streams.Azure.StorageQueue
 {
     /// <summary>
-    /// Wrapper for the <see cref="CloudQueue.AddMessageAsync(CloudQueueMessage)"/> parameter
+    /// Wrapper for the <see cref="QueueClient.SendMessageAsync(string)"/> parameter
     /// </summary>
     public class AddRequestOptions : RequestOptions
     {
@@ -14,11 +14,7 @@ namespace Akka.Streams.Azure.StorageQueue
         /// </summary>
         /// <param name="timeToLive">A <see cref="TimeSpan"/> specifying the maximum time to allow the message to be in the ueue, or null.</param>
         /// <param name="initialVisibilityDelay">A <see cref="TimeSpan"/> specifying the interval of time from now during which the message will be invisible. If null then the message will be visible immediately.</param>
-        /// <param name="queueRequestOptions">A <see cref="QueueRequestOptions"/> object that specifies additional options for the request.</param>
-        /// <param name="operationContext">An <see cref="OperationContext"/> object that represents the context for the current operation.</param>
-        public AddRequestOptions(TimeSpan? timeToLive = null, TimeSpan? initialVisibilityDelay = null,
-            QueueRequestOptions queueRequestOptions = null, OperationContext operationContext = null)
-            : base(queueRequestOptions, operationContext)
+        public AddRequestOptions(TimeSpan? timeToLive = null, TimeSpan? initialVisibilityDelay = null)
         {
             TimeToLive = timeToLive;
             InitialVisibilityDelay = initialVisibilityDelay;
@@ -38,10 +34,7 @@ namespace Akka.Streams.Azure.StorageQueue
         /// Creates a new instance of the <see cref="GetRequestOptions"/>
         /// </summary>
         /// <param name="visibilityTimeout">A <see cref="TimeSpan"/> specifying the visibility timeout interval.</param>
-        /// <param name="queueRequestOptions">A <see cref="QueueRequestOptions"/> object that specifies additional options for the request.</param>
-        /// <param name="operationContext">An <see cref="OperationContext"/> object that represents the context for the current operation.</param>
-        public GetRequestOptions(TimeSpan? visibilityTimeout = null, QueueRequestOptions queueRequestOptions = null,
-            OperationContext operationContext = null) : base(queueRequestOptions, operationContext)
+        public GetRequestOptions(TimeSpan? visibilityTimeout = null)
         {
             VisibilityTimeout = visibilityTimeout;
         }
@@ -49,24 +42,7 @@ namespace Akka.Streams.Azure.StorageQueue
         public TimeSpan? VisibilityTimeout { get; }
     }
 
-    /// <summary>
-    /// Wrapper for the <see cref="CloudQueue"/> request parameter
-    /// </summary>
-    public class RequestOptions
+    public abstract class RequestOptions
     {
-        /// <summary>
-        /// Creates a new instance of the <see cref="RequestOptions"/> 
-        /// </summary>
-        /// <param name="queueRequestOptions">A <see cref="QueueRequestOptions"/> object that specifies additional options for the request.</param>
-        /// <param name="operationContext">An <see cref="OperationContext"/> object that represents the context for the current operation.</param>
-        public RequestOptions(QueueRequestOptions queueRequestOptions = null, OperationContext operationContext = null)
-        {
-            QueueRequestOptions = queueRequestOptions;
-            OperationContext = operationContext;
-        }
-
-        public QueueRequestOptions QueueRequestOptions { get; }
-
-        public OperationContext OperationContext { get; }
     }
 }

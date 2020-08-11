@@ -6,7 +6,8 @@ using Akka.Streams.Dsl;
 using Akka.Streams.Supervision;
 using Akka.Streams.TestKit;
 using FluentAssertions;
-using Microsoft.WindowsAzure.Storage.Queue;
+using Azure.Storage.Queues;
+using Azure.Storage.Queues.Models;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -26,25 +27,23 @@ namespace Akka.Streams.Azure.StorageQueue.Tests
         {
             var messages = new[] {"1", "2"};
             var t = Source.From(messages)
-                .Select(x => new CloudQueueMessage(x))
+                //.Select(x => new QueueMessage(x))
                 .ToStorageQueue(Queue, Materializer);
 
             t.Wait(TimeSpan.FromSeconds(3)).Should().BeTrue();
-            (await Queue.GetMessagesAsync(2)).Select(x => x.AsString).Should().BeEquivalentTo(messages);
+            (await Queue.ReceiveMessagesAsync(2)).Value.Select(x => x.MessageText).Should().BeEquivalentTo(messages);
         }
 
         [Fact]
-        public void A_QueueSink_should_set_the_exception_of_the_task_when_an_error_occurs()
+        public async Task A_QueueSink_should_set_the_exception_of_the_task_when_an_error_occurs()
         {
-            var t = this.SourceProbe<string>()
-                .Select(x => new CloudQueueMessage(x))
+            var (probe, task) = this.SourceProbe<string>()
+                //.Select(x => new QueueMessage(x))
                 .ToMaterialized(QueueSink.Create(Queue), Keep.Both)
                 .Run(Materializer);
-            var probe = t.Item1;
-            var task = t.Item2;
 
             probe.SendError(new Exception("Boom"));
-            task.Invoking(x => x.Wait(TimeSpan.FromSeconds(3))).Should().Throw<Exception>().WithMessage("Boom");
+            task.Invoking(async x => await x).Should().Throw<Exception>().WithMessage("Boom");
         }
 
         [Fact]
@@ -56,13 +55,13 @@ namespace Akka.Streams.Azure.StorageQueue.Tests
                 .WithAttributes(ActorAttributes.CreateSupervisionStrategy(Deciders.ResumingDecider));
 
             var t = Source.From(messages)
-                .Select(x => new CloudQueueMessage(x))
+                //.Select(x => new QueueMessage(x))
                 .RunWith(queueSink, Materializer);
 
             await Task.Delay(1000);
             await Queue.CreateAsync();
             t.Wait(TimeSpan.FromSeconds(3)).Should().BeTrue();
-            (await Queue.GetMessagesAsync(2)).Select(x => x.AsString).Should().BeEquivalentTo(messages);
+            (await Queue.ReceiveMessagesAsync(2)).Value.Select(x => x.MessageText).Should().BeEquivalentTo(messages);
         }
 
         [Fact]
@@ -73,7 +72,7 @@ namespace Akka.Streams.Azure.StorageQueue.Tests
                 .WithAttributes(ActorAttributes.CreateSupervisionStrategy(Deciders.RestartingDecider));
 
             var t = this.SourceProbe<string>()
-                .Select(x => new CloudQueueMessage(x))
+                //.Select(x => new QueueMessage(x))
                 .ToMaterialized(queueSink, Keep.Both)
                 .Run(Materializer);
 
@@ -85,8 +84,8 @@ namespace Akka.Streams.Azure.StorageQueue.Tests
             await Queue.CreateAsync();
             probe.SendNext("2");
             probe.SendComplete();
-            task.Wait(TimeSpan.FromSeconds(3)).Should().BeTrue();
-            (await Queue.GetMessageAsync()).AsString.Should().Be("2");
+            await task;
+            (await Queue.ReceiveMessagesAsync()).Value[0].MessageText.Should().Be("2");
         }
     }
 }

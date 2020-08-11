@@ -6,13 +6,13 @@
       <Description>AMQP V1 adapter for Akka.NET Streams</Description>
       <TargetFramework>$(NetStandardLibVersion)</TargetFramework>
       <PackageTags>$(AkkaPackageTags);AMQP;RabbitMQ</PackageTags>
-      <Platforms>AnyCPU;x64</Platforms>
+      <Platforms>AnyCPU</Platforms>
   </PropertyGroup>
 
     <ItemGroup>
         <PackageReference Include="Akka.Streams" Version="$(AkkaVersion)" />
-        <PackageReference Include="AMQPNetLite.Core" Version="2.2.0" />
-        <PackageReference Include="AMQPNetLite.Serialization" Version="2.2.0" />
+        <PackageReference Include="AMQPNetLite.Core" Version="2.4.0" />
+        <PackageReference Include="AMQPNetLite.Serialization" Version="2.4.0" />
     </ItemGroup>
 
 </Project>

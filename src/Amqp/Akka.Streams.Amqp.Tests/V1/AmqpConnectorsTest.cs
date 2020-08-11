@@ -34,7 +34,7 @@ namespace Akka.Streams.Amqp.V1.Tests
         [Fact]
         public async Task Publish_and_consume_elements_through_a_simple_queue_again_in_the_same_process()
         {
-            var connection = await Connection.Factory.CreateAsync(_address);
+            var connection = new Connection(_address);
             var session = new Session(connection);
 
             var queueName = "simple-v1-queue-test" + Guid.NewGuid();

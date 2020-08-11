@@ -34,6 +34,11 @@ namespace Akka.Streams.Amqp.V1.Tests
         [Fact]
         public async Task Publish_and_consume_elements_through_a_simple_queue_again_in_the_same_process()
         {
+            Connection.DisableServerCertValidation = true;
+            Trace.TraceLevel = TraceLevel.Frame;
+            Trace.TraceListener = (l, f, a) =>
+                Output.WriteLine(DateTime.Now.ToString("[hh:mm:ss.fff]") + " " + string.Format(f, a));
+
             var connection = new Connection(_address);
             var session = new Session(connection);
 

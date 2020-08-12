@@ -10,7 +10,7 @@ namespace Akka.Streams.SignalR.AspNetCore.Internals
     public sealed class DefaultStreamDispatcher : IStreamDispatcher
     {
         private readonly IServiceProvider _provider;
-        private ConcurrentDictionary<Type, StreamConnector> connectors
+        private readonly ConcurrentDictionary<Type, StreamConnector> _connectors
             = new ConcurrentDictionary<Type, StreamConnector>();
 
         private readonly ConnectionSourceSettings _sourceSettings;
@@ -35,7 +35,7 @@ namespace Akka.Streams.SignalR.AspNetCore.Internals
         private StreamConnector GetStream<TStream>(Type hubType)
             where TStream : StreamConnector
         {
-            return connectors.GetOrAdd(typeof(TStream), _ => {
+            return _connectors.GetOrAdd(typeof(TStream), _ => {
 
                 var hubContextType = typeof(IHubContext<>).MakeGenericType(hubType);
                 var hubContext = _provider.GetService(hubContextType);
@@ -44,7 +44,7 @@ namespace Akka.Streams.SignalR.AspNetCore.Internals
                 var stream = ActivatorUtilities.CreateInstance<TStream>(_provider,
                     hubClients,
                     _sourceSettings ?? new ConnectionSourceSettings(100, OverflowStrategy.DropTail),
-                    _sinkSettings ?? new ConnectionSinkSettings());
+                    _sinkSettings ?? ConnectionSinkSettings.Default);
 
                 return stream;
             });

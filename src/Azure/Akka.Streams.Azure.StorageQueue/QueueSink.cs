@@ -65,11 +65,6 @@ namespace Akka.Streams.Azure.StorageQueue
                         _sink._options.InitialVisibilityDelay, 
                         _sink._options.TimeToLive)
                     .ContinueWith(t => _messageAddedCallback((t, message)));
-                /*
-                _sink._queue.SendMessageAsync(message, _sink._options.TimeToLive, _sink._options.InitialVisibilityDelay,
-                    _sink._options.QueueRequestOptions, _sink._options.OperationContext)
-                    .ContinueWith(t => _messageAddedCallback(Tuple.Create(t, message)));
-                */
             }
             
             private void OnMessageAdded((Task<Response<SendReceipt>>, string) t)

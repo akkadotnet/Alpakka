@@ -7,7 +7,7 @@ namespace Akka.Streams.Azure.StorageQueue
     /// <summary>
     /// Wrapper for the <see cref="QueueClient.SendMessageAsync(string)"/> parameter
     /// </summary>
-    public class AddRequestOptions : RequestOptions
+    public class AddRequestOptions
     {
         /// <summary>
         /// Creates a new instance of the <see cref="AddRequestOptions"/>
@@ -28,7 +28,7 @@ namespace Akka.Streams.Azure.StorageQueue
     /// <summary>
     /// Wraper for the <see cref="CloudQueue.GetMessagesAsync(int)"/> parameter
     /// </summary>
-    public class GetRequestOptions : RequestOptions
+    public class GetRequestOptions
     {
         /// <summary>
         /// Creates a new instance of the <see cref="GetRequestOptions"/>
@@ -40,9 +40,5 @@ namespace Akka.Streams.Azure.StorageQueue
         }
 
         public TimeSpan? VisibilityTimeout { get; }
-    }
-
-    public abstract class RequestOptions
-    {
     }
 }

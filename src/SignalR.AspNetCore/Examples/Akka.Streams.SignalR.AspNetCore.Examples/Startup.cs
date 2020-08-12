@@ -9,19 +9,21 @@ namespace SignalRSample
     {
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddSignalR();
-            services.AddSignalRAkkaStream();
-            services.Add(new ServiceDescriptor(typeof(ConnectionSourceSettings), 
-                new ConnectionSourceSettings(102400, OverflowStrategy.DropBuffer)                
-            ));
+            services
+                .AddSingleton(new ConnectionSourceSettings(102400, OverflowStrategy.DropBuffer))
+                .AddSignalRAkkaStream()
+                .AddSignalR();
         }
 
         public void Configure(IApplicationBuilder app)
         {
-            app.UseStaticFiles();
-            app.UseSignalR(routes => {
-                routes.MapHub<EchoHub>("/echo");
-            });
+            app
+                .UseStaticFiles()
+                .UseRouting()
+                .UseEndpoints(routes =>
+                {
+                    routes.MapHub<EchoHub>("/echo");
+                });
         }
     }
 }

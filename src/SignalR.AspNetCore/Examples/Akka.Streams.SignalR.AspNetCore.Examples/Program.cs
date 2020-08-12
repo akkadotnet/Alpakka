@@ -15,15 +15,13 @@ namespace SignalRSample
                 akka.loglevel = DEBUG
             ";
 
-            using (var system = ActorSystem.Create("web-system", config))
-            using (var materializer = system.Materializer())
-            using (var host = BuildWebHost(args))
-            {
-                App.System = system;
-                App.Materializer = materializer;
+            using var system = ActorSystem.Create("web-system", config);
+            using var materializer = system.Materializer();
+            using var host = BuildWebHost(args);
+            App.System = system;
+            App.Materializer = materializer;
 
-                host.Run();
-            }
+            host.Run();
         }
 
         public static IWebHost BuildWebHost(string[] args)

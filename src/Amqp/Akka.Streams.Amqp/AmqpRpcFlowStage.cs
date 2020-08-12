@@ -73,7 +73,7 @@ namespace Akka.Streams.Amqp
                     onPush: () =>
                     {
                         var elem = Grab(_stage.In);
-                        var props = elem.Properties ?? new BasicProperties();
+                        var props = elem.Properties ?? Channel.CreateBasicProperties();
                         props.ReplyTo = _queueName;
                         Channel.BasicPublish(exchange, elem.RoutingKey ?? routingKey, elem.Mandatory, props, elem.Bytes.ToArray());
 
@@ -130,18 +130,19 @@ namespace Akka.Streams.Amqp
 
             public override void WhenConnected()
             {
-                var shutdownCallback = GetAsyncCallback<(string consumerTag, ShutdownEventArgs args)>(tuple =>
+                var shutdownCallback = GetAsyncCallback<(string[] consumerTags, ShutdownEventArgs args)>(tuple =>
                 {
-                    if (tuple.args != null)
+                    var (consumerTags, args) = tuple;
+                    if (args != null)
                     {
-                        var exception = ShutdownSignalException.FromArgs(tuple.args);
-                        var ex = new ApplicationException($"Consumer {_queueName} with consumerTag {tuple.consumerTag} shutdown unexpectedly", exception);
+                        var exception = ShutdownSignalException.FromArgs(args);
+                        var ex = new ApplicationException($"Consumer {_queueName} with consumerTag(s) {string.Join(",", consumerTags)} shutdown unexpectedly", exception);
                         _promise.SetException(ex);
                         FailStage(ex);
                     }
                     else
                     {
-                        var ex = new ApplicationException($"Consumer {_queueName} with consumerTag {tuple.consumerTag} shutdown unexpectedly");
+                        var ex = new ApplicationException($"Consumer {_queueName} with consumerTag(s) {string.Join(",", consumerTags)} shutdown unexpectedly");
                         _promise.SetException(ex);
                         FailStage(ex);
                     }
@@ -238,10 +239,10 @@ namespace Akka.Streams.Amqp
             {
                 private readonly Action<CommittableIncomingMessage> _consumerCallback;
                 private readonly Action<CommitCallback> _commitCallback;
-                private readonly Action<(string consumerTag, ShutdownEventArgs args)> _shutdownCallback;
+                private readonly Action<(string[] consumerTag, ShutdownEventArgs args)> _shutdownCallback;
 
                 public DefaultConsumer(Action<CommittableIncomingMessage> consumerCallback, Action<CommitCallback> commitCallback,
-                    Action<(string consumerTag, ShutdownEventArgs args)> shutdownCallback)
+                    Action<(string[] consumerTag, ShutdownEventArgs args)> shutdownCallback)
                 {
                     _consumerCallback = consumerCallback;
                     _commitCallback = commitCallback;
@@ -249,10 +250,10 @@ namespace Akka.Streams.Amqp
                 }
 
                 public override void HandleBasicDeliver(string consumerTag, ulong deliveryTag, bool redelivered, string exchange, string routingKey,
-                    IBasicProperties properties, byte[] body)
+                    IBasicProperties properties, ReadOnlyMemory<byte> body)
                 {
                     var envelope = Envelope.Create(deliveryTag, redelivered, exchange, routingKey);
-                    var message = new IncomingMessage(ByteString.CopyFrom(body), envelope, properties);
+                    var message = new IncomingMessage(ByteString.CopyFrom(body.ToArray()), envelope, properties);
 
                     var committableMessage =
                         new CommittableIncomingMessage(
@@ -276,12 +277,12 @@ namespace Akka.Streams.Amqp
                 public override void HandleBasicCancel(string consumerTag)
                 {
                     // non consumer initiated cancel, for example happens when the queue has been deleted.
-                    _shutdownCallback((consumerTag, null));
+                    _shutdownCallback((new []{consumerTag}, null));
                 }
 
                 public override void HandleModelShutdown(object model, ShutdownEventArgs reason)
                 {
-                    _shutdownCallback((ConsumerTag, reason));
+                    _shutdownCallback((ConsumerTags, reason));
                 }
             }
         }

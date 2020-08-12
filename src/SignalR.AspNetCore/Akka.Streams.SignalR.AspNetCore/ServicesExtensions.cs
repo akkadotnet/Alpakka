@@ -12,8 +12,10 @@ namespace Microsoft.Extensions.DependencyInjection
         /// Add SignalR Akka Stream connector
         /// </summary>
         /// <param name="services"></param>
-        public static void AddSignalRAkkaStream(this IServiceCollection services)
-            => services.Add(new ServiceDescriptor(typeof(IStreamDispatcher), 
-                typeof(DefaultStreamDispatcher), ServiceLifetime.Singleton));
+        public static IServiceCollection AddSignalRAkkaStream(this IServiceCollection services)
+        {
+            services.AddSingleton<IStreamDispatcher, DefaultStreamDispatcher>();
+            return services;
+        }
     }
 }

@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Owin.StaticFiles" Version="4.0.1" />
+    <PackageReference Include="Microsoft.Owin.StaticFiles" Version="4.1.0" />
     <PackageReference Include="Microsoft.AspNet.WebApi.OwinSelfHost" Version="5.2.7" />
     <PackageReference Include="Microsoft.Owin.Cors" Version="4.1.0" />
   </ItemGroup>

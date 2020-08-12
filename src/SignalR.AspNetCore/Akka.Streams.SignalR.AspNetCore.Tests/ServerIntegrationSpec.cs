@@ -18,7 +18,6 @@ namespace Akka.Streams.SignalR.AspNetCore.Tests
     {
         private readonly WebApplicationFactory<Startup> _factory;
         private readonly PublishSinkSource _publishSinkSource;
-        private readonly HttpClient _client;
 
         public ServerIntegrationSpec(
             ITestOutputHelper output,
@@ -32,21 +31,23 @@ namespace Akka.Streams.SignalR.AspNetCore.Tests
                     .UseContentRoot("")
                     .ConfigureServices(services =>
                     {
-                        services.AddSignalRAkkaStream();
-                        services.AddSignalR(opt => opt.EnableDetailedErrors = true);
-                        services.Add(new ServiceDescriptor(typeof(IPublishSinkSource), _publishSinkSource));
-                        services.Add(new ServiceDescriptor(typeof(ActorSystem), Sys));
-                        services.Add(new ServiceDescriptor(typeof(TestKitBase), this));
+                        services
+                            .AddSingleton<IPublishSinkSource>(_publishSinkSource)
+                            .AddSingleton(Sys)
+                            .AddSingleton(this)
+                            .AddSignalRAkkaStream()
+                            .AddSignalR(opt => opt.EnableDetailedErrors = true);
                     })
                     .Configure(app =>
                     {
-                        app.UseSignalR(config =>
-                        {
-                            config.MapHub<TestStreamHub>("/test");
-                        });
+                        app
+                            .UseRouting()
+                            .UseEndpoints(config =>
+                            {
+                                config.MapHub<TestStreamHub>("/test");
+                            });
                     });
             });
-            _client = _factory.CreateClient();
         }
 
         [Fact]

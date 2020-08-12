@@ -15,7 +15,7 @@ namespace Akka.Streams.SignalR.AspNetCore
     {
         private readonly IStreamDispatcher _dispatcher;
 
-        public StreamHub(IStreamDispatcher dispatcher)
+        protected StreamHub(IStreamDispatcher dispatcher)
         {
             _dispatcher = dispatcher;
         }

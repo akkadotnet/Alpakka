@@ -205,10 +205,10 @@ namespace Akka.Streams.Amqp
                 }
 
                 public override void HandleBasicDeliver(string consumerTag, ulong deliveryTag, bool redelivered, string exchange, string routingKey,
-                    IBasicProperties properties, byte[] body)
+                    IBasicProperties properties, ReadOnlyMemory<byte> body)
                 {
                     var envelope = Envelope.Create(deliveryTag, redelivered, exchange, routingKey);
-                    var message = new IncomingMessage(ByteString.CopyFrom(body), envelope, properties);
+                    var message = new IncomingMessage(ByteString.CopyFrom(body.ToArray()), envelope, properties);
 
                     var committableMessage =
                         new CommittableIncomingMessage(

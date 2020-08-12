@@ -4,7 +4,8 @@ using Akka.Streams.Dsl;
 using Akka.Streams.Supervision;
 using Akka.Streams.TestKit;
 using FluentAssertions;
-using Microsoft.WindowsAzure.Storage.Queue;
+using Azure.Storage.Queues;
+using Azure.Storage.Queues.Models;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -22,15 +23,16 @@ namespace Akka.Streams.Azure.StorageQueue.Tests
         [Fact]
         public async Task A_QueueSource_should_push_available_messages()
         {
-            await Queue.AddMessageAsync(new CloudQueueMessage("Test1"));
-            await Queue.AddMessageAsync(new CloudQueueMessage("Test2"));
-            await Queue.AddMessageAsync(new CloudQueueMessage("Test3"));
+            await Queue.SendMessageAsync("Test1");
+            await Queue.SendMessageAsync("Test2");
+            await Queue.SendMessageAsync("Test3");
             
-            QueueSource.Create(Queue)
+            var probe = QueueSource.Create(Queue)
                 .Take(3)
-                .Select(x => x.AsString)
-                .RunWith(this.SinkProbe<string>(), Materializer)
-                .Request(3)
+                .Select(x => x.MessageText)
+                .RunWith(this.SinkProbe<string>(), Materializer);
+
+            probe.Request(3)
                 .ExpectNext("Test1", "Test2", "Test3")
                 .ExpectComplete();
         }
@@ -38,19 +40,19 @@ namespace Akka.Streams.Azure.StorageQueue.Tests
         [Fact]
         public async Task A_QueueSource_should_poll_for_messages_if_the_queue_is_empty()
         {
-            await Queue.AddMessageAsync(new CloudQueueMessage("Test1"));
+            await Queue.SendMessageAsync("Test1");
             
             var probe = QueueSource.Create(Queue, pollInterval: TimeSpan.FromSeconds(1))
                 .Take(3)
-                .Select(x => x.AsString)
+                .Select(x => x.MessageText)
                 .RunWith(this.SinkProbe<string>(), Materializer);
 
             probe.Request(2)
                 .ExpectNext("Test1")
                 .ExpectNoMsg(TimeSpan.FromSeconds(3));
 
-            await Queue.AddMessageAsync(new CloudQueueMessage("Test2"));
-            await Queue.AddMessageAsync(new CloudQueueMessage("Test3"));
+            await Queue.SendMessageAsync("Test2");
+            await Queue.SendMessageAsync("Test3");
 
             probe.ExpectNext("Test2", TimeSpan.FromSeconds(2));
             probe.Request(1).ExpectNext("Test3").ExpectComplete();
@@ -59,25 +61,25 @@ namespace Akka.Streams.Azure.StorageQueue.Tests
         [Fact]
         public async Task A_QueueSource_should_only_poll_if_demand_is_available()
         {
-            await Queue.AddMessageAsync(new CloudQueueMessage("Test1"));
+            await Queue.SendMessageAsync("Test1");
 
             var probe = QueueSource.Create(Queue, pollInterval: TimeSpan.FromSeconds(1))
-                .Select(async x =>
+                .Select(x =>
                 {
-                    await Queue.DeleteMessageAsync(x);
-                    return x.AsString;
+                    Queue.DeleteMessage(x.MessageId, x.PopReceipt);
+                    return x.MessageText;
                 })
-                .RunWith(this.SinkProbe<Task<string>>(), Materializer);
+                .RunWith(this.SinkProbe<string>(), Materializer);
 
-            (await probe.Request(1).ExpectNext()).Should().Be("Test1");
+            probe.Request(1).ExpectNext("Test1");
 
-            await Queue.AddMessageAsync(new CloudQueueMessage("Test2"));
+            await Queue.SendMessageAsync("Test2");
 
             probe.ExpectNoMsg(TimeSpan.FromSeconds(3));
             //Message wouldn't be visible if the source has called GetMessages even if the message wasn't pushed to the stream
-            (await Queue.PeekMessageAsync()).AsString.Should().Be("Test2");
-            
-            (await probe.Request(1).ExpectNext()).Should().Be("Test2");
+            (await Queue.PeekMessagesAsync(1)).Value[0].MessageText.Should().Be("Test2");
+
+            probe.Request(1).ExpectNext("Test2");
         }
 
         [Fact]
@@ -87,10 +89,10 @@ namespace Akka.Streams.Azure.StorageQueue.Tests
 
             var probe = QueueSource.Create(Queue, pollInterval: TimeSpan.FromSeconds(1))
                 .Take(3)
-                .Select(x => x.AsString)
+                .Select(x => x.MessageText)
                 .RunWith(this.SinkProbe<string>(), Materializer);
 
-            probe.Request(1).ExpectError();
+            Output.WriteLine(probe.Request(1).ExpectError().Message);
         }
 
         [Fact]
@@ -100,16 +102,16 @@ namespace Akka.Streams.Azure.StorageQueue.Tests
 
             var probe = QueueSource.Create(Queue, pollInterval: TimeSpan.FromSeconds(1))
                 .Take(3)
-                .Select(x => x.AsString)
+                .Select(x => x.MessageText)
                 .WithAttributes(ActorAttributes.CreateSupervisionStrategy(Deciders.ResumingDecider))
                 .RunWith(this.SinkProbe<string>(), Materializer);
 
             probe.Request(3).ExpectNoMsg();
 
             await Queue.CreateIfNotExistsAsync();
-            await Queue.AddMessageAsync(new CloudQueueMessage("Test1"));
-            await Queue.AddMessageAsync(new CloudQueueMessage("Test2"));
-            await Queue.AddMessageAsync(new CloudQueueMessage("Test3"));
+            await Queue.SendMessageAsync("Test1", TimeSpan.Zero);
+            await Queue.SendMessageAsync("Test2", TimeSpan.Zero);
+            await Queue.SendMessageAsync("Test3", TimeSpan.Zero);
 
             probe.ExpectNext("Test1", "Test2", "Test3")
                 .ExpectComplete();

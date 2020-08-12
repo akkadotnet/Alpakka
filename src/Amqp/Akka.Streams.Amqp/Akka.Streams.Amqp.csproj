@@ -11,6 +11,6 @@
 
     <ItemGroup>
         <PackageReference Include="Akka.Streams" Version="$(AkkaVersion)" />
-        <PackageReference Include="RabbitMQ.Client" Version="5.0.1" />
+        <PackageReference Include="RabbitMQ.Client" Version="6.1.0" />
     </ItemGroup>
 </Project>

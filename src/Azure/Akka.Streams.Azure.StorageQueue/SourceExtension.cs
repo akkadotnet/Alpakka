@@ -1,6 +1,7 @@
 ﻿using System.Threading.Tasks;
 using Akka.Streams.Dsl;
-using Microsoft.WindowsAzure.Storage.Queue;
+using Azure.Storage.Queues;
+using Azure.Storage.Queues.Models;
 
 namespace Akka.Streams.Azure.StorageQueue
 {
@@ -11,7 +12,7 @@ namespace Akka.Streams.Azure.StorageQueue
         /// The returned <see cref="Task"/> will be completed with Success when reaching the
         /// normal end of the stream, or completed with Failure if there is a failure signaled in the stream.
         /// </summary>
-        public static Task ToStorageQueue<TMat>(this Source<CloudQueueMessage, TMat> source, CloudQueue queue,
+        public static Task ToStorageQueue<TMat>(this Source<string, TMat> source, QueueClient queue,
             IMaterializer materializer, AddRequestOptions options = null)
         {
             return source.RunWith(new QueueSink(queue, options), materializer);

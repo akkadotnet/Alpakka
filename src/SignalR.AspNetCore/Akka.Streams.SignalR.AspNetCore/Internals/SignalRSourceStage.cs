@@ -7,15 +7,15 @@ namespace Akka.Streams.SignalR.AspNetCore.Internals
 {
     internal sealed class SignalRSourceStage : GraphStage<SourceShape<ISignalREvent>>
     {
-        private readonly StreamConnector connection;
-        private readonly ConnectionSourceSettings settings;
-        private readonly Outlet<ISignalREvent> outlet = new Outlet<ISignalREvent>("signalr.out");
+        private readonly StreamConnector _connection;
+        private readonly ConnectionSourceSettings _settings;
+        private readonly Outlet<ISignalREvent> _outlet = new Outlet<ISignalREvent>("signalr.out");
 
         public SignalRSourceStage(StreamConnector connection, ConnectionSourceSettings settings)
         {
-            this.connection = connection;
-            this.settings = settings;
-            this.Shape = new SourceShape<ISignalREvent>(outlet);
+            _connection = connection;
+            _settings = settings;
+            Shape = new SourceShape<ISignalREvent>(_outlet);
         }
 
         public override SourceShape<ISignalREvent> Shape { get; }
@@ -25,71 +25,71 @@ namespace Akka.Streams.SignalR.AspNetCore.Internals
 
         private sealed class Logic : OutGraphStageLogic
         {
-            private readonly int bufferCapacity;
-            private readonly LinkedList<ISignalREvent> buffer;
-            private readonly Action<ISignalREvent> onMessage;
-            private readonly Action<ISignalREvent> onOverflow;
+            private readonly int _bufferCapacity;
+            private readonly LinkedList<ISignalREvent> _buffer;
+            private readonly Action<ISignalREvent> _onMessage;
+            private readonly Action<ISignalREvent> _onOverflow;
 
-            private SignalRSourceStage stage;
+            private SignalRSourceStage _stage;
 
             public Logic(SignalRSourceStage stage) : base(stage.Shape)
             {
-                this.stage = stage;
-                this.bufferCapacity = stage.settings.BufferCapacity;
-                this.buffer = new LinkedList<ISignalREvent>();
-                this.onMessage = GetAsyncCallback<ISignalREvent>(e =>
+                _stage = stage;
+                _bufferCapacity = stage._settings.BufferCapacity;
+                _buffer = new LinkedList<ISignalREvent>();
+                _onMessage = GetAsyncCallback<ISignalREvent>(e =>
                 {
-                    if (IsAvailable(this.stage.outlet))
+                    if (IsAvailable(_stage._outlet))
                     {
-                        Push(this.stage.outlet, e);
+                        Push(_stage._outlet, e);
                     }
                     else
                     {
-                        if (this.buffer.Count >= this.bufferCapacity)
-                            this.onOverflow(e);
+                        if (_buffer.Count >= _bufferCapacity)
+                            _onOverflow(e);
                         else
                             Enqueue(e);
                     }
                 });
 
-                this.onOverflow = SetupOverflowStrategy(stage.settings.OverflowStrategy);
+                _onOverflow = SetupOverflowStrategy(stage._settings.OverflowStrategy);
 
-                SetHandler(stage.outlet, this);
+                SetHandler(stage._outlet, this);
             }
 
-            private void Enqueue(ISignalREvent message) => buffer.AddLast(message);
+            private void Enqueue(ISignalREvent message) => _buffer.AddLast(message);
 
             private ISignalREvent Dequeue()
             {
-                var element = buffer.First.Value;
-                buffer.RemoveFirst();
+                var element = _buffer.First.Value;
+                _buffer.RemoveFirst();
                 return element;
             }
 
             private void HandleReceived(object sender, ISignalREvent e)
             {
-                this.onMessage(e);
+                _onMessage(e);
             }
 
             public override void OnPull()
             {
-                if (buffer.Count > 0)
+                if (_buffer.Count > 0)
                 {
                     var element = Dequeue();
-                    Push(stage.outlet, element);
+                    Push(_stage._outlet, element);
                 }
             }
 
             public override void PreStart()
             {
                 base.PreStart();
-                stage.connection.Events += HandleReceived;
+                _stage._connection.Events += HandleReceived;
             }
 
             public override void PostStop()
             {
-                stage.connection.Events -= HandleReceived;
-                buffer.Clear();
+                _stage._connection.Events -= HandleReceived;
+                _buffer.Clear();
                 base.PostStop();
             }
 
@@ -100,13 +100,13 @@ namespace Akka.Streams.SignalR.AspNetCore.Internals
                     case OverflowStrategy.DropHead:
                         return message =>
                         {
-                            buffer.RemoveFirst();
+                            _buffer.RemoveFirst();
                             Enqueue(message);
                         };
                     case OverflowStrategy.DropTail:
                         return message =>
                         {
-                            buffer.RemoveLast();
+                            _buffer.RemoveLast();
                             Enqueue(message);
                         };
                     case OverflowStrategy.DropNew:
@@ -117,13 +117,13 @@ namespace Akka.Streams.SignalR.AspNetCore.Internals
                     case OverflowStrategy.DropBuffer:
                         return message =>
                         {
-                            buffer.Clear();
+                            _buffer.Clear();
                             Enqueue(message);
                         };
                     case OverflowStrategy.Fail:
                         return message =>
                         {
-                            FailStage(new BufferOverflowException($"{stage.outlet} buffer has been overflown"));
+                            FailStage(new BufferOverflowException($"{_stage._outlet} buffer has been overflown"));
                         };
                     case OverflowStrategy.Backpressure:
                         return message =>

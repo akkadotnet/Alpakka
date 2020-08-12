@@ -9,15 +9,15 @@ namespace Akka.Streams.SignalR.AspNetCore.Internals
 {
     internal sealed class SignalRSinkStage : GraphStage<SinkShape<ISignalRResult>>
     {
-        private readonly IHubClients<IClientProxy> connection;
-        private readonly ConnectionSinkSettings settings;
-        private readonly Inlet<ISignalRResult> inlet = new Inlet<ISignalRResult>("signalr.in");
+        private readonly IHubClients<IClientProxy> _connection;
+        private readonly ConnectionSinkSettings _settings;
+        private readonly Inlet<ISignalRResult> _inlet = new Inlet<ISignalRResult>("signalr.in");
 
         public SignalRSinkStage(IHubClients<IClientProxy> connection, ConnectionSinkSettings settings)
         {
-            this.connection = connection;
-            this.settings = settings;
-            this.Shape = new SinkShape<ISignalRResult>(inlet);
+            _connection = connection;
+            _settings = settings;
+            Shape = new SinkShape<ISignalRResult>(_inlet);
         }
 
         public override SinkShape<ISignalRResult> Shape { get; }
@@ -28,44 +28,43 @@ namespace Akka.Streams.SignalR.AspNetCore.Internals
 
         private sealed class Logic : InGraphStageLogic
         {
-            private readonly SignalRSinkStage stage;
-            private readonly Action onSuccess;
-            private readonly Action<Exception> onFailure;
+            private readonly SignalRSinkStage _stage;
+            private readonly Action _onSuccess;
+            private readonly Action<Exception> _onFailure;
 
-            private bool isShutdownInProgress = false;
-            private bool isOperationInProgress = false;
+            private bool _isShutdownInProgress = false;
+            private bool _isOperationInProgress = false;
 
             public Logic(SignalRSinkStage stage) : base(stage.Shape)
             {
-                this.stage = stage;
-                this.onSuccess = GetAsyncCallback(() =>
+                _stage = stage;
+                _onSuccess = GetAsyncCallback(() =>
                 {
-                    isOperationInProgress = false;
+                    _isOperationInProgress = false;
                     TryShutdown();
-                    TryPull(stage.inlet);
+                    TryPull(stage._inlet);
                 });
-                this.onFailure = GetAsyncCallback<Exception>(cause =>
+                _onFailure = GetAsyncCallback<Exception>(cause =>
                 {
-                    isShutdownInProgress = false;
+                    _isShutdownInProgress = false;
                     FailStage(cause);
                 });
 
-                SetHandler(stage.inlet, this);
+                SetHandler(stage._inlet, this);
             }
 
             public override void OnPush()
             {
-                var element = Grab(stage.inlet);
-                isOperationInProgress = true;
+                var element = Grab(_stage._inlet);
+                _isOperationInProgress = true;
 
-                var send = element as Send;
-                if (send != null)
+                if (element is Send send)
                 {
                     IClientProxy target;
                     if (send.Group == null)
-                        target = stage.connection.Client(send.ConnectionId);
+                        target = _stage._connection.Client(send.ConnectionId);
                     else {
-                        target = stage.connection.GroupExcept(send.Group, send.ExcludedConnectionIds.ToList());
+                        target = _stage._connection.GroupExcept(send.Group, send.ExcludedConnectionIds.ToList());
                     }
                 
                     target
@@ -73,23 +72,23 @@ namespace Akka.Streams.SignalR.AspNetCore.Internals
                         .ContinueWith(task =>
                         {
                             if (task.IsFaulted || task.IsCanceled)
-                                onFailure(task.Exception);
+                                _onFailure(task.Exception);
                             else
-                                onSuccess();
+                                _onSuccess();
                         })
                         .Wait();
                 }
                 else
                 {
                     var broadcast = (Broadcast) element;
-                    stage.connection.AllExcept(broadcast.ExcludedConnectionIds)
+                    _stage._connection.AllExcept(broadcast.ExcludedConnectionIds)
                         .SendAsync(nameof(IClientSink.Receive), broadcast.Data)
                         .ContinueWith(task =>
                         {
                             if (task.IsFaulted || task.IsCanceled)
-                                onFailure(task.Exception);
+                                _onFailure(task.Exception);
                             else
-                                onSuccess();
+                                _onSuccess();
                         })
                         .Wait();
                 }
@@ -97,7 +96,7 @@ namespace Akka.Streams.SignalR.AspNetCore.Internals
 
             private void TryShutdown()
             {
-                if (isShutdownInProgress && !isOperationInProgress)
+                if (_isShutdownInProgress && !_isOperationInProgress)
                 {
                     CompleteStage();
                 }
@@ -106,18 +105,18 @@ namespace Akka.Streams.SignalR.AspNetCore.Internals
             public override void PreStart()
             {
                 SetKeepGoing(true);
-                Pull(stage.inlet);
+                Pull(_stage._inlet);
             }
 
             public override void OnUpstreamFinish()
             {
-                isShutdownInProgress = true;
+                _isShutdownInProgress = true;
                 TryShutdown();
             }
 
             public override void OnUpstreamFailure(Exception e)
             {
-                isShutdownInProgress = false;
+                _isShutdownInProgress = false;
                 FailStage(e);
             }
         }

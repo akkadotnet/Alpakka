@@ -5,16 +5,16 @@ using Akka.Configuration;
 
 namespace Akka.Streams.SignalR.AspNetCore
 {
-    public class ConnectionSinkSettings
+    public sealed class ConnectionSinkSettings
     {
         public static readonly ConnectionSinkSettings Default = new ConnectionSinkSettings();
 
-        public ConnectionSinkSettings()
+        private ConnectionSinkSettings()
         {
         }
     }
 
-    public class ConnectionSourceSettings
+    public sealed class ConnectionSourceSettings
     {
         public static readonly ConnectionSourceSettings Default = 
             new ConnectionSourceSettings(
@@ -30,7 +30,7 @@ namespace Akka.Streams.SignalR.AspNetCore
         {
             if (config == null) throw new ArgumentException("Config for SignalR stream connection source must be provided. Default HOCON config path is: 'akka.streams.signalr.source'.");
 
-            Streams.OverflowStrategy overflowStrategy;
+            OverflowStrategy overflowStrategy;
             var overflowConfig = config.GetString("overflow-strategy", "drop-head");
             switch (overflowConfig)
             {
@@ -79,7 +79,7 @@ namespace Akka.Streams.SignalR.AspNetCore
             int? bufferSize = null,
             OverflowStrategy? overflowStrategy = null) =>
             new ConnectionSourceSettings(
-                bufferCapacity: bufferSize ?? this.BufferCapacity,
-                overflowStrategy: overflowStrategy ?? this.OverflowStrategy);
+                bufferCapacity: bufferSize ?? BufferCapacity,
+                overflowStrategy: overflowStrategy ?? OverflowStrategy);
     }
 }

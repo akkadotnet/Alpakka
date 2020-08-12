@@ -11,7 +11,7 @@
 
     <ItemGroup>
         <PackageReference Include="Akka.Streams" Version="$(AkkaVersion)" />
-        <PackageReference Include="Microsoft.AspNet.SignalR.Core" Version="2.4.0" />
+        <PackageReference Include="Microsoft.AspNet.SignalR.Core" Version="2.4.1" />
     </ItemGroup>
 
     <ItemGroup>

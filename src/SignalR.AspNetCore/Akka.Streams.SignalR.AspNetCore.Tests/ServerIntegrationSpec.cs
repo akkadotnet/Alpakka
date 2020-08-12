@@ -18,7 +18,6 @@ namespace Akka.Streams.SignalR.AspNetCore.Tests
     {
         private readonly WebApplicationFactory<Startup> _factory;
         private readonly PublishSinkSource _publishSinkSource;
-        private readonly HttpClient _client;
 
         public ServerIntegrationSpec(
             ITestOutputHelper output,
@@ -32,21 +31,23 @@ namespace Akka.Streams.SignalR.AspNetCore.Tests
                     .UseContentRoot("")
                     .ConfigureServices(services =>
                     {
-                        services.AddSignalRAkkaStream();
-                        services.AddSignalR(opt => opt.EnableDetailedErrors = true);
-                        services.Add(new ServiceDescriptor(typeof(IPublishSinkSource), _publishSinkSource));
-                        services.Add(new ServiceDescriptor(typeof(ActorSystem), Sys));
-                        services.Add(new ServiceDescriptor(typeof(TestKitBase), this));
+                        services
+                            .AddSingleton<IPublishSinkSource>(_publishSinkSource)
+                            .AddSingleton(Sys)
+                            .AddSingleton(this)
+                            .AddSignalRAkkaStream()
+                            .AddSignalR(opt => opt.EnableDetailedErrors = true);
                     })
                     .Configure(app =>
                     {
-                        app.UseSignalR(config =>
-                        {
-                            config.MapHub<TestStreamHub>("/test");
-                        });
+                        app
+                            .UseRouting()
+                            .UseEndpoints(config =>
+                            {
+                                config.MapHub<TestStreamHub>("/test");
+                            });
                     });
             });
-            _client = _factory.CreateClient();
         }
 
         [Fact]
@@ -76,7 +77,7 @@ namespace Akka.Streams.SignalR.AspNetCore.Tests
             var connection = _factory.CreateHubConnection();
             connection.On<string>(nameof(IClientSink.Receive), msg => tcs.SetResult(msg));
             await connection.StartAsync();
-            await Task.Delay(500);
+            await Task.Delay(1000);
 
             // Act
             _publishSinkSource.ToClient.SendNext(Signals.Broadcast("payload"));
@@ -126,7 +127,7 @@ namespace Akka.Streams.SignalR.AspNetCore.Tests
             var connection = _factory.CreateHubConnection();
             connection.On<string>(nameof(IClientSink.Receive), msg => Log.Info(msg));
             await connection.StartAsync();
-            await Task.Delay(500);
+            await Task.Delay(1000);
 
             var data1 = _publishSinkSource.FromClient.RequestNext();
             var data2 = _publishSinkSource.FromClient2.RequestNext();

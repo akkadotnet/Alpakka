@@ -21,10 +21,10 @@ namespace Akka.Streams.SignalR.AspNetCore
         /// <param name="clients"></param>
         /// <param name="sourceSettings">Optional settings used to configure the <see cref="Source"/>.</param>
         /// <param name="sinkSettings">Optional settings used to configure the <see cref="Sink"/>.</param>
-        public StreamConnector(IHubClients clients, ConnectionSourceSettings sourceSettings = null, ConnectionSinkSettings sinkSettings = null)
+        protected StreamConnector(IHubClients clients, ConnectionSourceSettings sourceSettings = null, ConnectionSinkSettings sinkSettings = null)
         {
-            this.Sink = Dsl.Sink.FromGraph(new SignalRSinkStage(clients, sinkSettings ?? ConnectionSinkSettings.Default));
-            this.Source = Dsl.Source.FromGraph(new SignalRSourceStage(this, sourceSettings ?? ConnectionSourceSettings.Default));
+            Sink = Dsl.Sink.FromGraph(new SignalRSinkStage(clients, sinkSettings ?? ConnectionSinkSettings.Default));
+            Source = Dsl.Source.FromGraph(new SignalRSourceStage(this, sourceSettings ?? ConnectionSourceSettings.Default));
         }
 
         /// <summary>

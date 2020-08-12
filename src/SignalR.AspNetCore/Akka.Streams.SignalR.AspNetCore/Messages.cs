@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+﻿using System;
 
 namespace Akka.Streams.SignalR.AspNetCore
 {
@@ -10,10 +11,10 @@ namespace Akka.Streams.SignalR.AspNetCore
         public static ISignalRResult Send(string connectionId, object data)
             => new Send(connectionId, data);
 
-        public static ISignalRResult SendToGroup(string group, object data, IList<string> excluded = null)
+        public static ISignalRResult SendToGroup(string group, object data, IReadOnlyList<string> excluded = null)
             => new Send(group, data, excluded);
 
-        public static ISignalRResult Broadcast(object data, string[] excluded = null)
+        public static ISignalRResult Broadcast(object data, IReadOnlyList<string> excluded = null)
             => new Broadcast(data, excluded);
     }
 
@@ -30,18 +31,18 @@ namespace Akka.Streams.SignalR.AspNetCore
 
     public sealed class Send : ISignalRResult
     {
-        private static string[] empty = new string[0];
+        private static readonly string[] Empty = Array.Empty<string>();
 
         public string ConnectionId { get; }
         public string Group { get; }
-        public IList<string> ExcludedConnectionIds { get; }
+        public IReadOnlyList<string> ExcludedConnectionIds { get; }
         public object Data { get; }
 
-        public Send(string group, object data, IList<string> excludedConnectionIds)
+        public Send(string group, object data, IReadOnlyList<string> excludedConnectionIds)
         {
             Group = group;
             Data = data;
-            ExcludedConnectionIds = excludedConnectionIds ?? empty;
+            ExcludedConnectionIds = excludedConnectionIds ?? Empty;
         }
 
         public Send(string connectionId, object data)
@@ -53,15 +54,15 @@ namespace Akka.Streams.SignalR.AspNetCore
 
     public sealed class Broadcast : ISignalRResult
     {
-        private static string[] empty = new string[0];
+        private static readonly string[] Empty = Array.Empty<string>();
 
         public object Data { get; }
-        public string[] ExcludedConnectionIds { get; }
+        public IReadOnlyList<string> ExcludedConnectionIds { get; }
 
-        public Broadcast(object data, string[] excludedConnectionIds = null)
+        public Broadcast(object data, IReadOnlyList<string> excludedConnectionIds = null)
         {
             Data = data;
-            ExcludedConnectionIds = excludedConnectionIds ?? empty;
+            ExcludedConnectionIds = excludedConnectionIds ?? Empty;
         }
     }
 }

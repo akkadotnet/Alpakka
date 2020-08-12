@@ -12,7 +12,7 @@
     <ItemGroup>
         <PackageReference Include="Akka.Streams" Version="$(AkkaVersion)" />
 		<PackageReference Include="WindowsAzure.ServiceBus" Version="6.0.2" />
-        <PackageReference Include="Microsoft.Azure.ServiceBus.EventProcessorHost" Version="4.0.0" />
+        <PackageReference Include="Microsoft.Azure.ServiceBus.EventProcessorHost" Version="5.0.0" />
     </ItemGroup>
 
 </Project>

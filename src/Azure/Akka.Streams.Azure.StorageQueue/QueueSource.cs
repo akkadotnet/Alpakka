@@ -1,19 +1,20 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Akka.Streams.Azure.Utils;
 using Akka.Streams.Dsl;
 using Akka.Streams.Stage;
 using Akka.Streams.Supervision;
-using Microsoft.WindowsAzure.Storage.Queue;
+using Azure;
+using Azure.Storage.Queues;
+using Azure.Storage.Queues.Models;
 
 namespace Akka.Streams.Azure.StorageQueue
 {
     /// <summary>
     /// A <see cref="Source{TOut,TMat}"/> for the Azure Storage Queue
     /// </summary>
-    public class QueueSource : GraphStage<SourceShape<CloudQueueMessage>>
+    public class QueueSource : GraphStage<SourceShape<QueueMessage>>
     {
         #region Logic
 
@@ -21,7 +22,7 @@ namespace Akka.Streams.Azure.StorageQueue
         {
             private const string TimerKey = "PollTimer";
             private readonly QueueSource _source;
-            private Action<Task<IEnumerable<CloudQueueMessage>>> _messagesReceived;
+            private Action<Task<Response<QueueMessage[]>>> _messagesReceived;
             private readonly Decider _decider;
 
             public Logic(QueueSource source, Attributes attributes) : base(source.Shape)
@@ -33,16 +34,17 @@ namespace Akka.Streams.Azure.StorageQueue
             }
 
             private void PullQueue() =>
-                _source._queue.GetMessagesAsync(_source._prefetchCount, _source._options.VisibilityTimeout,
-                    _source._options.QueueRequestOptions, _source._options.OperationContext)
+                _source._queue.ReceiveMessagesAsync(
+                        _source._prefetchCount, 
+                        _source._options.VisibilityTimeout)
                     .ContinueWith(_messagesReceived);
 
             protected override void OnTimer(object timerKey) => PullQueue();
 
             public override void PreStart()
-                => _messagesReceived = GetAsyncCallback<Task<IEnumerable<CloudQueueMessage>>>(OnMessagesReceived);
+                => _messagesReceived = GetAsyncCallback<Task<Response<QueueMessage[]>>>(OnMessagesReceived);
 
-            private void OnMessagesReceived(Task<IEnumerable<CloudQueueMessage>> task)
+            private void OnMessagesReceived(Task<Response<QueueMessage[]>> task)
             {
                 if (task.IsFaulted || task.IsCanceled)
                 {
@@ -55,10 +57,10 @@ namespace Akka.Streams.Azure.StorageQueue
                 }
 
                 // Try again if the queue is empty
-                if (task.Result == null || !task.Result.Any())
+                if (task.Result == null || (task.Result.Value != null && !task.Result.Value.Any()))
                     ScheduleOnce(TimerKey, _source._pollInterval);
                 else
-                    EmitMultiple(_source.Out, task.Result);
+                    EmitMultiple(_source.Out, task.Result.Value);
             }
         }
 
@@ -69,15 +71,15 @@ namespace Akka.Streams.Azure.StorageQueue
         /// </summary>
         /// <param name="queue">The queue</param>
         /// <param name="prefetchCount">The number of messages that should be read from the queue at once</param>
-        /// <param name="pollInterval">The intervall in witch the queue should be polled if it is empty. Default = 10 seconds</param>
-        /// <param name="options">The options for the <see cref="CloudQueue.GetMessagesAsync(int)"/> call</param>
+        /// <param name="pollInterval">The interval in witch the queue should be polled if it is empty. Default = 10 seconds</param>
+        /// <param name="options">The options for the <see cref="QueueClient.ReceiveMessagesAsync()"/> call</param>
         /// <returns>The <see cref="Source{TOut,TMat}"/> for the Azure Storage Queue</returns>
-        public static Source<CloudQueueMessage, NotUsed> Create(CloudQueue queue, int prefetchCount = 10, TimeSpan? pollInterval = null, GetRequestOptions options = null)
+        public static Source<QueueMessage, NotUsed> Create(QueueClient queue, int prefetchCount = 10, TimeSpan? pollInterval = null, GetRequestOptions options = null)
         {
             return Source.FromGraph(new QueueSource(queue, prefetchCount, pollInterval, options));
         }
 
-        private readonly CloudQueue _queue;
+        private readonly QueueClient _queue;
         private readonly int _prefetchCount;
         private readonly GetRequestOptions _options;
         private readonly TimeSpan _pollInterval;
@@ -87,23 +89,23 @@ namespace Akka.Streams.Azure.StorageQueue
         /// </summary>
         /// <param name="queue">The queue</param>
         /// <param name="prefetchCount">The number of messages that should be read from the queue at once</param>
-        /// <param name="pollInterval">The intervall in witch the queue should be polled if it is empty. Default = 10 seconds</param>
-        /// <param name="options">The options for the <see cref="CloudQueue.GetMessagesAsync(int)"/> call</param>
-        public QueueSource(CloudQueue queue, int prefetchCount = 10, TimeSpan? pollInterval = null, GetRequestOptions options = null)
+        /// <param name="pollInterval">The interval in witch the queue should be polled if it is empty. Default = 10 seconds</param>
+        /// <param name="options">The options for the <see cref="QueueClient.ReceiveMessagesAsync()"/> call</param>
+        public QueueSource(QueueClient queue, int prefetchCount = 10, TimeSpan? pollInterval = null, GetRequestOptions options = null)
         {
             _queue = queue;
             _prefetchCount = prefetchCount;
             _options = options ?? new GetRequestOptions();
             _pollInterval = pollInterval ?? TimeSpan.FromSeconds(10);
 
-            Shape = new SourceShape<CloudQueueMessage>(Out);
+            Shape = new SourceShape<QueueMessage>(Out);
         }
 
         protected override Attributes InitialAttributes { get; } = Attributes.CreateName("QueueSource");
 
-        public Outlet<CloudQueueMessage> Out { get; } = new Outlet<CloudQueueMessage>("QueueSource.Out");
+        public Outlet<QueueMessage> Out { get; } = new Outlet<QueueMessage>("QueueSource.Out");
 
-        public override SourceShape<CloudQueueMessage> Shape { get; }
+        public override SourceShape<QueueMessage> Shape { get; }
 
         protected override GraphStageLogic CreateLogic(Attributes inheritedAttributes) => new Logic(this, inheritedAttributes);
     }

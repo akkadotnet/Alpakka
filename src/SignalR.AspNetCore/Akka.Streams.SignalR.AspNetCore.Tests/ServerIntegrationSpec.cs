@@ -77,7 +77,7 @@ namespace Akka.Streams.SignalR.AspNetCore.Tests
             var connection = _factory.CreateHubConnection();
             connection.On<string>(nameof(IClientSink.Receive), msg => tcs.SetResult(msg));
             await connection.StartAsync();
-            await Task.Delay(500);
+            await Task.Delay(1000);
 
             // Act
             _publishSinkSource.ToClient.SendNext(Signals.Broadcast("payload"));
@@ -127,7 +127,7 @@ namespace Akka.Streams.SignalR.AspNetCore.Tests
             var connection = _factory.CreateHubConnection();
             connection.On<string>(nameof(IClientSink.Receive), msg => Log.Info(msg));
             await connection.StartAsync();
-            await Task.Delay(500);
+            await Task.Delay(1000);
 
             var data1 = _publishSinkSource.FromClient.RequestNext();
             var data2 = _publishSinkSource.FromClient2.RequestNext();

@@ -6,7 +6,6 @@
         <Description>Azure EventHubs adapter for Akka.NET Streams</Description>
         <TargetFramework>$(NetStandardLibVersion)</TargetFramework>
         <PackageTags>$(AkkaPackageTags);azure;EventHubs</PackageTags>
-        <Platforms>AnyCPU</Platforms>
     </PropertyGroup>
 
     <ItemGroup>

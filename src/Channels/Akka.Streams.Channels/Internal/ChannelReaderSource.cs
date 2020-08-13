@@ -79,21 +79,17 @@ namespace Akka.Streams.Channels.Internal
                         else
                             CompleteStage();
                     }
+                    else if (!continuation.IsCompleted)
+                        continuation.AsTask().ContinueWith(t =>
+                        {
+                            if (t.IsFaulted) _onValueReadFailure(t.Exception);
+                            else if (t.IsCanceled) _onValueReadFailure(new TaskCanceledException(t));
+                            else _onValueRead(t.Result);
+                        });
+                    else if (continuation.IsFaulted)
+                        FailStage(continuation.AsTask().Exception);
                     else
-                    {
-                        var task = continuation.AsTask();
-                        if (!continuation.IsCompleted)
-                            task.ContinueWith(t =>
-                            {
-                                if (t.IsFaulted) _onValueReadFailure(t.Exception);
-                                else if (t.IsCanceled) _onValueReadFailure(new TaskCanceledException(t));
-                                else _onValueRead(t.Result);
-                            });
-                        else if (continuation.IsFaulted)
-                            FailStage(task.Exception);
-                        else
-                            FailStage(new TaskCanceledException(task));
-                    }
+                        FailStage(new TaskCanceledException(continuation.AsTask()));
                 }
             }
         }

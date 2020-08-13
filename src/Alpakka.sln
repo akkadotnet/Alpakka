@@ -103,15 +103,11 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Akka.Streams.Amqp.V1", "Amq
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{DF4BD2BE-9280-481E-A155-271F68A291E0}"
 	ProjectSection(SolutionItems) = preProject
-		..\docs\BuildingDockerImages.md = ..\docs\BuildingDockerImages.md
-		..\docs\Testing.md = ..\docs\Testing.md
-	EndProjectSection
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Azure", "Azure", "{B97ED2DE-5209-42DE-B40F-8B5C80D0FF0E}"
-	ProjectSection(SolutionItems) = preProject
-		..\docs\Azure\EventHub.md = ..\docs\Azure\EventHub.md
-		..\docs\Azure\ServiceBus.md = ..\docs\Azure\ServiceBus.md
-		..\docs\Azure\StorageQueue.md = ..\docs\Azure\StorageQueue.md
+		..\docs\docfx.json = ..\docs\docfx.json
+		..\docs\filterConfig.yml = ..\docs\filterConfig.yml
+		..\docs\index.md = ..\docs\index.md
+		..\docs\toc.yml = ..\docs\toc.yml
+		..\docs\web.config = ..\docs\web.config
 	EndProjectSection
 EndProject
 Global
@@ -263,7 +259,6 @@ Global
 		{1773F9EE-ABAA-4266-9336-CD4FB8833703} = {EEA93301-F97B-49F0-BB08-33F7CC5A24BB}
 		{32584532-EF44-45E2-9E43-CFE13609785D} = {9A8B3B60-F75D-4906-B368-739CA08C25D4}
 		{DF4BD2BE-9280-481E-A155-271F68A291E0} = {EEA93301-F97B-49F0-BB08-33F7CC5A24BB}
-		{B97ED2DE-5209-42DE-B40F-8B5C80D0FF0E} = {DF4BD2BE-9280-481E-A155-271F68A291E0}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {BE1A9436-C6F6-4C73-9EB4-32DEC9C841A5}

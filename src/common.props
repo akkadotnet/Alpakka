@@ -20,7 +20,7 @@
     <XunitVersion>2.4.1</XunitVersion>
     <XunitRunnerVersion>2.4.3</XunitRunnerVersion>
     <FluentAssertionsVersion>5.10.3</FluentAssertionsVersion>
-    <TestSdkVersion>16.6.1</TestSdkVersion>
+    <TestSdkVersion>16.7.0</TestSdkVersion>
     <NBenchVersion>2.0.1</NBenchVersion>
     <HyperionVersion>0.9.16</HyperionVersion>
     <NewtonsoftJsonVersion>12.0.3</NewtonsoftJsonVersion>
@@ -28,7 +28,7 @@
     <FsCheckVersion>2.14.3</FsCheckVersion>
     <HoconVersion>2.0.3</HoconVersion>
     <ConfigurationManagerVersion>4.7.0</ConfigurationManagerVersion>
-    <DockerDotNetVersion>3.125.2</DockerDotNetVersion>
+    <DockerDotNetVersion>3.125.4</DockerDotNetVersion>
     <AkkaPackageTags>akka;actors;actor model;Akka;concurrency;streams</AkkaPackageTags>
   </PropertyGroup>
   <PropertyGroup>

@@ -1,4 +1,5 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
+
     <Import Project="..\..\common.props" />
 
     <PropertyGroup>
@@ -18,14 +19,13 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\Akka.Streams.Amqp\Akka.Streams.Amqp.csproj" />
-        <ProjectReference Include="..\Akka.Streams.Amqp.V1\Akka.Streams.Amqp.V1.csproj" />
+        <ProjectReference Include="..\Akka.Streams.Amqp\Akka.Streams.Amqp.RabbitMq.csproj" />
     </ItemGroup>
 
     <ItemGroup>
-      <None Update="environment.json">
-        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-      </None>
+        <None Update="environment.json">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
     </ItemGroup>
 
 </Project>

@@ -1,5 +1,5 @@
 ﻿
-namespace Akka.Streams.Amqp
+namespace Akka.Streams.Amqp.RabbitMq
 {
     /// <summary>
     /// Encapsulates a group of parameters used for AMQP's Basic methods

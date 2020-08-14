@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using RabbitMQ.Client;
 
-namespace Akka.Streams.Amqp
+namespace Akka.Streams.Amqp.RabbitMq
 {
     public interface IAmqpConnectorSettings
     {

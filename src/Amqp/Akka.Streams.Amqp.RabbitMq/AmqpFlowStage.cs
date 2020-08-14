@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 using Akka.Streams.Stage;
 using RabbitMQ.Client;
 
-namespace Akka.Streams.Amqp
+namespace Akka.Streams.Amqp.RabbitMq
 {
     /// <summary>
     /// This stage materializes to a <see cref="T:System.Threading.Tasks.Task" />

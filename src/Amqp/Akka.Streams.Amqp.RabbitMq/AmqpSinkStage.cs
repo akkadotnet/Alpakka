@@ -3,28 +3,27 @@ using System.Threading.Tasks;
 using Akka.Streams.Stage;
 using RabbitMQ.Client;
 
-namespace Akka.Streams.Amqp
+namespace Akka.Streams.Amqp.RabbitMq
 {
     /// <summary>
     /// Connects to an AMQP server upon materialization and sends incoming messages to the server.
-    /// Each materialized sink will create one connection to the broker. This stage sends messages to
-    /// the queue named in the replyTo options of the message instead of from settings declared at construction.
+    /// Each materialized sink will create one connection to the broker.
     /// </summary>
     /// <inheritdoc />
-    public sealed class AmqpReplyToSinkStage : GraphStageWithMaterializedValue<SinkShape<OutgoingMessage>, Task>
+    public sealed class AmqpSinkStage : GraphStageWithMaterializedValue<SinkShape<OutgoingMessage>, Task>
     {
-        public AmqpReplyToSinkSettings Settings { get; }
+        public AmqpSinkSettings Settings { get; }
 
         public static readonly Attributes DefaultAttributes =
-            Attributes.CreateName("AmqpReplyToSink")
+            Attributes.CreateName("AmqpSink")
                 .And(ActorAttributes.CreateDispatcher("akka.stream.default-blocking-io-dispatcher"));
 
-        public AmqpReplyToSinkStage(AmqpReplyToSinkSettings settings)
+        public AmqpSinkStage(AmqpSinkSettings settings)
         {
             Settings = settings;
         }
 
-        public readonly Inlet<OutgoingMessage> In = new Inlet<OutgoingMessage>("AmqpReplyToSink.in");
+        public readonly Inlet<OutgoingMessage> In = new Inlet<OutgoingMessage>("AmqpSink.in");
         public override SinkShape<OutgoingMessage> Shape => new SinkShape<OutgoingMessage>(In);
 
         public override ILogicAndMaterializedValue<Task> CreateLogicAndMaterializedValue(Attributes inheritedAttributes)
@@ -36,48 +35,41 @@ namespace Akka.Streams.Amqp
 
         protected override Attributes InitialAttributes => DefaultAttributes;
 
-        public override string ToString() => "AmqpReplyToSink";
+        public override string ToString() => "AmqpSink";
 
         private class AmqpSinkStageLogic : AmqpConnectorLogic
         {
-            private readonly AmqpReplyToSinkStage _stage;
+            private readonly AmqpSinkStage _stage;
             private Action<ShutdownEventArgs> _shutdownCallback;
             private readonly TaskCompletionSource<Done> _promise;
 
-            public AmqpSinkStageLogic(AmqpReplyToSinkStage stage, TaskCompletionSource<Done> promise, Shape shape) : base(shape)
+            public AmqpSinkStageLogic(AmqpSinkStage stage, TaskCompletionSource<Done> promise, Shape shape) : base(shape)
             {
                 _promise = promise;
                 _stage = stage;
-                SetHandler(_stage.In,
-                    onPush: () =>
-                    {
-                        var elem = Grab(_stage.In);
-                        if (!string.IsNullOrWhiteSpace(elem.Properties?.ReplyTo))
-                        {
-                            Channel.BasicPublish(
-                                elem.RoutingKey ?? "",
-                                elem.Properties?.ReplyTo,
-                                elem.Mandatory,
-                                elem.Properties,
-                                elem.Bytes.ToArray());
-                        }
-                        else if (_stage.Settings.FailIfReplyToMissing)
-                        {
-                            var ex = new Exception("Reply-to header was not set");
-                            _promise.TrySetException(ex);
-                            FailStage(ex);
-                        }
-
-                        Pull(_stage.In);
-                    },
-                    onUpstreamFinish: () => { _promise.TrySetResult(Done.Instance); },
-                    onUpstreamFailure: ex => { _promise.TrySetException(ex); });
+                SetHandler(_stage.In, () =>
+                {
+                    var elem = Grab(_stage.In);
+                    Channel.BasicPublish(
+                        Exchange,
+                        elem.RoutingKey ?? RoutingKey,
+                        elem.Mandatory,
+                        elem.Properties,
+                        elem.Bytes.ToArray());
+                    Pull(_stage.In);
+                }, onUpstreamFinish: () => { _promise.SetResult(Done.Instance); }, onUpstreamFailure: ex => { _promise.SetException(ex); });
             }
 
             public override IAmqpConnectorSettings Settings => _stage.Settings;
 
-            public override IConnectionFactory ConnectionFactoryFrom(IAmqpConnectionSettings settings) =>
-                AmqpConnector.ConnectionFactoryFrom(settings);
+            public string Exchange => _stage.Settings.Exchange ?? "";
+
+            public string RoutingKey => _stage.Settings.RoutingKey ?? "";
+
+            public override IConnectionFactory ConnectionFactoryFrom(IAmqpConnectionSettings settings)
+            {
+                return AmqpConnector.ConnectionFactoryFrom(settings);
+            }
 
             public override IConnection NewConnection(IConnectionFactory factory, IAmqpConnectionSettings settings) =>
                 AmqpConnector.NewConnection(factory, settings);
@@ -87,7 +79,7 @@ namespace Akka.Streams.Amqp
                 _shutdownCallback = GetAsyncCallback<ShutdownEventArgs>(args =>
                 {
                     var exception = ShutdownSignalException.FromArgs(args);
-                    _promise.TrySetException(exception);
+                    _promise.SetException(exception);
                     FailStage(exception);
                 });
 
@@ -96,7 +88,10 @@ namespace Akka.Streams.Amqp
                 Pull(_stage.In);
             }
 
-            public override void OnFailure(Exception ex) => _promise.TrySetException(ex);
+            public override void OnFailure(Exception ex)
+            {
+                _promise.TrySetException(ex);
+            }
 
             private void OnChannelShutdown(object sender, ShutdownEventArgs shutdownEventArgs)
             {

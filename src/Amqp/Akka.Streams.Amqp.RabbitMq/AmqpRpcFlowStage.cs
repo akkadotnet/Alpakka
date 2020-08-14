@@ -2,12 +2,11 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Akka.IO;
-using Akka.Streams.Amqp.Dsl;
+using Akka.Streams.Amqp.RabbitMq.Dsl;
 using Akka.Streams.Stage;
 using RabbitMQ.Client;
-using RabbitMQ.Client.Framing;
 
-namespace Akka.Streams.Amqp
+namespace Akka.Streams.Amqp.RabbitMq
 {
     /// <summary>
     /// This stage materializes to a <see cref="T:System.Threading.Tasks.Task`1" />, which is the name of the private exclusive queue used for RPC communication

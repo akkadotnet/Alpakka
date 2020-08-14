@@ -1,6 +1,6 @@
 ﻿using Akka.Streams.Dsl;
 
-namespace Akka.Streams.Amqp.Dsl
+namespace Akka.Streams.Amqp.RabbitMq.Dsl
 {
     public static class AmqpSource
     {

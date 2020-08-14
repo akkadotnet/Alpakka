@@ -1,7 +1,7 @@
 ﻿using System;
 using RabbitMQ.Client;
 
-namespace Akka.Streams.Amqp
+namespace Akka.Streams.Amqp.RabbitMq
 {
     public class ShutdownSignalException : Exception
     {

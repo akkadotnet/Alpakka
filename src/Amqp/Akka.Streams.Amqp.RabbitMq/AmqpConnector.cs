@@ -1,10 +1,9 @@
 ﻿using System;
 using System.Linq;
 using Akka.Streams.Stage;
-using Akka.Util.Internal;
 using RabbitMQ.Client;
 
-namespace Akka.Streams.Amqp
+namespace Akka.Streams.Amqp.RabbitMq
 {
     /// <summary>
     /// Internal API

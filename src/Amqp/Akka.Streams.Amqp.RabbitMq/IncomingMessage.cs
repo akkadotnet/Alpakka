@@ -1,7 +1,7 @@
 ﻿using Akka.IO;
 using RabbitMQ.Client;
 
-namespace Akka.Streams.Amqp
+namespace Akka.Streams.Amqp.RabbitMq
 {
     public sealed class IncomingMessage
     {

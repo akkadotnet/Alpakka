@@ -3,11 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Akka.IO;
-using Akka.Streams.Amqp.Dsl;
+using Akka.Streams.Amqp.RabbitMq.Dsl;
 using Akka.Streams.Stage;
 using RabbitMQ.Client;
 
-namespace Akka.Streams.Amqp
+namespace Akka.Streams.Amqp.RabbitMq
 {
     /// <summary>
     /// Connects to an AMQP server upon materialization and consumes messages from it emitting them

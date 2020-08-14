@@ -1,6 +1,6 @@
 ﻿using System.Threading.Tasks;
 
-namespace Akka.Streams.Amqp
+namespace Akka.Streams.Amqp.RabbitMq
 {
     public sealed class NackArguments : CommitCallback
     {

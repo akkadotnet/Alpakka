@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Threading.Tasks;
 
-namespace Akka.Streams.Amqp.Dsl
+namespace Akka.Streams.Amqp.RabbitMq.Dsl
 {
     public sealed class CommittableIncomingMessage
     {

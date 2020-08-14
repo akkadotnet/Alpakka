@@ -19,7 +19,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\Akka.Streams.Amqp\Akka.Streams.Amqp.RabbitMq.csproj" />
+      <ProjectReference Include="..\Akka.Streams.Amqp.RabbitMq\Akka.Streams.Amqp.RabbitMq.csproj" />
     </ItemGroup>
 
     <ItemGroup>

@@ -1,8 +1,8 @@
-﻿using System.Net.Http;
+﻿using System;
 using System.Threading.Tasks;
-using Akka.Actor;
+using Akka.Streams.Dsl;
 using Akka.Streams.SignalR.AspNetCore.Tests.Infrastructure;
-using Akka.TestKit;
+using Akka.Streams.TestKit;
 using FluentAssertions;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -14,17 +14,28 @@ using Xunit.Abstractions;
 
 namespace Akka.Streams.SignalR.AspNetCore.Tests
 {
-    public class ServerIntegrationSpec : Akka.TestKit.Xunit2.TestKit, IClassFixture<TestServerAppFactory>
+    public class ServerIntegrationSpec : 
+        Akka.TestKit.Xunit2.TestKit, 
+        IPublishSinkSource,
+        IClassFixture<TestServerAppFactory>
     {
         private readonly WebApplicationFactory<Startup> _factory;
-        private readonly PublishSinkSource _publishSinkSource;
+
+        private bool _connected;
+        private HubConnection _connection;
+
+        private TestSubscriber.Probe<ISignalREvent> _fromClient;
+        private TestPublisher.Probe<ISignalRResult> _toClient;
+        private TestSubscriber.Probe<ISignalREvent> _fromClient2;
+        private TestPublisher.Probe<ISignalRResult> _toClient2;
+
+        private Action<Source<ISignalREvent, NotUsed>, Sink<ISignalRResult, NotUsed>> _connectCallback;
 
         public ServerIntegrationSpec(
             ITestOutputHelper output,
             TestServerAppFactory factory)
             : base(system: null, output: output)
         {
-            _publishSinkSource = new PublishSinkSource(Sys, this);
             _factory = factory.WithWebHostBuilder(builder =>
             {
                 builder
@@ -32,7 +43,7 @@ namespace Akka.Streams.SignalR.AspNetCore.Tests
                     .ConfigureServices(services =>
                     {
                         services
-                            .AddSingleton<IPublishSinkSource>(_publishSinkSource)
+                            .AddSingleton<IPublishSinkSource>(this)
                             .AddSingleton(Sys)
                             .AddSingleton(this)
                             .AddSignalRAkkaStream()
@@ -54,17 +65,14 @@ namespace Akka.Streams.SignalR.AspNetCore.Tests
         public async Task Websocket_connection_should_be_able_to_receive_data()
         {
             // Arrange
-            var connection = _factory.CreateHubConnection();
-            connection.On<string>(nameof(IClientSink.Receive), msg => Log.Info(msg));
-            await connection.StartAsync();
-            await Task.Delay(500);
+            await ConnectAsync(msg => Log.Info(msg));
 
             // Act
-            await connection.InvokeAsync(nameof(IServerSource.Send), "payload");
+            await _connection.InvokeAsync(nameof(IServerSource.Send), "payload");
 
             // Assert
-            _publishSinkSource.FromClient.RequestNext().Should().BeOfType<Connected>();
-            var message = _publishSinkSource.FromClient.RequestNext();
+            _fromClient.RequestNext().Should().BeOfType<Connected>();
+            var message = _fromClient.RequestNext();
             message.Should().BeOfType<Received>();
             ((Received)message).Data.ToString().Should().Be("payload");
         }
@@ -74,13 +82,10 @@ namespace Akka.Streams.SignalR.AspNetCore.Tests
         {
             // Arrange
             var tcs = new TaskCompletionSource<object>();
-            var connection = _factory.CreateHubConnection();
-            connection.On<string>(nameof(IClientSink.Receive), msg => tcs.SetResult(msg));
-            await connection.StartAsync();
-            await Task.Delay(1000);
+            await ConnectAsync(msg => tcs.SetResult(msg));
 
             // Act
-            _publishSinkSource.ToClient.SendNext(Signals.Broadcast("payload"));
+            _toClient.SendNext(Signals.Broadcast("payload"));
 
             // Assert
             var result = await tcs.Task;
@@ -90,55 +95,57 @@ namespace Akka.Streams.SignalR.AspNetCore.Tests
         [Fact]
         public async Task Websocket_stream_should_work_when_client_closes()
         {
-            var connection = _factory.CreateHubConnection();
-            connection.On<string>(nameof(IClientSink.Receive), msg => Log.Info(msg));
-            await connection.StartAsync();
-            await Task.Delay(500);
+            await ConnectAsync(msg => Log.Info(msg));
 
-            await connection.InvokeAsync(nameof(IServerSource.Send), "payload");
-            _publishSinkSource.FromClient.RequestNext().Should().BeOfType<Connected>();
-            _publishSinkSource.FromClient.RequestNext().Should().BeOfType<Received>();
+            await _connection.InvokeAsync(nameof(IServerSource.Send), "payload");
+            _fromClient.RequestNext().Should().BeOfType<Connected>();
+            _fromClient.RequestNext().Should().BeOfType<Received>();
 
             // Client-initiated disconnect
-            await connection.DisposeAsync();
+            _connected = false;
+            await _connection.StopAsync();
+            await _connection.DisposeAsync();
+            _connection = null;
 
             // Server should know
-            _publishSinkSource.FromClient.RequestNext().Should().BeOfType<Disconnected>();
+            _fromClient.RequestNext().Should().BeOfType<Disconnected>();
 
             // Client reconnects to server
-            connection = _factory.CreateHubConnection();
+            var connection = _factory.CreateHubConnection();
             connection.On<string>(nameof(IClientSink.Receive), msg => Log.Info(msg));
             await connection.StartAsync();
 
             // Server should see new connection
-            _publishSinkSource.FromClient.RequestNext().Should().BeOfType<Connected>();
+            _fromClient.RequestNext().Should().BeOfType<Connected>();
 
             // Send new message
             await connection.InvokeAsync(nameof(IServerSource.Send), "payload");
 
-            _publishSinkSource.FromClient.RequestNext().Should().BeOfType<Received>();
+            _fromClient.RequestNext().Should().BeOfType<Received>();
         }
 
         [Fact]
         public async Task Websocket_stream_should_work_when_used_by_multiple_flows()
         {
             // Arrange
-            _publishSinkSource.Flows = 2;
-            var connection = _factory.CreateHubConnection();
-            connection.On<string>(nameof(IClientSink.Receive), msg => Log.Info(msg));
-            await connection.StartAsync();
-            await Task.Delay(1000);
+            _connectCallback = (source, sink) =>
+            {
+                _fromClient2 = source.RunWith(this.SinkProbe<ISignalREvent>(), Sys.Materializer());
+                _toClient2 = sink.RunWith(this.SourceProbe<ISignalRResult>(), Sys.Materializer());
+            };
 
-            var data1 = _publishSinkSource.FromClient.RequestNext();
-            var data2 = _publishSinkSource.FromClient2.RequestNext();
+            await ConnectAsync(msg => Log.Info(msg));
+
+            var data1 = _fromClient.RequestNext();
+            var data2 = _fromClient2.RequestNext();
 
             data1.Should().BeOfType<Connected>();
             data2.Should().BeOfType<Connected>();
 
-            await connection.InvokeAsync(nameof(IServerSource.Send), "payload");
+            await _connection.InvokeAsync(nameof(IServerSource.Send), "payload");
 
-            data1 = _publishSinkSource.FromClient.RequestNext();
-            data2 = _publishSinkSource.FromClient2.RequestNext();
+            data1 = _fromClient.RequestNext();
+            data2 = _fromClient2.RequestNext();
 
             data1.Should().BeOfType<Received>();
             data2.Should().BeOfType<Received>();
@@ -146,6 +153,32 @@ namespace Akka.Streams.SignalR.AspNetCore.Tests
             ((Received)data1).Data.ToString().Should().Be("payload");
             ((Received)data2).Data.ToString().Should().Be("payload");
 
+        }
+
+        private async Task ConnectAsync(Action<string> handler)
+        {
+            _connection = _factory.CreateHubConnection();
+            _connection.On<string>(nameof(IClientSink.Receive), handler);
+            await _connection.StartAsync();
+
+            var deadline = DateTime.Now + TimeSpan.FromSeconds(5);
+            while (DateTime.Now < deadline)
+            {
+                await Task.Delay(50);
+                if (_connected)
+                    return;
+            }
+
+            throw new Exception("Connection timeout");
+        }
+
+        public void Connect(Source<ISignalREvent, NotUsed> source, Sink<ISignalRResult, NotUsed> sink)
+        {
+            _fromClient = source.RunWith(this.SinkProbe<ISignalREvent>(), Sys.Materializer());
+            _toClient = sink.RunWith(this.SourceProbe<ISignalRResult>(), Sys.Materializer());
+
+            _connectCallback?.Invoke(source, sink);
+            _connected = true;
         }
     }
 

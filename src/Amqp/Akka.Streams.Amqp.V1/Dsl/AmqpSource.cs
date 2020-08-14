@@ -2,7 +2,7 @@
 
 namespace Akka.Streams.Amqp.V1.Dsl
 {
-    public static class AmpqSource
+    public static class AmqpSource
     {
         public static Source<T, NotUsed> Create<T>(IAmqpSourceSettings<T> sourceSettings)
         {

@@ -47,8 +47,8 @@ namespace Akka.Streams.Amqp.V1.Tests
             var receiverLinkName = "amqp-v1-conn-test-receiver";
 
             //create sink and source
-            var amqpSink = AmpqSink.Create(new NamedQueueSinkSettings<string>(session, senderLinkName, queueName, _serializer));
-            var amqpSource = AmpqSource.Create(new NamedQueueSourceSettings<string>(session, receiverLinkName, queueName, 200, _serializer));
+            var amqpSink = AmqpSink.Create(new NamedQueueSinkSettings<string>(session, senderLinkName, queueName, _serializer));
+            var amqpSource = AmqpSource.Create(new NamedQueueSourceSettings<string>(session, receiverLinkName, queueName, 200, _serializer));
 
             //run sink
             var input = new[] { "one", "two", "three", "four", "five" };

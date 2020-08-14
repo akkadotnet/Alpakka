@@ -6,12 +6,12 @@ using Amqp.Types;
 
 namespace Akka.Streams.Amqp.V1
 {
-    public class NamedQueueSinkSettings<T> : IAmpqSinkSettings<T>
+    public class NamedQueueSinkSettings<T> : IAmqpSinkSettings<T>
     {
-        private readonly Session session;
-        private readonly string linkName;
-        private readonly string queueName;
-        private readonly Serializer serializer;
+        private readonly Session _session;
+        private readonly string _linkName;
+        private readonly string _queueName;
+        private readonly Serializer _serializer;
 
         public NamedQueueSinkSettings(
             Session session,
@@ -19,21 +19,21 @@ namespace Akka.Streams.Amqp.V1
             string queueName,
             Serializer serializer)
         {
-            this.session = session;
-            this.linkName = linkName;
-            this.queueName = queueName;
-            this.serializer = serializer;
+            _session = session;
+            _linkName = linkName;
+            _queueName = queueName;
+            _serializer = serializer;
         }
 
         public byte[] GetBytes(T obj)
         {
-            return serializer.ToBinary(obj);
+            return _serializer.ToBinary(obj);
         }
 
-        public SenderLink GetSenderLink() => new SenderLink(session, linkName, new Target
+        public SenderLink GetSenderLink() => new SenderLink(_session, _linkName, new Target
         {
-            Address = queueName,
-            Capabilities = new Symbol[] { new Symbol("queue") }
+            Address = _queueName,
+            Capabilities = new[] { new Symbol("queue") }
         }, null);
     }
 }

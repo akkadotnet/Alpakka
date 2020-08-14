@@ -3,7 +3,7 @@ using Amqp;
 
 namespace Akka.Streams.Amqp.V1
 {
-    public interface IAmpqSinkSettings<T>
+    public interface IAmqpSinkSettings<in T>
     {
         SenderLink GetSenderLink();
         byte[] GetBytes(T obj);

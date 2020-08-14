@@ -32,7 +32,7 @@ The test suite expects a working AMQP broker with these default settings:
 
 - Edit the `environment.json` file inside the `Akka.Streams.Amqp.Tests` project. Set `ALPAKKA_AMQP_TEST_USEDOCKER` to true.
 - A pre-built docker container image can be obtained by running:
-  `docker pull arkatufus/rabbitmq:latest`
+  `docker pull akkadotnet/rabbitmq:latest`
 - The docker image will be automatically pulled the first time you run the AMQP test suite, if you do not have a local copy.
 
 ## Using the pre-built Docker container as an application
@@ -40,8 +40,8 @@ The test suite expects a working AMQP broker with these default settings:
 You can run the pre-built docker container as a background application so that it does not have to be loaded/unloaded every time tests are run:
 - Edit the `environment.json` file inside the `Akka.Streams.Amqp.Tests` project. Set `ALPAKKA_AMQP_TEST_USEDOCKER` to false.
 - Pull and run the image by running:
-  `docker pull arkatufus/rabbitmq:latest`
-  `docker run -d -p 4369:4369 -p 5672:5672 -p 5671:5671 -p 15672:15672 arkatufus/rabbitmq:latest`
+  `docker pull akkadotnet/rabbitmq:latest`
+  `docker run -d -p 4369:4369 -p 5672:5672 -p 5671:5671 -p 15672:15672 akkadotnet/rabbitmq:latest`
 - Wait until the application started and you can start testing.
 
 # Azure
@@ -59,13 +59,13 @@ You can run the pre-built docker container as a background application so that i
 ## Using a pre-built Docker container
 - The test suite can also be run against docker containers. 
 - To run the test suite against a Docker container, Edit the `environment.json` file inside the `Akka.Streams.Azure.StorageQueue.Tests` project. Set `ALPAKKA_AZURE_TEST_USEDOCKER` to true.
-- The containers used are `arkatufus/azure-storage-emulator:latest` for windows and `mcr.microsoft.com/azure-storage/azurite` for linux.
+- The containers used are `akkadotnet/azure-storage-emulator:latest` for windows and `mcr.microsoft.com/azure-storage/azurite` for linux.
 
 ## Using the pre-built Docker container as an application
 
 You can run the pre-built docker container as a background application so that it does not have to be loaded/unloaded every time tests are run:
 - Edit the `environment.json` file inside the `Akka.Streams.Azure.StorageQueue.Tests` project. Set `ALPAKKA_AZURE_TEST_USEDOCKER` to false.
 - Pull and run the image by running:
-  `docker pull arkatufus/azure-storage-emulator:latest`
-  `docker run -d -p 10000:10000 -p 10001:10001 -p 10002:10002 arkatufus/azure-storage-emulator:latest`
+  `docker pull akkadotnet/azure-storage-emulator:latest`
+  `docker run -d -p 10000:10000 -p 10001:10001 -p 10002:10002 akkadotnet/azure-storage-emulator:latest`
 - Wait until the application started and you can start testing.

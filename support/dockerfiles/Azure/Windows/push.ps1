@@ -1,3 +1,3 @@
 docker login
-docker push arkatufus/azure-storage-emulator:ltsc2019
-docker push arkatufus/azure-storage-emulator:latest
+docker push akkadotnet/azure-storage-emulator:ltsc2019
+docker push akkadotnet/azure-storage-emulator:latest

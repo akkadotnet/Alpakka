@@ -59,7 +59,7 @@ namespace Akka.Streams.Azure.StorageQueue.Tests
                     case OperatingSystem.Linux:
                         return "mcr.microsoft.com/azure-storage/azurite";
                     case OperatingSystem.Windows:
-                        return "arkatufus/azure-storage-emulator";
+                        return "akkadotnet/azure-storage-emulator";
                     default:
                         throw new NotSupportedException($"Unsupported OS [{RuntimeInformation.OSDescription}]");
                 }

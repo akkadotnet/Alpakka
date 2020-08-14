@@ -6,7 +6,6 @@
         <Description>SignalR connector for Akka.NET Streams</Description>
         <TargetFramework>$(NetFrameworkLibVersion)</TargetFramework>
         <PackageTags>$(AkkaPackageTags);signalr</PackageTags>
-        <Platforms>AnyCPU</Platforms>
     </PropertyGroup>
 
     <ItemGroup>

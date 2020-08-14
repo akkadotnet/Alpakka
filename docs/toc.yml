@@ -1,0 +1,13 @@
+- name: Documentation
+  href: packages/
+  homepage: packages/index.md
+- name: API Reference
+  href: api/
+  homepage: api/index.md
+- name: Community
+  href: community/
+  homepage: community/index.md
+- name: Project Chat
+  href: https://gitter.im/akkadotnet/akka.net
+- name: Source Code
+  href: https://github.com/akkadotnet/Alpakka

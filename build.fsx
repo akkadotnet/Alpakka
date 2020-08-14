@@ -364,12 +364,12 @@ Target "PublishNuget" (fun _ ->
 //--------------------------------------------------------------------------------  
 Target "DocFx" (fun _ ->
     // build the projects with samples
-    let docsTestsProject = "./src/core/Akka.Docs.Tests/Akka.Docs.Tests.csproj"
-    DotNetCli.Restore (fun p -> { p with Project = docsTestsProject })
-    DotNetCli.Build (fun p -> { p with Project = docsTestsProject; Configuration = configuration })
-    let docsTutorialsProject = "./src/core/Akka.Docs.Tutorials/Akka.Docs.Tutorials.csproj"
-    DotNetCli.Restore (fun p -> { p with Project = docsTutorialsProject })
-    DotNetCli.Build (fun p -> { p with Project = docsTutorialsProject; Configuration = configuration })
+    // let docsTestsProject = "./src/core/Akka.Docs.Tests/Akka.Docs.Tests.csproj"
+    // DotNetCli.Restore (fun p -> { p with Project = docsTestsProject })
+    // DotNetCli.Build (fun p -> { p with Project = docsTestsProject; Configuration = configuration })
+    // let docsTutorialsProject = "./src/core/Akka.Docs.Tutorials/Akka.Docs.Tutorials.csproj"
+    // DotNetCli.Restore (fun p -> { p with Project = docsTutorialsProject })
+    // DotNetCli.Build (fun p -> { p with Project = docsTutorialsProject; Configuration = configuration })
 
     // install MSDN references
     NugetInstall (fun p -> 

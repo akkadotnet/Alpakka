@@ -66,7 +66,7 @@ namespace Akka.Streams.Channels.Tests
             probe.ExpectError().InnerException.Should().Be(failure);
         }
 
-        [Fact(Skip = "Test is very racy")]
+        [Fact]
         public async Task ChannelSource_must_read_incoming_events()
         {
             var tcs = new CancellationTokenSource(TimeSpan.FromSeconds(5));

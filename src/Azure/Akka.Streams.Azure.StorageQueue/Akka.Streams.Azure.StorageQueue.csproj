@@ -6,11 +6,10 @@
         <Description>Azure Storage Queue adapter for Akka.NET Streams</Description>
         <TargetFramework>$(NetStandardLibVersion)</TargetFramework>
         <PackageTags>$(AkkaPackageTags);azure;Storage</PackageTags>
-        <Platforms>AnyCPU</Platforms>
     </PropertyGroup>
 
     <ItemGroup>
         <PackageReference Include="Akka.Streams" Version="$(AkkaVersion)" />
-        <PackageReference Include="Azure.Storage.Queues" Version="12.3.2" />
+        <PackageReference Include="Azure.Storage.Queues" Version="12.4.0" />
     </ItemGroup>
 </Project>

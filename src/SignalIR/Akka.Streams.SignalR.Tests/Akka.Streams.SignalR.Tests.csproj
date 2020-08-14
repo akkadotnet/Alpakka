@@ -2,8 +2,9 @@
     <Import Project="..\..\common.props" />
 
     <PropertyGroup>
-        <TargetFrameworks>$(NetCoreTestVersion)</TargetFrameworks>
+        <TargetFrameworks>$(NetFrameworkTestVersion)</TargetFrameworks>
         <IsPackable>false</IsPackable>
+        <Platforms>AnyCPU;x64</Platforms>
     </PropertyGroup>
 
     <ItemGroup>
@@ -12,20 +13,17 @@
         <PackageReference Include="FluentAssertions" Version="$(FluentAssertionsVersion)" />
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="$(TestSdkVersion)" />
         <PackageReference Include="xunit" Version="$(XunitVersion)" />
-        <PackageReference Include="xunit.runner.visualstudio" Version="$(XunitRunnerVersion)" />
-        <PackageReference Include="coverlet.collector" Version="1.3.0" />
-        <PackageReference Include="Docker.DotNet" Version="3.125.4" />
+        <PackageReference Include="xunit.runner.visualstudio" Version="$(XunitRunnerVersion)">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+		</PackageReference>
+        <PackageReference Include="Microsoft.Owin.Testing" Version="4.0.1" />
+        <PackageReference Include="coverlet.collector" Version="1.2.0" />
+		<DotNetCliToolReference Include="dotnet-xunit" Version="2.3.0-*" />
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\Akka.Streams.Amqp\Akka.Streams.Amqp.csproj" />
-        <ProjectReference Include="..\Akka.Streams.Amqp.V1\Akka.Streams.Amqp.V1.csproj" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <None Update="environment.json">
-        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-      </None>
+      <ProjectReference Include="..\Akka.Streams.SignalR\Akka.Streams.SignalR.csproj" />
     </ItemGroup>
 
 </Project>

@@ -7,10 +7,10 @@ namespace Akka.Streams.Amqp.V1
 {
     public class NamedQueueSourceSettings<T> : IAmqpSourceSettings<T>
     {
-        private readonly Session session;
-        private readonly string linkName;
-        private readonly string queueName;
-        private readonly Serializer serializer;
+        private readonly Session _session;
+        private readonly string _linkName;
+        private readonly string _queueName;
+        private readonly Serializer _serializer;
 
         public NamedQueueSourceSettings(
             Session session,
@@ -19,24 +19,24 @@ namespace Akka.Streams.Amqp.V1
             int credit,
             Serializer serializer)
         {
-            this.session = session;
-            this.linkName = linkName;
-            this.queueName = queueName;
+            _session = session;
+            _linkName = linkName;
+            _queueName = queueName;
             Credit = credit;
-            this.serializer = serializer;
+            _serializer = serializer;
         }
 
         public T Convert(Message message)
         {
             var bString = message.GetBody<byte[]>();
-            return serializer.FromBinary<T>(bString);
+            return _serializer.FromBinary<T>(bString);
         }
 
         public int Credit { get; }
-        public ReceiverLink GetReceiverLink() => new ReceiverLink(session, linkName, new Source
+        public ReceiverLink GetReceiverLink() => new ReceiverLink(_session, _linkName, new Source
         {
-            Address = queueName,
-            Capabilities = new Symbol[] { new Symbol("queue") }
+            Address = _queueName,
+            Capabilities = new[] { new Symbol("queue") }
         }, null);
     }
 }

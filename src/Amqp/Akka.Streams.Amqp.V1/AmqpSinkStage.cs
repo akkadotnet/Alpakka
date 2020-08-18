@@ -8,7 +8,7 @@ namespace Akka.Streams.Amqp.V1
     {
         public Inlet<T> In { get; }
         public override SinkShape<T> Shape { get; }
-        public IAmpqSinkSettings<T> AmpqSourceSettings { get; }
+        public IAmqpSinkSettings<T> AmqpSourceSettings { get; }
 
         public override ILogicAndMaterializedValue<Task> CreateLogicAndMaterializedValue(Attributes inheritedAttributes)
         {
@@ -17,45 +17,47 @@ namespace Akka.Streams.Amqp.V1
             return new LogicAndMaterializedValue<Task>(logic, promise.Task);
         }
 
-        public AmqpSinkStage(IAmpqSinkSettings<T> ampqSourceSettings)
+        public AmqpSinkStage(IAmqpSinkSettings<T> amqpSourceSettings)
         {
             In = new Inlet<T>("AmqpSink.in");
             Shape = new SinkShape<T>(In);
-            AmpqSourceSettings = ampqSourceSettings;
+            AmqpSourceSettings = amqpSourceSettings;
         }
 
         private class AmqpSinkStageLogic : GraphStageLogic
         {
-            private readonly AmqpSinkStage<T> stage;
-            private readonly TaskCompletionSource<Done> promise;
-            private readonly SenderLink sender;
+            private readonly AmqpSinkStage<T> _stage;
+            private readonly TaskCompletionSource<Done> _promise;
+            private readonly SenderLink _sender;
 
             public AmqpSinkStageLogic(AmqpSinkStage<T> amqpSinkStage, TaskCompletionSource<Done> promise, SinkShape<T> shape) : base(shape)
             {
-                stage = amqpSinkStage;
-                this.promise = promise;
-                sender = amqpSinkStage.AmpqSourceSettings.GetSenderLink();
+                _stage = amqpSinkStage;
+                _promise = promise;
+                _sender = amqpSinkStage.AmqpSourceSettings.GetSenderLink();
 
-                SetHandler(stage.In, () =>
-                {
-                    var elem = Grab(stage.In);
-                    sender.Send(new Message(amqpSinkStage.AmpqSourceSettings.GetBytes(elem)));
-                    Pull(stage.In);
-                },
-                    onUpstreamFinish: () => promise.SetResult(Done.Instance),
-                    onUpstreamFailure: ex => promise.SetException(ex)
+                SetHandler(
+                    inlet: _stage.In, 
+                    onPush: () =>
+                    {
+                        var elem = Grab(_stage.In);
+                        _sender.Send(new Message(amqpSinkStage.AmqpSourceSettings.GetBytes(elem)));
+                        Pull(_stage.In);
+                    },
+                    onUpstreamFinish: () => _promise.SetResult(Done.Instance),
+                    onUpstreamFailure: _promise.SetException
                 );
             }
 
             public override void PreStart()
             {
                 base.PreStart();
-                Pull(stage.In);
+                Pull(_stage.In);
             }
 
             public override void PostStop()
             {
-                sender.Close();
+                _sender.Close();
                 base.PostStop();
             }
         }

@@ -35,8 +35,8 @@
       },
       {
         "files": [
-          "packages/**/**.md",
-          "packages/**/toc.yml",
+          "documentation/**/**.md",
+          "documentation/**/toc.yml",
           "community/**/**.md",
           "community/**/toc.yml",
           "toc.yml",

@@ -3,9 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.30204.135
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Akka.Streams.Amqp", "Amqp\Akka.Streams.Amqp\Akka.Streams.Amqp.csproj", "{209333C3-0916-47AE-B40C-70548E46A3BC}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Akka.Streams.Amqp.RabbitMq", "Amqp\Akka.Streams.Amqp.RabbitMq\Akka.Streams.Amqp.RabbitMq.csproj", "{209333C3-0916-47AE-B40C-70548E46A3BC}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Akka.Streams.Amqp.Tests", "Amqp\Akka.Streams.Amqp.Tests\Akka.Streams.Amqp.Tests.csproj", "{8D0DED3F-28E9-4140-9765-FB3B9C8B3AAE}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Akka.Streams.Amqp.V1.Tests", "Amqp\Akka.Streams.Amqp.V1.Tests\Akka.Streams.Amqp.V1.Tests.csproj", "{8D0DED3F-28E9-4140-9765-FB3B9C8B3AAE}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Amqp", "Amqp", "{9A8B3B60-F75D-4906-B368-739CA08C25D4}"
 EndProject
@@ -109,6 +109,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{DF4BD2BE-9
 		..\docs\toc.yml = ..\docs\toc.yml
 		..\docs\web.config = ..\docs\web.config
 	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Akka.Streams.Amqp.RabbitMq.Tests", "Amqp\Akka.Streams.Amqp.RabbitMq.Tests\Akka.Streams.Amqp.RabbitMq.Tests.csproj", "{9CD223E4-CB08-4043-8687-16FE139310B4}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -220,6 +222,10 @@ Global
 		{32584532-EF44-45E2-9E43-CFE13609785D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{32584532-EF44-45E2-9E43-CFE13609785D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{32584532-EF44-45E2-9E43-CFE13609785D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9CD223E4-CB08-4043-8687-16FE139310B4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9CD223E4-CB08-4043-8687-16FE139310B4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9CD223E4-CB08-4043-8687-16FE139310B4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9CD223E4-CB08-4043-8687-16FE139310B4}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -259,6 +265,7 @@ Global
 		{1773F9EE-ABAA-4266-9336-CD4FB8833703} = {EEA93301-F97B-49F0-BB08-33F7CC5A24BB}
 		{32584532-EF44-45E2-9E43-CFE13609785D} = {9A8B3B60-F75D-4906-B368-739CA08C25D4}
 		{DF4BD2BE-9280-481E-A155-271F68A291E0} = {EEA93301-F97B-49F0-BB08-33F7CC5A24BB}
+		{9CD223E4-CB08-4043-8687-16FE139310B4} = {9A8B3B60-F75D-4906-B368-739CA08C25D4}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {BE1A9436-C6F6-4C73-9EB4-32DEC9C841A5}

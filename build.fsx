@@ -247,7 +247,8 @@ Target "RunTestsNetCore" (fun _ ->
             let rawProjects = match (isWindows) with 
                                 | true -> !! "./src/**/*.Tests.*sproj"
                                 | _ -> !! "./src/**/*.Tests.*sproj" // if you need to filter specs for Linux vs. Windows, do it here
-                                       -- "./src/**/Akka.Streams.Amqp.Tests.csproj" // RabbitMQ container doesn't work well with linux networking setup
+                                       -- "./src/**/Akka.Streams.Amqp.RabbitMq.Tests.csproj" // RabbitMQ container doesn't work well with linux networking setup
+                                       -- "./src/**/Akka.Streams.Amqp.V1.Tests.csproj" // RabbitMQ container doesn't work well with linux networking setup
             rawProjects |> Seq.choose filterProjects
      
         let runSingleProject project =

@@ -25,22 +25,22 @@ namespace Akka.Streams.Amqp.V1
 
         private class AmqpSourceStageLogic : GraphStageLogic
         {
-            private readonly Outlet<T> outlet;
-            private readonly IAmqpSourceSettings<T> ampqSourceSettings;
-            private readonly ReceiverLink receiver;
-            private readonly Decider decider;
-            private readonly Queue<Message> queue = new Queue<Message>();
+            private readonly Outlet<T> _outlet;
+            private readonly IAmqpSourceSettings<T> _amqpSourceSettings;
+            private readonly ReceiverLink _receiver;
+            private readonly Decider _decider;
+            private readonly Queue<Message> _queue = new Queue<Message>();
 
             public AmqpSourceStageLogic(AmqpSourceStage<T> stage, Attributes attributes) : base(stage.Shape)
             {
-                outlet = stage.Out;
-                ampqSourceSettings = stage.AmqpSourceSettings;
-                receiver = stage.AmqpSourceSettings.GetReceiverLink();
-                decider = attributes.GetDeciderOrDefault();
+                _outlet = stage.Out;
+                _amqpSourceSettings = stage.AmqpSourceSettings;
+                _receiver = stage.AmqpSourceSettings.GetReceiverLink();
+                _decider = attributes.GetDeciderOrDefault();
 
-                SetHandler(outlet, () =>
+                SetHandler(_outlet, () =>
                 {
-                    if (queue.TryDequeue(out Message msg))
+                    if (_queue.TryDequeue(out var msg))
                     {
                         PushMessage(msg);
                     }
@@ -52,15 +52,15 @@ namespace Akka.Streams.Amqp.V1
                 base.PreStart();
 
                 var consumerCallback = GetAsyncCallback<Message>(HandleDelivery);
-                receiver.Start(ampqSourceSettings.Credit, (_, m) => consumerCallback.Invoke(m));
+                _receiver.Start(_amqpSourceSettings.Credit, (_, m) => consumerCallback.Invoke(m));
             }
 
             private void HandleDelivery(Message message)
             {
-                queue.Enqueue(message);
+                _queue.Enqueue(message);
                 //as callback could be called concurrently try to dequeue
                 //a pull can be waiting for the message
-                if (IsAvailable(outlet) && queue.TryDequeue(out Message msg))
+                if (IsAvailable(_outlet) && _queue.TryDequeue(out var msg))
                 {
                     PushMessage(msg);
                 }
@@ -68,27 +68,27 @@ namespace Akka.Streams.Amqp.V1
 
             private void PushMessage(Message message)
             {
-                T obj = default(T);
+                T obj;
                 try
                 {
-                    obj = ampqSourceSettings.Convert(message);
-                    receiver.Accept(message);
+                    obj = _amqpSourceSettings.Convert(message);
+                    _receiver.Accept(message);
                 }
                 catch (Exception e)
                 {
-                    if (decider(e) == Directive.Stop)
+                    if (_decider(e) == Directive.Stop)
                     {
-                        receiver.Reject(message, new Error(new Symbol(e.Message)));
+                        _receiver.Reject(message, new Error(new Symbol(e.Message)));
                         FailStage(e);
                     }
                     return;
                 }
-                Push(outlet, obj);
+                Push(_outlet, obj);
             }
 
             public override void PostStop()
             {
-                receiver.Close();
+                _receiver.Close();
                 base.PostStop();
             }
         }

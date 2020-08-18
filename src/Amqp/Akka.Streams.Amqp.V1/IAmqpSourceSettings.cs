@@ -2,7 +2,7 @@
 
 namespace Akka.Streams.Amqp.V1
 {
-    public interface IAmqpSourceSettings<T>
+    public interface IAmqpSourceSettings<out T>
     {
         ReceiverLink GetReceiverLink();
         int Credit { get; }

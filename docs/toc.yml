@@ -1,6 +1,6 @@
 - name: Documentation
-  href: packages/
-  homepage: packages/index.md
+  href: documentation/
+  homepage: documentation/index.md
 - name: API Reference
   href: api/
   homepage: api/index.md

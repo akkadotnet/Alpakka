@@ -1,0 +1,34 @@
+- name: Advanced Message Queuing Protocol (AMQP)
+  items:
+  - name: AMQP 0-9-1
+    href: Amqp/Amqp.RabbitMQ.md
+  - name: AMQP 1.0
+    href: Amqp/Amqp.V1.md
+- name: Amazon AWS
+  href: Aws/index.md
+  items:
+  - name: Amazon Kinesis Adapter
+    href: Aws/Kinesis.md
+  - name: Amazon Simple Notification Service (SNS) Adapter
+    href: Aws/Sns.md
+  - name: Amazon Simple Queue Service (SQS) Adapter
+    href: Aws/Sqs.md
+- name: Microsoft Azure
+  href: Azure/index.md
+  items:
+  - name: Azure Event Hubs Adapter
+    href: Azure/EventHub.md
+  - name: Azure Service Bus Adapter
+    href: Azure/ServiceBus.md
+  - name: Azure Queue Storage
+    href: Azure/StorageQueue.md
+- name: System.Threading.Channels
+  href: Channels.md
+- name: Comma Separated Values (CSV)
+  href: Csv.md
+- name: SignalR
+  href: SignalR.md
+- name: SignalR on Asp.NET Core
+  href: SignalR.AspNetCore.md
+- name: Extensible Markup Language (XML)
+  href: Xml.md

@@ -10,6 +10,6 @@
 
     <ItemGroup>
         <PackageReference Include="Akka.Streams" Version="$(AkkaVersion)" />
-        <PackageReference Include="Azure.Storage.Queues" Version="12.4.0" />
+        <PackageReference Include="Azure.Storage.Queues" Version="12.4.1" />
     </ItemGroup>
 </Project>

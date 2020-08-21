@@ -29,7 +29,7 @@ h2:before{
       <h1 class="title"><small class="subtitle">A set of [Akka.Streams](https://getakka.net/articles/streams/introduction.html) connectors for Kafka, Azure, AWS, RabbitMQ, and more.</small></h1>
       <div class="options">
         <a class="btn btn-lg btn-primary" href="https://getakka.net/articles/streams/introduction.html">What's Akka.Streams?</a>
-        <a class="btn btn-lg btn-primary" href="articles/index.md">Read the documentation</a>
+        <a class="btn btn-lg btn-primary" href="documentation/index.md">Read the documentation</a>
       </div>
     </div>
 </div>

@@ -32,7 +32,7 @@ steps:
     displayName: 'FAKE Build'
     inputs:
       filename: build.cmd
-      arguments: 'nuget nugetpublishurl=https://api.nuget.org/v3/index.json nugetkey=$(alpakkaKey)'
+      arguments: 'nuget nugetpublishurl=https://api.nuget.org/v3/index.json nugetkey=$(nugetKey)'
 
   - task: GitHubRelease@0
     displayName: 'GitHub release (create)'

@@ -1,7 +1,7 @@
 ---
 documentType: index
 title: Akka.NET Alpakka Documentation
-tagline: A collections of Akka Streams connectors to various technologies, protocols or libraries.
+tagline: A collections of Akka Streams connectors to various technologies, protocols, and libraries.
 ---
 <style>
 .subtitle {
@@ -26,8 +26,21 @@ h2:before{
     <div class="container">
       <img src="images/mainlogo.png" class="main-logo" />
       <h1 class="title"><strong>Akka.NET Alpakka</strong></h1>
+      <h1 class="title"><small class="subtitle">A set of [Akka.Streams](https://getakka.net/articles/streams/introduction.html) connectors for Kafka, Azure, AWS, RabbitMQ, and more.</small></h1>
+      <div class="options">
+        <a class="btn btn-lg btn-primary" href="https://getakka.net/articles/streams/introduction.html">What's Akka.Streams?</a>
+        <a class="btn btn-lg btn-primary" href="articles/intro/tutorial-1.md">Get Started Now</a> <a class="btn btn-lg btn-primary" href="articles/intro/what-is-akka.md">Read the documentation</a>
+      </div>
     </div>
 </div>
+
+<section>
+    <div class="container">
+        <h2 class="lead">Build high-performance, streaming applications <strong>quickly</strong> and with <strong>less code</strong>.</h2>
+        <p class="lead">Alpakka makes it easy to build high-performance streaming applications using common techologies like RabbitMQ, Kafka, Azure Service Bus in combination with [Akka.NET](https://getakka.net/) and Akka.Streams.</p>
+        <p class="lead"><strong>This project is currently in beta</strong>, but is officially supported by [Petabridge](https://petabridge.com/) and the [Akka.NET Project](https://github.com/akkadotnet).</p>
+    </div>
+</section>
 
 <!-- WELCOME -->
 <section>

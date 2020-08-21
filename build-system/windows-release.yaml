@@ -16,7 +16,7 @@ variables:
   - group: signingSecrets #create this group with SECRET variables `signingUsername` and `signingPassword`
   - group: nugetKeys #create this group with SECRET variables `nugetKey`
   - name: githubConnectionName
-    value: Alpakka_Releases
+    value: AkkaDotNet_Releases
   - name: projectName
     value: Alpakka
   - name: githubRepositoryName
@@ -32,7 +32,7 @@ steps:
     displayName: 'FAKE Build'
     inputs:
       filename: build.cmd
-      arguments: 'nuget nugetpublishurl=https://api.nuget.org/v3/index.json nugetkey=$(nugetKey)'
+      arguments: 'nuget nugetpublishurl=https://api.nuget.org/v3/index.json nugetkey=$(alpakkaKey)'
 
   - task: GitHubRelease@0
     displayName: 'GitHub release (create)'

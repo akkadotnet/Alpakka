@@ -3,6 +3,8 @@ Alpakka: Akka Streams Connectors
 
 [![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/akkadotnet/AkkaStreams)
 
+https://alpakka.getakka.net/
+
 This project provides a home to Akka Streams connectors to various technologies, protocols or libraries.
 
 Contributions

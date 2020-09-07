@@ -99,11 +99,15 @@ namespace Akka.Streams.Kinesis
 
             private void GetShardIterator()
             {
+                var useSequenceNumberCondition = (_settings.ShardIteratorType == ShardIteratorType.AFTER_SEQUENCE_NUMBER ||
+                         _settings.ShardIteratorType == ShardIteratorType.AT_SEQUENCE_NUMBER) && !string.IsNullOrEmpty(_settings.StartingSequenceNumber);
+                
                 var request = new GetShardIteratorRequest
                 {
                     ShardId = _settings.ShardId,
                     StreamName = _settings.StreamName,
-                    ShardIteratorType = _settings.ShardIteratorType
+                    ShardIteratorType = _settings.ShardIteratorType,
+                    StartingSequenceNumber = useSequenceNumberCondition ? _settings.StartingSequenceNumber : null
                 };
 
                 if (_settings.AtTimestamp.HasValue)

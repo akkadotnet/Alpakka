@@ -20,6 +20,11 @@ namespace Akka.Streams.Amqp.RabbitMq
                     break;
                 case AmqpConnectionDetails details:
                 {
+                    if (details.HostAndPortList.Count > 0)
+                    {
+                        factory.HostName = details.HostAndPortList[0].host;
+                        factory.Port = details.HostAndPortList[0].port;
+                    }
                     if (details.Credentials.HasValue)
                     {
                         factory.UserName = details.Credentials.Value.Username;
@@ -43,7 +48,7 @@ namespace Akka.Streams.Amqp.RabbitMq
                         factory.HandshakeContinuationTimeout = details.HandshakeTimeout.Value;
                     break;
                 }
-                case DefaultAmqpConnection defaultConnection:
+                case DefaultAmqpConnection _:
                     //leave it be as is
                     break;
             }
@@ -56,15 +61,11 @@ namespace Akka.Streams.Amqp.RabbitMq
             {
                 case AmqpConnectionDetails details:
                 {
-                    if (details.HostAndPortList.Count > 0)
-                    {
-                        return factory.CreateConnection(details.HostAndPortList
-                            .Select(pair => new AmqpTcpEndpoint(pair.host, pair.port)).ToList());
-                    }
-                    else
-                    {
-                        throw new ArgumentException("You need to supply at least one host/port pair.");
-                    }
+                    if (details.HostAndPortList.Count == 0)
+                        throw new ArgumentException("You need to supply at least one host/port pair.", nameof(settings));
+
+                    return factory.CreateConnection(details.HostAndPortList
+                        .Select(pair => new AmqpTcpEndpoint(pair.host, pair.port)).ToList());
                 }
                 default:
                     return factory.CreateConnection();

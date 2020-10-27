@@ -112,9 +112,8 @@ namespace Akka.Streams.Kinesis
                     _inFlight++;
                     var job = _pendingRequests.Dequeue();
                     Push(_out, PutRecords(_streamName, job.Records, recordsToRetry => _resultCallback(new Result(job.Attempt, recordsToRetry.Length == 0, recordsToRetry))));
-
-                    Log.Debug("Successfully put {0} records", job.Records.Count());
-                }
+                } else if (Log.IsDebugEnabled && !IsAvailable(_out))
+                    Log.Debug("Found pending requests for stream [{0}] but outlet [{1}] is not available.", _streamName, _out.Name);
             }
 
             private async Task<IEnumerable<PutRecordsResultEntry>> PutRecords(
@@ -127,15 +126,32 @@ namespace Akka.Streams.Kinesis
                     StreamName = streamName,
                     Records = recordEntries.ToList()
                 };
+                if (Log.IsDebugEnabled)
+                    Log.Debug("Attempting to put {0} records into stream [{1}].", request.Records.Count, request.StreamName);
                 var result = await _kinesisClient.PutRecordsAsync(request);
 
                 if (result.FailedRecordCount > 0)
                 {
+                    if (Log.IsDebugEnabled)
+                        Log.Debug(
+                            "PutRecords call successfully put {0} records and failed to put {1} records into stream [{2}]. Failed shard ids: [{3}]",
+                            result.Records.Count - result.FailedRecordCount,
+                            result.FailedRecordCount,
+                            _streamName,
+                            string.Join(", ", result.Records
+                                .Where(r => r.ErrorCode != null)
+                                .Select(r => r.ShardId)
+                                .Distinct()));
+
                     var correlatedRequestResult = request.Records.Zip(result.Records, (req, rep) => (req, rep));
                     retryRecordsCallback(correlatedRequestResult.Where(rep => !(rep.Item2.ErrorCode is null)).ToArray());
                 }
                 else
                 {
+                    if (Log.IsDebugEnabled)
+                        Log.Debug("PutRecords call successfully put {0} records into stream [{1}].",
+                            result.Records.Count - result.FailedRecordCount,
+                            _streamName);
                     retryRecordsCallback(Array.Empty<(PutRecordsRequestEntry, PutRecordsResultEntry)>());
                 }
 
@@ -146,19 +162,23 @@ namespace Akka.Streams.Kinesis
             {
                 if (result.WasSuccessful)
                 {
-                    Log.Debug("PutRecords call finished successfully");
+                    if(Log.IsDebugEnabled)
+                        Log.Debug("PutRecords call finished successfully on stream [{0}]. Total attempts: {1}", _streamName, result.Attempt);
+
                     _inFlight--;
                     TryToExecute();
                     if (!HasBeenPulled(_in)) TryPull(_in);
                 }
                 else if (result.Attempt > _maxRetries)
                 {
-                    Log.Warning("PutRecords call finished with partial errors after {0} attempts", result.Attempt);
+                    Log.Warning("PutRecords call finished with partial errors after {0} attempts on stream [{1}], failing stream. Failed count: {2}", 
+                        result.Attempt, 
+                        _streamName,
+                        result.RecordsToRetry.Count());
                     FailStage(new PublishingRecordsException(result.Attempt, result.RecordsToRetry));
                 }
                 else
                 {
-                    Log.Debug("PutRecords call finished with partial errors; scheduling retry");
                     _inFlight--;
                     _waitingRetries[_retryToken] = new Job(result.Attempt+1, result.RecordsToRetry.Select(t => t.Item1));
                     TimeSpan delay;
@@ -171,8 +191,15 @@ namespace Akka.Streams.Kinesis
                             delay = new TimeSpan(_retryInitialTimeout.Ticks * result.Attempt);
                             break;
                         default:
-                            throw new NotSupportedException($"Unknown backoff strategy: {_backoffStrategy}");
+                            throw new NotSupportedException($"Unknown backoff strategy: {_backoffStrategy}. Supported backoff strategies are {nameof(RetryBackoffStrategy.Exponential)} and {nameof(RetryBackoffStrategy.Linear)}");
                     }
+                    if (Log.IsDebugEnabled)
+                        Log.Debug("Retrying to put {0} records into stream {1} in {2} seconds.", 
+                            result.RecordsToRetry.Count(),
+                            _streamName,
+                            delay.TotalSeconds, 
+                            result.Attempt + 1);
+
                     ScheduleOnce(_retryToken, delay);
                 }
             }
@@ -183,9 +210,17 @@ namespace Akka.Streams.Kinesis
                 {
                     switch (_completionState)
                     {
-                        case Status.Success _: CompleteStage(); break;
-                        case Status.Failure f: FailStage(f.Cause); break;
-                        case null: FailStage(new IllegalStateException("Stage completed, but there is no info about status")); break;
+                        case Status.Success _:
+                            if (Log.IsDebugEnabled)
+                                Log.Debug("Stage completed on stream [{0}]", _streamName);
+                            CompleteStage(); 
+                            break;
+                        case Status.Failure f:
+                            if (Log.IsDebugEnabled)
+                                Log.Debug("Stage failed on stream [{0}]. Reason: {1}", _streamName, f.Cause);
+                            FailStage(f.Cause); 
+                            break;
+                        case null: FailStage(new IllegalStateException($"Stage completed on stream [{_streamName}], but there is no info about status")); break;
                     }
                 }
             }
@@ -196,7 +231,8 @@ namespace Akka.Streams.Kinesis
                 if (_waitingRetries.TryGetValue(key, out var job))
                 {
                     _waitingRetries.Remove(key);
-                    Log.Debug("Retrying to PutRecords again");
+                    if (Log.IsDebugEnabled)
+                        Log.Debug("Retrying to PutRecords again. Attempt: {0}", job.Attempt);
                     _pendingRequests.Enqueue(job);
                     TryToExecute();
                 }
@@ -220,7 +256,10 @@ namespace Akka.Streams.Kinesis
 
             public void OnPush()
             {
-                _pendingRequests.Enqueue(new Job(1, Grab(_in)));
+                var job = new Job(1, Grab(_in));
+                if(Log.IsDebugEnabled)
+                    Log.Debug("Enqueuing a new job with {0} records for stream {1}", job.Records.Count(), _streamName);
+                _pendingRequests.Enqueue(job);
                 TryToExecute();
             }
 

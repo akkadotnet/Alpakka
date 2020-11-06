@@ -1,10 +1,5 @@
-#### 1.0.0-beta1 August 21 2020 ####
-First published release of Alpakka on NuGet.
-
-All plugins have been modernized to work with [Akka.NET](https://getakka.net/) v1.4.10 and the latest RabbitMQ, Azure, AWS, SignalR, and other drivers.
-
-We've also published our initial documentation website to https://alpakka.getakka.net/
-
-Over the next few weeks we will be adding additional unit tests, documentation cleanup, and bugfixes based on community feedback.
-
-Please give our packages a try and let us know what we can do better!
+#### 1.0.0-beta2 November 5 2020 ####
+* Upgraded to [Akka.NET v1.4.11](https://github.com/akkadotnet/akka.net/releases/tag/1.4.11).
+* [Resolved: Using AmqpConnectionDetails with SSL enabled always results with "localhost" endpoint](https://github.com/akkadotnet/Alpakka/issues/164)
+* [https://github.com/akkadotnet/Alpakka/issues/158](https://github.com/akkadotnet/Alpakka/pull/245)
+* Updated all or most underlying dependencies for AWS, Azure, and so on.

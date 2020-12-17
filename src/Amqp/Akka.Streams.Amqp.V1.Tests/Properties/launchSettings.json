@@ -1,0 +1,7 @@
+{
+  "profiles": {
+    "Akka.Streams.Amqp.V1.Tests": {
+      "commandName": "Project"
+    }
+  }
+}

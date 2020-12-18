@@ -6,7 +6,9 @@ using Amqp.Framing;
 using Amqp.Types;
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
+using Akka.Streams.Amqp.V1.Internal;
 
 namespace Akka.Streams.Amqp.V1
 {
@@ -46,6 +48,7 @@ namespace Akka.Streams.Amqp.V1
             private readonly Action<Message> _consumerCallback;
 
             private ReceiverLink _receiver;
+            private Thread _connectionThread;
 
             public AmqpSourceStageLogic(AmqpSourceStage<T> stage, Attributes attributes) : base(stage.Shape)
             {
@@ -65,14 +68,37 @@ namespace Akka.Streams.Amqp.V1
                 }, onDownstreamFinish: CompleteStage);
             }
 
+            private void HandleConnectionResult(ConnectResult result)
+            {
+                _connectionThread.Join(100);
+                _connectionThread = null;
+
+                if (!result.IsSuccessful)
+                {
+                    FailStage(result.Exception);
+                    return;
+                }
+                Log.Info("Connected to AMQP.V1 server.");
+            }
+
             public override void PreStart()
             {
                 base.PreStart();
 
-                Connect().Wait();
+                _connectionThread = new Thread(() =>
+                {
+                    var callback = GetAsyncCallback<ConnectResult>(HandleConnectionResult);
+                    Connect().ContinueWith(result =>
+                    {
+                        if (result.Exception != null)
+                            callback(new ConnectResult(result.Exception));
+                        callback(result.Result);
+                    }).Wait();
+                });
+                _connectionThread.Start();
             }
 
-            private async Task Connect()
+            private async Task<ConnectResult> Connect()
             {
                 var retry = 7;
                 var exceptions = new List<Exception>();
@@ -83,20 +109,19 @@ namespace Akka.Streams.Amqp.V1
                         _receiver = _stage.AmqpSourceSettings.GetReceiverLink();
                         _receiver.AddClosedCallback((sender, error) => _disconnectedCallback((sender, error)));
                         _receiver.Start(_amqpSourceSettings.Credit, (_, m) => _consumerCallback.Invoke(m));
-                        Log.Info("Connected to AMQP.V1 server.");
-                        return;
+                        return ConnectResult.Success;
                     }
                     catch (Exception e)
                     {
                         if (!_stage.AmqpSourceSettings.ManageConnection)
                         {
-                            throw new ConnectionException(
-                                "Failed to connect to AMQP.V1 server. Could not retry connection because SourceSettings does not manage the Connection object.", e);
+                            return new ConnectResult(new ConnectionException(
+                                "Failed to connect to AMQP.V1 server. Could not retry connection because SourceSettings does not manage the Connection object.", e));
                         }
 
                         retry--;
                         if (retry == 0)
-                            throw new AggregateException("Failed to connect to AMQP.V1 server.", exceptions);
+                            return new ConnectResult(new AggregateException("Failed to connect to AMQP.V1 server.", exceptions));
 
                         exceptions.Add(e);
                         Log.Error($"[{retry}] more retries to connect to AMQP.V1 server.");

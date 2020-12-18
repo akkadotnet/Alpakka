@@ -80,9 +80,15 @@ namespace Akka.Streams.Amqp.V1
                     }
                     catch (Exception e)
                     {
+                        if (!_stage.AmqpSourceSettings.ManageConnection && _sender.Session.IsClosed)
+                        {
+                            throw new ConnectionException(
+                                "Failed to connect to AMQP.V1 server. Could not retry connection because SinkSettings does not manage the Connection object.", e);
+                        }
+
                         retry--;
                         if (retry == 0)
-                            throw new AggregateException(exceptions);
+                            throw new AggregateException("Failed to connect to AMQP.V1 server.", exceptions);
 
                         exceptions.Add(e);
                         Log.Error($"[{retry}] more retries to connect to AMQP.V1 server.");

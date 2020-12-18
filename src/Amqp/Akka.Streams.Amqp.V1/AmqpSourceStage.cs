@@ -6,11 +6,23 @@ using Amqp.Framing;
 using Amqp.Types;
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace Akka.Streams.Amqp.V1
 {
     public sealed class AmqpSourceStage<T> : GraphStage<SourceShape<T>>
     {
+        private static readonly Dictionary<int, TimeSpan> RetryInterval =
+            new Dictionary<int, TimeSpan>()
+            {
+                { 6, TimeSpan.FromMilliseconds(100) },
+                { 5, TimeSpan.FromMilliseconds(500) },
+                { 4, TimeSpan.FromMilliseconds(1000) },
+                { 3, TimeSpan.FromMilliseconds(2000) },
+                { 2, TimeSpan.FromMilliseconds(4000) },
+                { 1, TimeSpan.FromMilliseconds(8000) },
+            };
+
         public override SourceShape<T> Shape { get; }
         public Outlet<T> Out { get; }
         public IAmqpSourceSettings<T> AmqpSourceSettings { get; }
@@ -25,18 +37,24 @@ namespace Akka.Streams.Amqp.V1
 
         private class AmqpSourceStageLogic : GraphStageLogic
         {
+            private readonly AmqpSourceStage<T> _stage;
             private readonly Outlet<T> _outlet;
             private readonly IAmqpSourceSettings<T> _amqpSourceSettings;
-            private readonly ReceiverLink _receiver;
             private readonly Decider _decider;
             private readonly Queue<Message> _queue = new Queue<Message>();
+            private readonly Action<(IAmqpObject, Error)> _disconnectedCallback;
+            private readonly Action<Message> _consumerCallback;
+
+            private ReceiverLink _receiver;
 
             public AmqpSourceStageLogic(AmqpSourceStage<T> stage, Attributes attributes) : base(stage.Shape)
             {
+                _stage = stage;
                 _outlet = stage.Out;
                 _amqpSourceSettings = stage.AmqpSourceSettings;
-                _receiver = stage.AmqpSourceSettings.GetReceiverLink();
                 _decider = attributes.GetDeciderOrDefault();
+                _disconnectedCallback = GetAsyncCallback<(IAmqpObject, Error)>(HandleDisconnection);
+                _consumerCallback = GetAsyncCallback<Message>(HandleDelivery);
 
                 SetHandler(_outlet, () =>
                 {
@@ -51,9 +69,44 @@ namespace Akka.Streams.Amqp.V1
             {
                 base.PreStart();
 
-                var consumerCallback = GetAsyncCallback<Message>(HandleDelivery);
-                _receiver.Start(_amqpSourceSettings.Credit, (_, m) => consumerCallback.Invoke(m));
+                Connect().Wait();
             }
+
+            private async Task Connect()
+            {
+                var retry = 7;
+                var exceptions = new List<Exception>();
+                while (true)
+                {
+                    try
+                    {
+                        _receiver = _stage.AmqpSourceSettings.GetReceiverLink();
+                        _receiver.AddClosedCallback((sender, error) => _disconnectedCallback((sender, error)));
+                        _receiver.Start(_amqpSourceSettings.Credit, (_, m) => _consumerCallback.Invoke(m));
+                        Log.Info("Connected to AMQP.V1 server.");
+                        return;
+                    }
+                    catch (Exception e)
+                    {
+                        if (!_stage.AmqpSourceSettings.ManageConnection)
+                        {
+                            throw new ConnectionException(
+                                "Failed to connect to AMQP.V1 server. Could not retry connection because SourceSettings does not manage the Connection object.", e);
+                        }
+
+                        retry--;
+                        if (retry == 0)
+                            throw new AggregateException("Failed to connect to AMQP.V1 server.", exceptions);
+
+                        exceptions.Add(e);
+                        Log.Error($"[{retry}] more retries to connect to AMQP.V1 server.");
+                        await Task.Delay(RetryInterval[retry]);
+                    }
+                }
+            }
+
+            private void HandleDisconnection((IAmqpObject sender, Error error) args)
+                => FailStage(new DisconnectedException(args.sender, args.error));
 
             private void HandleDelivery(Message message)
             {
@@ -88,7 +141,7 @@ namespace Akka.Streams.Amqp.V1
 
             public override void PostStop()
             {
-                _receiver.Close();
+                _receiver?.Close();
                 base.PostStop();
             }
         }

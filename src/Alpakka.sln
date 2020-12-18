@@ -110,7 +110,13 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{DF4BD2BE-9
 		..\docs\web.config = ..\docs\web.config
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Akka.Streams.Amqp.RabbitMq.Tests", "Amqp\Akka.Streams.Amqp.RabbitMq.Tests\Akka.Streams.Amqp.RabbitMq.Tests.csproj", "{9CD223E4-CB08-4043-8687-16FE139310B4}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Akka.Streams.Amqp.RabbitMq.Tests", "Amqp\Akka.Streams.Amqp.RabbitMq.Tests\Akka.Streams.Amqp.RabbitMq.Tests.csproj", "{9CD223E4-CB08-4043-8687-16FE139310B4}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Examples", "Examples", "{D2FE5AD5-7AF4-4749-82C6-5E1CAD4D0AAF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Amqp.V1.Source", "Amqp\Examples\Amqp.V1.Source\Amqp.V1.Source.csproj", "{33CE5A75-2792-48F1-8F19-12473A531926}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Amqp.V1.Sink", "Amqp\Examples\Amqp.V1.Sink\Amqp.V1.Sink.csproj", "{80039FDA-5979-4AA2-B380-08AEE3C6EF26}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -226,6 +232,14 @@ Global
 		{9CD223E4-CB08-4043-8687-16FE139310B4}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9CD223E4-CB08-4043-8687-16FE139310B4}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9CD223E4-CB08-4043-8687-16FE139310B4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{33CE5A75-2792-48F1-8F19-12473A531926}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{33CE5A75-2792-48F1-8F19-12473A531926}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{33CE5A75-2792-48F1-8F19-12473A531926}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{33CE5A75-2792-48F1-8F19-12473A531926}.Release|Any CPU.Build.0 = Release|Any CPU
+		{80039FDA-5979-4AA2-B380-08AEE3C6EF26}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{80039FDA-5979-4AA2-B380-08AEE3C6EF26}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{80039FDA-5979-4AA2-B380-08AEE3C6EF26}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{80039FDA-5979-4AA2-B380-08AEE3C6EF26}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -266,6 +280,9 @@ Global
 		{32584532-EF44-45E2-9E43-CFE13609785D} = {9A8B3B60-F75D-4906-B368-739CA08C25D4}
 		{DF4BD2BE-9280-481E-A155-271F68A291E0} = {EEA93301-F97B-49F0-BB08-33F7CC5A24BB}
 		{9CD223E4-CB08-4043-8687-16FE139310B4} = {9A8B3B60-F75D-4906-B368-739CA08C25D4}
+		{D2FE5AD5-7AF4-4749-82C6-5E1CAD4D0AAF} = {9A8B3B60-F75D-4906-B368-739CA08C25D4}
+		{33CE5A75-2792-48F1-8F19-12473A531926} = {D2FE5AD5-7AF4-4749-82C6-5E1CAD4D0AAF}
+		{80039FDA-5979-4AA2-B380-08AEE3C6EF26} = {D2FE5AD5-7AF4-4749-82C6-5E1CAD4D0AAF}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {BE1A9436-C6F6-4C73-9EB4-32DEC9C841A5}

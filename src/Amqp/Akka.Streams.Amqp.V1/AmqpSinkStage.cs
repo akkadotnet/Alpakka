@@ -105,8 +105,13 @@ namespace Akka.Streams.Amqp.V1
             public override void PostStop()
             {
                 _sender?.Close();
-                _sender?.Session?.Close();
-                _sender?.Session?.Connection?.Close();
+
+                if(_stage.AmqpSourceSettings.ManageConnection)
+                {
+                    _sender?.Session?.Close();
+                    _sender?.Session?.Connection?.Close();
+                }
+
                 base.PostStop();
             }
         }

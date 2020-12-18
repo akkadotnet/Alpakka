@@ -20,6 +20,8 @@ namespace Akka.Streams.Amqp.V1
         private Connection _connection;
         private Session _session;
 
+        public bool ManageConnection => true;
+
         public AddressSourceSettings(
             Address address,
             string linkName,

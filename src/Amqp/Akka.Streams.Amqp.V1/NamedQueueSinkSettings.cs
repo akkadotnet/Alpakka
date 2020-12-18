@@ -13,6 +13,8 @@ namespace Akka.Streams.Amqp.V1
         private readonly string _queueName;
         private readonly Serializer _serializer;
 
+        public bool ManageConnection => false;
+
         public NamedQueueSinkSettings(
             Session session,
             string linkName,

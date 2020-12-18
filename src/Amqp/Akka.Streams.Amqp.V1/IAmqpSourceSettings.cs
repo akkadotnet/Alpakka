@@ -6,6 +6,7 @@ namespace Akka.Streams.Amqp.V1
     {
         ReceiverLink GetReceiverLink();
         int Credit { get; }
+        bool ManageConnection { get; }
         T Convert(Message message);
     }
 }

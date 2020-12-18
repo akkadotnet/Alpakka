@@ -1,4 +1,5 @@
-﻿using Amqp;
+﻿using System.Threading.Tasks;
+using Amqp;
 
 namespace Akka.Streams.Amqp.V1
 {
@@ -8,5 +9,8 @@ namespace Akka.Streams.Amqp.V1
         int Credit { get; }
         bool ManageConnection { get; }
         T Convert(Message message);
+
+        void CloseConnection();
+        Task CloseConnectionAsync();
     }
 }

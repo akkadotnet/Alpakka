@@ -88,7 +88,7 @@ namespace Akka.Streams.Amqp.V1
                     }
                     catch (Exception e)
                     {
-                        if (!_stage.AmqpSourceSettings.ManageConnection && _receiver.Session.IsClosed)
+                        if (!_stage.AmqpSourceSettings.ManageConnection)
                         {
                             throw new ConnectionException(
                                 "Failed to connect to AMQP.V1 server. Could not retry connection because SourceSettings does not manage the Connection object.", e);
@@ -142,13 +142,6 @@ namespace Akka.Streams.Amqp.V1
             public override void PostStop()
             {
                 _receiver?.Close();
-
-                if(_stage.AmqpSourceSettings.ManageConnection)
-                {
-                    _receiver?.Session?.Close();
-                    _receiver?.Session?.Connection?.Close();
-                }
-
                 base.PostStop();
             }
         }

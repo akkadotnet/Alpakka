@@ -1,4 +1,5 @@
-﻿using Akka.Serialization;
+﻿using System.Threading.Tasks;
+using Akka.Serialization;
 using Amqp;
 using Amqp.Framing;
 using Amqp.Types;
@@ -13,6 +14,8 @@ namespace Akka.Streams.Amqp.V1
         private readonly Serializer _serializer;
 
         public bool ManageConnection => false;
+
+        public bool IsClosed => _session?.IsClosed ?? true;
 
         public NamedQueueSourceSettings(
             Session session,
@@ -32,6 +35,18 @@ namespace Akka.Streams.Amqp.V1
         {
             var bString = message.GetBody<byte[]>();
             return _serializer.FromBinary<T>(bString);
+        }
+
+        public void CloseConnection()
+        {
+            _session.Close();
+            _session.Connection.Close();
+        }
+
+        public async Task CloseConnectionAsync()
+        {
+            await _session.CloseAsync();
+            await _session.Connection.CloseAsync();
         }
 
         public int Credit { get; }

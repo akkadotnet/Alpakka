@@ -1,4 +1,5 @@
-﻿using Akka.IO;
+﻿using System.Threading.Tasks;
+using Akka.IO;
 using Amqp;
 
 namespace Akka.Streams.Amqp.V1
@@ -8,5 +9,8 @@ namespace Akka.Streams.Amqp.V1
         bool ManageConnection { get; }
         SenderLink GetSenderLink();
         byte[] GetBytes(T obj);
+
+        void CloseConnection();
+        Task CloseConnectionAsync();
     }
 }

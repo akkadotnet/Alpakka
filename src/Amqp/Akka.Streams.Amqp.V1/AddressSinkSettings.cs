@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading.Tasks;
 using Akka.Serialization;
 using Amqp;
 using Amqp.Framing;
@@ -14,6 +15,7 @@ namespace Akka.Streams.Amqp.V1
         private readonly string _queueName;
         private readonly Serializer _serializer;
         private readonly Address _address;
+        private readonly object _lock = new object();
 
         private Connection _connection;
         private Session _session;
@@ -35,6 +37,24 @@ namespace Akka.Streams.Amqp.V1
         public byte[] GetBytes(T obj)
         {
             return _serializer.ToBinary(obj);
+        }
+
+        public void CloseConnection()
+        {
+            _session?.Close();
+            _connection?.Close();
+
+            _session = null;
+            _connection = null;
+        }
+
+        public async Task CloseConnectionAsync()
+        {
+            if(_session != null)
+                await _session.CloseAsync();
+
+            if(_connection != null)
+                await _connection.CloseAsync();
         }
 
         public SenderLink GetSenderLink()

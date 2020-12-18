@@ -80,7 +80,7 @@ namespace Akka.Streams.Amqp.V1
                     }
                     catch (Exception e)
                     {
-                        if (!_stage.AmqpSourceSettings.ManageConnection && _sender.Session.IsClosed)
+                        if (!_stage.AmqpSourceSettings.ManageConnection)
                         {
                             throw new ConnectionException(
                                 "Failed to connect to AMQP.V1 server. Could not retry connection because SinkSettings does not manage the Connection object.", e);
@@ -111,13 +111,6 @@ namespace Akka.Streams.Amqp.V1
             public override void PostStop()
             {
                 _sender?.Close();
-
-                if(_stage.AmqpSourceSettings.ManageConnection)
-                {
-                    _sender?.Session?.Close();
-                    _sender?.Session?.Connection?.Close();
-                }
-
                 base.PostStop();
             }
         }

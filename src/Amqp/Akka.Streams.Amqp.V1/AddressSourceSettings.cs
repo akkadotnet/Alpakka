@@ -42,6 +42,21 @@ namespace Akka.Streams.Amqp.V1
             return _serializer.FromBinary<T>(bString);
         }
 
+        public void CloseConnection()
+        {
+            _session?.Close();
+            _connection?.Close();
+        }
+
+        public async Task CloseConnectionAsync()
+        {
+            if (_session != null)
+                await _session.CloseAsync();
+
+            if (_connection != null)
+                await _connection.CloseAsync();
+        }
+
         public ReceiverLink GetReceiverLink() 
         {
             if(_connection == null || _connection.IsClosed)

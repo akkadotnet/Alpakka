@@ -67,7 +67,7 @@ namespace Akka.Streams.Amqp.V1
 
             private async Task Connect()
             {
-                var retry = 5;
+                var retry = 7;
                 var exceptions = new List<Exception>();
                 while (true)
                 {

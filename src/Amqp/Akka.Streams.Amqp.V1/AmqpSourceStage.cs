@@ -48,7 +48,6 @@ namespace Akka.Streams.Amqp.V1
             private readonly Action<Message> _consumerCallback;
 
             private ReceiverLink _receiver;
-            private Thread _connectionThread;
 
             public AmqpSourceStageLogic(AmqpSourceStage<T> stage, Attributes attributes) : base(stage.Shape)
             {
@@ -70,9 +69,6 @@ namespace Akka.Streams.Amqp.V1
 
             private void HandleConnectionResult(ConnectResult result)
             {
-                _connectionThread.Join(100);
-                _connectionThread = null;
-
                 if (!result.IsSuccessful)
                 {
                     FailStage(result.Exception);
@@ -85,7 +81,7 @@ namespace Akka.Streams.Amqp.V1
             {
                 base.PreStart();
 
-                _connectionThread = new Thread(() =>
+                Task.Factory.StartNew(() =>
                 {
                     var callback = GetAsyncCallback<ConnectResult>(HandleConnectionResult);
                     Connect().ContinueWith(result =>
@@ -94,8 +90,7 @@ namespace Akka.Streams.Amqp.V1
                             callback(new ConnectResult(result.Exception));
                         callback(result.Result);
                     }).Wait();
-                });
-                _connectionThread.Start();
+                }, TaskCreationOptions.RunContinuationsAsynchronously | TaskCreationOptions.LongRunning);
             }
 
             private async Task<ConnectResult> Connect()

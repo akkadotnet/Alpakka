@@ -47,7 +47,6 @@ namespace Akka.Streams.Amqp.V1
             private readonly Action<(IAmqpObject, Error)> _disconnectedCallback;
 
             private SenderLink _sender;
-            private Thread _connectionThread;
 
             public AmqpSinkStageLogic(AmqpSinkStage<T> amqpSinkStage, TaskCompletionSource<Done> promise, SinkShape<T> shape) : base(shape)
             {
@@ -110,9 +109,6 @@ namespace Akka.Streams.Amqp.V1
 
             private void HandleConnectionResult(ConnectResult result)
             {
-                _connectionThread.Join(100);
-                _connectionThread = null;
-
                 if (!result.IsSuccessful)
                 {
                     FailStage(result.Exception);
@@ -127,17 +123,16 @@ namespace Akka.Streams.Amqp.V1
             {
                 base.PreStart();
 
-                _connectionThread = new Thread(() =>
+                Task.Factory.StartNew(() =>
                 {
                     var callback = GetAsyncCallback<ConnectResult>(HandleConnectionResult);
                     Connect().ContinueWith(result =>
                     {
-                        if(result.Exception != null)
+                        if (result.Exception != null)
                             callback(new ConnectResult(result.Exception));
                         callback(result.Result);
                     }).Wait();
-                });
-                _connectionThread.Start();
+                }, TaskCreationOptions.RunContinuationsAsynchronously | TaskCreationOptions.LongRunning);
             }
 
             public override void PostStop()

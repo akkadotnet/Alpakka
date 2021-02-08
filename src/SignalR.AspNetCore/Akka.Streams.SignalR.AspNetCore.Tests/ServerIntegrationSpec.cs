@@ -96,9 +96,9 @@ namespace Akka.Streams.SignalR.AspNetCore.Tests
         public async Task Websocket_stream_should_work_when_client_closes()
         {
             await ConnectAsync(msg => Log.Info(msg));
+            _fromClient.RequestNext().Should().BeOfType<Connected>();
 
             await _connection.InvokeAsync(nameof(IServerSource.Send), "payload");
-            _fromClient.RequestNext().Should().BeOfType<Connected>();
             _fromClient.RequestNext().Should().BeOfType<Received>();
 
             // Client-initiated disconnect

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
@@ -9,6 +10,8 @@ using Akka.Streams.Amqp.RabbitMq;
 using Akka.Streams.Amqp.RabbitMq.Dsl;
 using Akka.Streams.Dsl;
 using Akka.Streams.TestKit;
+using Akka.Util;
+using Akka.Util.Internal;
 using FluentAssertions;
 using Xunit;
 using Xunit.Abstractions;
@@ -262,20 +265,16 @@ namespace Akka.Streams.Amqp.Tests
                                             .Select(msg => (branch: fanoutBranch, message: msg.Bytes.ToString())))
                           );
 
-            var completion = new TaskCompletionSource<Done>();
-
-            mergedSources.RunWith(Sink.Aggregate<(int branch, string msg), ImmutableHashSet<int>>(ImmutableHashSet.Create<int>(), (seen, t) =>
-            {
-                if (seen.Count == fanoutSize) completion.SetResult(Done.Instance);
-                return seen.Add(t.branch);
-            }), _mat);
-
-            Sys.Scheduler.Advanced.ScheduleOnce(
-                TimeSpan.FromSeconds(5),
-                () => completion.TrySetException(new Exception("Did not get at least one element from every fanout branch")));
+            var seenBranches = ImmutableHashSet.Create<int>();
+            mergedSources.RunForeach(e => seenBranches = seenBranches.Add(e.Item1), _mat);
 
             Source.Repeat("stuff").Select(ByteString.FromString).RunWith(amqpSink, _mat);
-            completion.Task.Result.Should().Be(Done.Instance);
+            
+            // wait for each branch to be discovered, one by one
+            for (var expectedSeenCount = 1; expectedSeenCount <= fanoutSize; ++expectedSeenCount)
+            {
+                AwaitCondition(() => seenBranches.Count >= expectedSeenCount, TimeSpan.FromMinutes(5));
+            }
         }
 
         [Fact]

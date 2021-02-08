@@ -29,7 +29,7 @@ namespace Akka.Streams.Azure.StorageQueue.Tests
         Unknown
     }
 
-    public sealed class AzureFixture : IAsyncLifetime, IDisposable
+    public class AzureFixture : IAsyncLifetime, IDisposable
     {
         private readonly List<string> _variables = new List<string>();
 
@@ -51,7 +51,8 @@ namespace Akka.Streams.Azure.StorageQueue.Tests
         protected readonly string AzuriteContainerName = $"azurite-{Guid.NewGuid():N}";
         protected DockerClient Client;
 
-        protected string AzureImageName { 
+        protected string ImageName
+        { 
             get
             {
                 switch (OperatingSystem)
@@ -65,6 +66,8 @@ namespace Akka.Streams.Azure.StorageQueue.Tests
                 }
             }
         }
+        protected string Tag => "latest";
+        protected string AzureImageName => $"{ImageName}:{Tag}";
 
         private bool? _useDocker = null;
         public bool UseDockerContainer
@@ -164,7 +167,19 @@ namespace Akka.Streams.Azure.StorageQueue.Tests
 
             Client = Config.CreateClient();
 
-            var images = await Client.Images.ListImagesAsync(new ImagesListParameters { MatchName = AzureImageName });
+            var images = await Client.Images.ListImagesAsync(new ImagesListParameters
+            {
+                Filters = new Dictionary<string, IDictionary<string, bool>>
+                {
+                    {
+                        "reference",
+                        new Dictionary<string, bool>
+                        {
+                            {AzureImageName, true}
+                        }
+                    }
+                }
+            });
             if (images.Count == 0)
                 await Client.Images.CreateImageAsync(
                     new ImagesCreateParameters { FromImage = AzureImageName, Tag = "latest" }, null,

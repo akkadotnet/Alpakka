@@ -67,7 +67,6 @@ namespace Akka.Streams.Azure.StorageQueue.Tests
             }
         }
         protected string Tag => "latest";
-        protected string AzureImageName => $"{ImageName}:{Tag}";
 
         protected string ImageTag => "latest";
 

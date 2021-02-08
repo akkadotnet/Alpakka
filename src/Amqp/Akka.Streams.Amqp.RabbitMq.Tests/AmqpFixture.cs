@@ -200,7 +200,7 @@ namespace Akka.Streams.Amqp.Tests
             // create the container
             await Client.Containers.CreateContainerAsync(new CreateContainerParameters
             {
-                Image = $"{ImageName}:{ImageTag}",
+                Image = AmqpImageName,
                 Name = AqmpContainerName,
                 Tty = true,
                 ExposedPorts = exposedPorts,

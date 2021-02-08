@@ -29,7 +29,7 @@ namespace Akka.Streams.Azure.StorageQueue.Tests
         Unknown
     }
 
-    public sealed class AzureFixture : IAsyncLifetime, IDisposable
+    public class AzureFixture : IAsyncLifetime, IDisposable
     {
         private readonly List<string> _variables = new List<string>();
 
@@ -51,7 +51,8 @@ namespace Akka.Streams.Azure.StorageQueue.Tests
         protected readonly string AzuriteContainerName = $"azurite-{Guid.NewGuid():N}";
         protected DockerClient Client;
 
-        protected string ImageName { 
+        protected string ImageName
+        { 
             get
             {
                 switch (OperatingSystem)
@@ -65,6 +66,8 @@ namespace Akka.Streams.Azure.StorageQueue.Tests
                 }
             }
         }
+        protected string Tag => "latest";
+        protected string AzureImageName => $"{ImageName}:{Tag}";
 
         protected string ImageTag => "latest";
 

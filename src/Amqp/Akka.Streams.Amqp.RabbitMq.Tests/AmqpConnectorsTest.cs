@@ -10,6 +10,8 @@ using Akka.Streams.Amqp.RabbitMq;
 using Akka.Streams.Amqp.RabbitMq.Dsl;
 using Akka.Streams.Dsl;
 using Akka.Streams.TestKit;
+using Akka.Util;
+using Akka.Util.Internal;
 using FluentAssertions;
 using Xunit;
 using Xunit.Abstractions;
@@ -263,15 +265,16 @@ namespace Akka.Streams.Amqp.Tests
                                             .Select(msg => (branch: fanoutBranch, message: msg.Bytes.ToString())))
                           );
 
-            var completions = Enumerable.Range(0, fanoutSize).ToDictionary(branch => branch, _ => new TaskCompletionSource<Done>());
-
-            mergedSources.RunForeach(msg =>
-            {
-                completions[msg.Item1].TrySetResult(Done.Instance);
-            }, _mat);
+            var seenBranches = ImmutableHashSet.Create<int>();
+            mergedSources.RunForeach(e => seenBranches = seenBranches.Add(e.Item1), _mat);
 
             Source.Repeat("stuff").Select(ByteString.FromString).RunWith(amqpSink, _mat);
-            AwaitCondition(() => completions.All(c => c.Value.Task.IsCompleted), TimeSpan.FromSeconds(5));
+            
+            // wait for each branch to be discovered, one by one
+            for (var expectedSeenCount = 1; expectedSeenCount <= fanoutSize; ++expectedSeenCount)
+            {
+                AwaitCondition(() => seenBranches.Count >= expectedSeenCount, TimeSpan.FromSeconds(5));
+            }
         }
 
         [Fact]

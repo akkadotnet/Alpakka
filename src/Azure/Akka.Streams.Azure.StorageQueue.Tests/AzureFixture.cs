@@ -67,7 +67,10 @@ namespace Akka.Streams.Azure.StorageQueue.Tests
             }
         }
         protected string Tag => "latest";
-        protected string AzureImageName => $"{ImageName}:{Tag}";
+
+        protected string ImageTag => "latest";
+
+        protected string AzureImageName => $"{ImageName}:{ImageTag}";
 
         private bool? _useDocker = null;
         public bool UseDockerContainer
@@ -169,20 +172,17 @@ namespace Akka.Streams.Azure.StorageQueue.Tests
 
             var images = await Client.Images.ListImagesAsync(new ImagesListParameters
             {
-                Filters = new Dictionary<string, IDictionary<string, bool>>
+                Filters = new Dictionary<string, IDictionary<string, bool>>()
                 {
+                    ["reference"] = new Dictionary<string, bool>()
                     {
-                        "reference",
-                        new Dictionary<string, bool>
-                        {
-                            {AzureImageName, true}
-                        }
+                        [AzureImageName] = true
                     }
                 }
             });
             if (images.Count == 0)
                 await Client.Images.CreateImageAsync(
-                    new ImagesCreateParameters { FromImage = AzureImageName, Tag = "latest" }, null,
+                    new ImagesCreateParameters { FromImage = ImageName, Tag = ImageTag }, null,
                     new Progress<JSONMessage>(message =>
                     {
                         Console.WriteLine(!string.IsNullOrEmpty(message.ErrorMessage)
@@ -210,7 +210,7 @@ namespace Akka.Streams.Azure.StorageQueue.Tests
             // create the container
             await Client.Containers.CreateContainerAsync(new CreateContainerParameters
             {
-                Image = AzureImageName,
+                Image = ImageName,
                 Name = AzuriteContainerName,
                 Tty = true,
                 ExposedPorts = exposedPorts,

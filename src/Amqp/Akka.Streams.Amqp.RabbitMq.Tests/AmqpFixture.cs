@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Data.Common;
 using System.Diagnostics;
@@ -62,16 +62,16 @@ namespace Akka.Streams.Amqp.Tests
                 switch (OperatingSystem)
                 {
                     case OperatingSystem.Windows:
-                        return "arkatufus/rabbitmq";
+                        return "akkadotnet/rabbitmq";
                     case OperatingSystem.Linux:
-                        return "arkatufus/rabbitmq-linux";
+                        return "akkadotnet/rabbitmq-linux";
                     default:
                         throw new NotSupportedException($"Unsupported OS [{RuntimeInformation.OSDescription}]");
                 }
             }
         }
 
-        protected string Tag
+        protected string ImageTag
         {
             get
             {
@@ -87,7 +87,7 @@ namespace Akka.Streams.Amqp.Tests
             }
         }
 
-        protected string AmqpImageName => $"{ImageName}:{Tag}";
+        protected string AmpqImageName => $"{ImageName}:{ImageTag}";
 
         private bool? _useDocker = null;
         public bool UseDockerContainer
@@ -165,21 +165,17 @@ namespace Akka.Streams.Amqp.Tests
 
             var images = await Client.Images.ListImagesAsync(new ImagesListParameters
             {
-                Filters = new Dictionary<string, IDictionary<string, bool>>
+                Filters = new Dictionary<string, IDictionary<string, bool>>()
                 {
+                    ["reference"] = new Dictionary<string, bool>()
                     {
-                        "reference",
-                        new Dictionary<string, bool>
-                        {
-                            {AmqpImageName, true}
-                        }
+                        [AmpqImageName] = true
                     }
                 }
             });
-
             if (images.Count == 0)
                 await Client.Images.CreateImageAsync(
-                    new ImagesCreateParameters { FromImage = ImageName, Tag = Tag }, null,
+                    new ImagesCreateParameters { FromImage = ImageName, Tag = ImageTag }, null,
                     new Progress<JSONMessage>(message =>
                     {
                         Console.WriteLine(!string.IsNullOrEmpty(message.ErrorMessage)
@@ -204,7 +200,7 @@ namespace Akka.Streams.Amqp.Tests
             // create the container
             await Client.Containers.CreateContainerAsync(new CreateContainerParameters
             {
-                Image = AmqpImageName,
+                Image = AmpqImageName,
                 Name = AqmpContainerName,
                 Tty = true,
                 ExposedPorts = exposedPorts,

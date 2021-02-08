@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
@@ -262,20 +263,15 @@ namespace Akka.Streams.Amqp.Tests
                                             .Select(msg => (branch: fanoutBranch, message: msg.Bytes.ToString())))
                           );
 
-            var completion = new TaskCompletionSource<Done>();
+            var completions = Enumerable.Range(0, fanoutSize).ToDictionary(branch => branch, _ => new TaskCompletionSource<Done>());
 
-            mergedSources.RunWith(Sink.Aggregate<(int branch, string msg), ImmutableHashSet<int>>(ImmutableHashSet.Create<int>(), (seen, t) =>
+            mergedSources.RunForeach(msg =>
             {
-                if (seen.Count == fanoutSize) completion.SetResult(Done.Instance);
-                return seen.Add(t.branch);
-            }), _mat);
-
-            Sys.Scheduler.Advanced.ScheduleOnce(
-                TimeSpan.FromSeconds(5),
-                () => completion.TrySetException(new Exception("Did not get at least one element from every fanout branch")));
+                completions[msg.Item1].TrySetResult(Done.Instance);
+            }, _mat);
 
             Source.Repeat("stuff").Select(ByteString.FromString).RunWith(amqpSink, _mat);
-            completion.Task.Result.Should().Be(Done.Instance);
+            AwaitCondition(() => completions.All(c => c.Value.Task.IsCompleted), TimeSpan.FromSeconds(5));
         }
 
         [Fact]

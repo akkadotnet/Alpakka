@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Data.Common;
 using System.Diagnostics;
@@ -62,9 +62,9 @@ namespace Akka.Streams.Amqp.Tests
                 switch (OperatingSystem)
                 {
                     case OperatingSystem.Windows:
-                        return "arkatufus/rabbitmq";
+                        return "akkadotnet/rabbitmq";
                     case OperatingSystem.Linux:
-                        return "arkatufus/rabbitmq-linux";
+                        return "akkadotnet/rabbitmq-linux";
                     default:
                         throw new NotSupportedException($"Unsupported OS [{RuntimeInformation.OSDescription}]");
                 }

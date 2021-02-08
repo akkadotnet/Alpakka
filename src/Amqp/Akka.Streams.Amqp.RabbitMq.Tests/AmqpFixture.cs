@@ -55,7 +55,7 @@ namespace Akka.Streams.Amqp.Tests
         protected readonly string AqmpContainerName = $"amqp-{Guid.NewGuid():N}";
         protected DockerClient Client;
 
-        protected string AmqpImageName 
+        protected string ImageName 
         {
             get
             {
@@ -71,7 +71,7 @@ namespace Akka.Streams.Amqp.Tests
             }
         }
 
-        protected string AmqpImageTag
+        protected string ImageTag
         {
             get
             {
@@ -86,6 +86,8 @@ namespace Akka.Streams.Amqp.Tests
                 }
             }
         }
+
+        protected string AmpqImageName => $"{ImageName}:{ImageTag}";
 
         private bool? _useDocker = null;
         public bool UseDockerContainer
@@ -161,10 +163,19 @@ namespace Akka.Streams.Amqp.Tests
 
             Client = Config.CreateClient();
 
-            var images = await Client.Images.ListImagesAsync(new ImagesListParameters { MatchName = AmqpImageName });
+            var images = await Client.Images.ListImagesAsync(new ImagesListParameters
+            {
+                Filters = new Dictionary<string, IDictionary<string, bool>>()
+                {
+                    ["reference"] = new Dictionary<string, bool>()
+                    {
+                        [AmpqImageName] = true
+                    }
+                }
+            });
             if (images.Count == 0)
                 await Client.Images.CreateImageAsync(
-                    new ImagesCreateParameters { FromImage = AmqpImageName, Tag = AmqpImageTag }, null,
+                    new ImagesCreateParameters { FromImage = ImageName, Tag = ImageTag }, null,
                     new Progress<JSONMessage>(message =>
                     {
                         Console.WriteLine(!string.IsNullOrEmpty(message.ErrorMessage)
@@ -189,7 +200,7 @@ namespace Akka.Streams.Amqp.Tests
             // create the container
             await Client.Containers.CreateContainerAsync(new CreateContainerParameters
             {
-                Image = $"{AmqpImageName}:{AmqpImageTag}",
+                Image = $"{ImageName}:{ImageTag}",
                 Name = AqmpContainerName,
                 Tty = true,
                 ExposedPorts = exposedPorts,

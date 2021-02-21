@@ -1,64 +1,43 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Microsoft.ServiceBus.Messaging;
+using Azure.Messaging.ServiceBus;
 
 namespace Akka.Streams.Azure.ServiceBus
 {
     internal interface IBusClient
     {
-        Task<IEnumerable<BrokeredMessage>> ReceiveBatchAsync(int messageCount, TimeSpan serverWaitTime);
+        Task<IReadOnlyList<ServiceBusReceivedMessage>> ReceiveBatchAsync(int messageCount, TimeSpan serverWaitTime);
 
-        Task SendBatchAsync(IEnumerable<BrokeredMessage> messages);
+        Task SendBatchAsync(IEnumerable<ServiceBusMessage> messages);
     }
     
-    internal sealed class QueueClientWrapper : IBusClient
+    internal sealed class ServiceBusClientWrapper : IBusClient
     {
-        private readonly QueueClient _client;
+        private readonly ServiceBusSender _sender;
+        private readonly ServiceBusReceiver _receiver;
 
-        public QueueClientWrapper(QueueClient client)
+        public ServiceBusClientWrapper(ServiceBusReceiver receiver)
         {
-            _client = client;
+            _receiver = receiver;
         }
 
-        public Task<IEnumerable<BrokeredMessage>> ReceiveBatchAsync(int messageCount, TimeSpan serverWaitTime)
-            => _client.ReceiveBatchAsync(messageCount, serverWaitTime);
+        public ServiceBusClientWrapper(ServiceBusSender sender)
+        {
+            _sender = sender;
+        }
 
-        public Task SendBatchAsync(IEnumerable<BrokeredMessage> messages) => _client.SendBatchAsync(messages);
+        public ServiceBusClientWrapper(ServiceBusSender sender, ServiceBusReceiver receiver)
+        {
+            _sender = sender;
+            _receiver = receiver;
+        }
+        public ServiceBusReceiver Receiver { get; }
+
+        public Task<IReadOnlyList<ServiceBusReceivedMessage>> ReceiveBatchAsync(int messageCount, TimeSpan serverWaitTime)
+            => _receiver?.ReceiveMessagesAsync(messageCount, serverWaitTime) ?? throw new ArgumentException("No service bus receiver configured");
+
+        public Task SendBatchAsync(IEnumerable<ServiceBusMessage> messages) => _sender?.SendMessagesAsync(messages) ?? throw new ArgumentException("No service bus sender configured");
     }
 
-    internal sealed class SubscriptionClientWrapper : IBusClient
-    {
-        private readonly SubscriptionClient _client;
-
-        public SubscriptionClientWrapper(SubscriptionClient client)
-        {
-            _client = client;
-        }
-
-        public Task<IEnumerable<BrokeredMessage>> ReceiveBatchAsync(int messageCount, TimeSpan serverWaitTime)
-            => _client.ReceiveBatchAsync(messageCount, serverWaitTime);
-
-        public Task SendBatchAsync(IEnumerable<BrokeredMessage> messages)
-        {
-            throw new NotImplementedException();
-        }
-    }
-
-    internal sealed class TopicClientWrapper : IBusClient
-    {
-        private readonly TopicClient _client;
-
-        public TopicClientWrapper(TopicClient client)
-        {
-            _client = client;
-        }
-
-        public Task<IEnumerable<BrokeredMessage>> ReceiveBatchAsync(int messageCount, TimeSpan serverWaitTime)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task SendBatchAsync(IEnumerable<BrokeredMessage> messages) => _client.SendBatchAsync(messages);
-    }
 }

@@ -14,7 +14,7 @@
         <PackageReference Include="xunit" Version="$(XunitVersion)" />
         <PackageReference Include="xunit.runner.visualstudio" Version="$(XunitRunnerVersion)" />
         <PackageReference Include="Docker.DotNet" Version="$(DockerDotNetVersion)" />
-        <PackageReference Include="coverlet.collector" Version="3.0.1" />
+        <PackageReference Include="coverlet.collector" Version="3.0.3" />
     </ItemGroup>
 
     <ItemGroup>

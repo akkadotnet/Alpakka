@@ -14,7 +14,7 @@
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="$(TestSdkVersion)" />
         <PackageReference Include="xunit" Version="$(XunitVersion)" />
         <PackageReference Include="xunit.runner.visualstudio" Version="$(XunitVersion)" />
-        <PackageReference Include="coverlet.collector" Version="3.0.1" />
+        <PackageReference Include="coverlet.collector" Version="3.0.3" />
         <PackageReference Include="Docker.DotNet" Version="3.125.4" />
     </ItemGroup>
 

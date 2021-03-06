@@ -242,6 +242,7 @@ namespace Akka.Streams.Amqp.RabbitMq
         public TimeSpan? NetworkRecoveryInterval { get; }
         public bool? AutomaticRecoveryEnabled { get; }
         public bool? TopologyRecoveryEnabled { get; }
+        public string ClientProvidedName { get; set; }
 
         public static AmqpConnectionDetails Create(string host, int port) => 
             new AmqpConnectionDetails(new List<(string host, int port)> {(host, port)});

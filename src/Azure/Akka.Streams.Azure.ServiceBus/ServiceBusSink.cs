@@ -22,7 +22,7 @@ namespace Akka.Streams.Azure.ServiceBus
             private readonly ServiceBusSink _sink;
             private readonly Decider _decider;
             private readonly TaskCompletionSource<NotUsed> _completion;
-            private Action<Tuple<Task, List<ServiceBusMessage>>> _batchSendCallback;
+            private Action<(Task, List<ServiceBusMessage>)> _batchSendCallback;
             private bool _isSendInProgress;
 
             public Logic(ServiceBusSink sink, Attributes inheritedAttributes, TaskCompletionSource<NotUsed> completion) : base(sink.Shape)
@@ -52,7 +52,7 @@ namespace Akka.Streams.Azure.ServiceBus
             {
                 // Keep going even if the upstream has finished so that we can process the task from the last batch
                 SetKeepGoing(true);
-                _batchSendCallback = GetAsyncCallback<Tuple<Task, List<ServiceBusMessage>>>(OnBatchSend);
+                _batchSendCallback = GetAsyncCallback<(Task, List<ServiceBusMessage>)>(OnBatchSend);
                 // Request the first batch
                 Pull(_sink.In);
             }
@@ -60,10 +60,11 @@ namespace Akka.Streams.Azure.ServiceBus
             private void TrySend(List<ServiceBusMessage> messages)
             {
                 _isSendInProgress = true;
-                _sink._client.SendBatchAsync(messages).ContinueWith(t => _batchSendCallback(Tuple.Create(t, messages)));
+                _sink._client.SendMessagesAsync(messages)
+                    .ContinueWith(t => _batchSendCallback((t, messages)));
             }
 
-            private void OnBatchSend(Tuple<Task, List<ServiceBusMessage>> t)
+            private void OnBatchSend((Task, List<ServiceBusMessage>) t)
             {
                 _isSendInProgress = false;
                 var task = t.Item1;
@@ -75,7 +76,7 @@ namespace Akka.Streams.Azure.ServiceBus
                     {
                         case Directive.Stop:
                             // Throw
-                            _completion.TrySetException(task.Exception);
+                            _completion.TrySetException(task.Exception ?? new Exception("Batch send failed."));
                             FailStage(task.Exception);
                             break;
                         case Directive.Resume:
@@ -121,21 +122,12 @@ namespace Akka.Streams.Azure.ServiceBus
             return Sink.FromGraph(new ServiceBusSink(client));
         }
 
-        private readonly IBusClient _client;
+        private readonly ServiceBusSender _client;
 
-        private ServiceBusSink(IBusClient client)
+        internal ServiceBusSink(ServiceBusSender client)
         {
             _client = client;
             Shape = new SinkShape<IEnumerable<ServiceBusMessage>>(In);
-        }
-
-        /// <summary>
-        /// Create a new instance of the <see cref="ServiceBusSink"/> 
-        /// </summary>
-        /// <param name="client">The client</param>
-        public ServiceBusSink(ServiceBusSender client) : this(new ServiceBusClientWrapper(client))
-        {
-
         }
 
         public Inlet<IEnumerable<ServiceBusMessage>> In { get; } = new Inlet<IEnumerable<ServiceBusMessage>>("EventHubSink.In");

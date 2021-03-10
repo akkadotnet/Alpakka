@@ -18,7 +18,7 @@ namespace Akka.Streams.Azure.ServiceBus
         /// <param name="client">The client</param>
         /// <param name="maxMessageCount">The maximum number of messages to receive in a batch</param>
         /// <param name="serverWaitTime">The time span that the server will wait for the message batch to arrive before it times out. Default = 3 seconds</param>
-        /// <param name="pollInterval">The intervall in witch the queue should be polled if it is empty. Default = 10 seconds</param>
+        /// <param name="pollInterval">The interval in witch the queue should be polled if it is empty. Default = 10 seconds</param>
         public static Source<ServiceBusReceivedMessage, NotUsed> Create(ServiceBusReceiver client, int maxMessageCount = 100, TimeSpan? serverWaitTime = null, TimeSpan? pollInterval = null)
         {
             return Create(client, msg => msg, maxMessageCount, serverWaitTime, pollInterval);
@@ -31,30 +31,27 @@ namespace Akka.Streams.Azure.ServiceBus
         /// <param name="extractor">Extracts the message from the <see cref="ServiceBusReceivedMessage"/></param>
         /// <param name="maxMessageCount">The maximum number of messages to receive in a batch</param>
         /// <param name="serverWaitTime">The time span that the server will wait for the message batch to arrive before it times out. Default = 3 seconds</param>
-        /// <param name="pollInterval">The intervall in witch the queue should be polled if it is empty. Default = 10 seconds</param>
+        /// <param name="pollInterval">The interval in witch the queue should be polled if it is empty. Default = 10 seconds</param>
         public static Source<T, NotUsed> Create<T>(ServiceBusReceiver client, Func<ServiceBusReceivedMessage, T> extractor, int maxMessageCount = 100, TimeSpan? serverWaitTime = null, TimeSpan? pollInterval = null)
         {
-            return Source.FromGraph(new ServiceBusSource<T>(new ServiceBusClientWrapper(client), maxMessageCount, serverWaitTime, pollInterval, extractor));
+            return Source.FromGraph(new ServiceBusSource<T>(client, maxMessageCount, serverWaitTime, pollInterval, extractor));
         }
 
         /// <summary>
         /// Creates a <see cref="Source{TOut,TMat}"/> for the Azure ServiceBus.
         /// <para>
-        /// Note: The message of type <typeparamref name="T"/> is extracted via <see cref="ServiceBusReceivedMessage.Body"/> if a <see cref="messageHandler"/> is passed in, it will use that to extract the message, otherwise it will use <see cref="ServiceBusReceivedMessage.Body.ToObjectFromJson<typeparamref name="T"/>"/> and the <see cref="ServiceBusReceivedMessage"/> is automatically completed.
+        /// Note: The message of type <typeparam name="T"/> is extracted via <see cref="BinaryData.ToObjectFromJson{T}"/> and the <see cref="ServiceBusReceivedMessage"/> is automatically completed.
         /// </para>
         /// </summary>
         /// <param name="client">The client</param>
         /// <param name="maxMessageCount">The maximum number of messages to receive in a batch</param>
         /// <param name="serverWaitTime">The time span that the server will wait for the message batch to arrive before it times out. Default = 3 seconds</param>
-        /// <param name="pollInterval">The intervall in witch the queue should be polled if it is empty. Default = 10 seconds</param>
-        /// <param name="messageHandler">Custom handler to extract the message from <see cref="ServiceBusReceivedMessage.Body"/>. Default = uses <see cref="ServiceBusReceivedMessage.Body.ToObjectFromJson<typeparamref name="T"/>"/></param>
-        public static Source<T, NotUsed> Create<T>(ServiceBusReceiver client, int maxMessageCount = 100, TimeSpan? serverWaitTime = null, TimeSpan? pollInterval = null, Func<ServiceBusReceivedMessage, T> messageHandler = null)
+        /// <param name="pollInterval">The interval in witch the queue should be polled if it is empty. Default = 10 seconds</param>
+        public static Source<T, NotUsed> Create<T>(ServiceBusReceiver client, int maxMessageCount = 100, TimeSpan? serverWaitTime = null, TimeSpan? pollInterval = null)
         {
             return Create(client, msg =>
             {
-                var result = messageHandler != null 
-                    ? messageHandler.Invoke(msg)
-                    : msg.Body.ToObjectFromJson<T>();
+                var result = msg.Body.ToObjectFromJson<T>();
                 client.CompleteMessageAsync(msg);
                 return result;
             }, maxMessageCount, serverWaitTime, pollInterval);
@@ -88,7 +85,7 @@ namespace Akka.Streams.Azure.ServiceBus
                 => _messagesReceived = GetAsyncCallback<Task<IReadOnlyList<ServiceBusReceivedMessage>>>(OnMessagesReceived);
             
             private void PullQueue() =>
-                _source._client.ReceiveBatchAsync(_source._maxMessageCount, _source._serverWaitTime)
+                _source._client.ReceiveMessagesAsync(_source._maxMessageCount, _source._serverWaitTime)
                     .ContinueWith(_messagesReceived);
 
             private void OnMessagesReceived(Task<IReadOnlyList<ServiceBusReceivedMessage>> task)
@@ -117,13 +114,18 @@ namespace Akka.Streams.Azure.ServiceBus
 
         #endregion
 
-        private readonly IBusClient _client;
+        private readonly ServiceBusReceiver _client;
         private readonly int _maxMessageCount;
         private readonly TimeSpan _serverWaitTime;
         private readonly TimeSpan _pollInterval;
         private readonly Func<ServiceBusReceivedMessage, T> _extractor;
 
-        internal ServiceBusSource(IBusClient client, int maxMessageCount, TimeSpan? serverWaitTime, TimeSpan? pollInterval, Func<ServiceBusReceivedMessage, T> extractor)
+        internal ServiceBusSource(
+            ServiceBusReceiver client, 
+            int maxMessageCount, 
+            TimeSpan? serverWaitTime, 
+            TimeSpan? pollInterval, 
+            Func<ServiceBusReceivedMessage, T> extractor)
         {
             _client = client;
             _maxMessageCount = maxMessageCount;

@@ -6,14 +6,14 @@ using Akka.Streams.Azure.Utils;
 using Akka.Streams.Dsl;
 using Akka.Streams.Stage;
 using Akka.Streams.Supervision;
-using Microsoft.ServiceBus.Messaging;
+using Azure.Messaging.ServiceBus;
 
 namespace Akka.Streams.Azure.ServiceBus
 {
     /// <summary>
     /// A <see cref="Sink{TIn,TMat}"/> for the Azure ServiceBus
     /// </summary>
-    public class ServiceBusSink : GraphStageWithMaterializedValue<SinkShape<IEnumerable<BrokeredMessage>>, Task>
+    public class ServiceBusSink : GraphStageWithMaterializedValue<SinkShape<IEnumerable<ServiceBusMessage>>, Task>
     {
         #region Logic
 
@@ -22,7 +22,7 @@ namespace Akka.Streams.Azure.ServiceBus
             private readonly ServiceBusSink _sink;
             private readonly Decider _decider;
             private readonly TaskCompletionSource<NotUsed> _completion;
-            private Action<Tuple<Task, List<BrokeredMessage>>> _batchSendCallback;
+            private Action<Tuple<Task, List<ServiceBusMessage>>> _batchSendCallback;
             private bool _isSendInProgress;
 
             public Logic(ServiceBusSink sink, Attributes inheritedAttributes, TaskCompletionSource<NotUsed> completion) : base(sink.Shape)
@@ -52,18 +52,18 @@ namespace Akka.Streams.Azure.ServiceBus
             {
                 // Keep going even if the upstream has finished so that we can process the task from the last batch
                 SetKeepGoing(true);
-                _batchSendCallback = GetAsyncCallback<Tuple<Task, List<BrokeredMessage>>>(OnBatchSend);
+                _batchSendCallback = GetAsyncCallback<Tuple<Task, List<ServiceBusMessage>>>(OnBatchSend);
                 // Request the first batch
                 Pull(_sink.In);
             }
 
-            private void TrySend(List<BrokeredMessage> messages)
+            private void TrySend(List<ServiceBusMessage> messages)
             {
                 _isSendInProgress = true;
                 _sink._client.SendBatchAsync(messages).ContinueWith(t => _batchSendCallback(Tuple.Create(t, messages)));
             }
 
-            private void OnBatchSend(Tuple<Task, List<BrokeredMessage>> t)
+            private void OnBatchSend(Tuple<Task, List<ServiceBusMessage>> t)
             {
                 _isSendInProgress = false;
                 var task = t.Item1;
@@ -116,17 +116,7 @@ namespace Akka.Streams.Azure.ServiceBus
         /// </summary>
         /// <param name="client">The client</param>
         /// <returns>The <see cref="Sink{TIn,TMat}"/> for the Azure ServiceBus</returns>
-        public static Sink<IEnumerable<BrokeredMessage>, Task> Create(QueueClient client)
-        {
-            return Sink.FromGraph(new ServiceBusSink(client));
-        }
-
-        /// <summary>
-        /// Creates a <see cref="Sink{TIn,TMat}"/> for the Azure ServiceBus
-        /// </summary>
-        /// <param name="client">The client</param>
-        /// <returns>The <see cref="Sink{TIn,TMat}"/> for the Azure ServiceBus</returns>
-        public static Sink<IEnumerable<BrokeredMessage>, Task> Create(TopicClient client)
+        public static Sink<IEnumerable<ServiceBusMessage>, Task> Create(ServiceBusSender client)
         {
             return Sink.FromGraph(new ServiceBusSink(client));
         }
@@ -136,31 +126,21 @@ namespace Akka.Streams.Azure.ServiceBus
         private ServiceBusSink(IBusClient client)
         {
             _client = client;
-
-            Shape = new SinkShape<IEnumerable<BrokeredMessage>>(In);
+            Shape = new SinkShape<IEnumerable<ServiceBusMessage>>(In);
         }
 
         /// <summary>
         /// Create a new instance of the <see cref="ServiceBusSink"/> 
         /// </summary>
         /// <param name="client">The client</param>
-        public ServiceBusSink(QueueClient client) : this(new QueueClientWrapper(client))
+        public ServiceBusSink(ServiceBusSender client) : this(new ServiceBusClientWrapper(client))
         {
 
         }
 
-        /// <summary>
-        /// Create a new instance of the <see cref="ServiceBusSink"/> 
-        /// </summary>
-        /// <param name="client">The client</param>
-        public ServiceBusSink(TopicClient client) : this(new TopicClientWrapper(client))
-        {
+        public Inlet<IEnumerable<ServiceBusMessage>> In { get; } = new Inlet<IEnumerable<ServiceBusMessage>>("EventHubSink.In");
 
-        }
-
-        public Inlet<IEnumerable<BrokeredMessage>> In { get; } = new Inlet<IEnumerable<BrokeredMessage>>("EventHubSink.In");
-
-        public override SinkShape<IEnumerable<BrokeredMessage>> Shape { get; }
+        public override SinkShape<IEnumerable<ServiceBusMessage>> Shape { get; }
 
         protected override Attributes InitialAttributes { get; } = Attributes.CreateName("EventHubSink");
 

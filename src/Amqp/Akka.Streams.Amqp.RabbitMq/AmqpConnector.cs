@@ -25,6 +25,10 @@ namespace Akka.Streams.Amqp.RabbitMq
                         factory.HostName = details.HostAndPortList[0].host;
                         factory.Port = details.HostAndPortList[0].port;
                     }
+                    if (details.ClientProvidedName != null)
+                    {
+                        factory.ClientProvidedName = details.ClientProvidedName;
+                    }
                     if (details.Credentials.HasValue)
                     {
                         factory.UserName = details.Credentials.Value.Username;

@@ -1,0 +1,74 @@
+version: 2
+updates:
+- package-ecosystem: nuget
+  directory: "/"
+  schedule:
+    interval: daily
+  open-pull-requests-limit: 10
+  ignore:
+  - dependency-name: AWSSDK.SQS
+    versions:
+    - 3.5.1.13
+    - 3.5.1.14
+    - 3.5.1.15
+    - 3.5.1.16
+    - 3.5.1.17
+    - 3.5.1.18
+    - 3.5.1.21
+    - 3.5.1.24
+    - 3.7.0.10
+    - 3.7.0.11
+    - 3.7.0.12
+    - 3.7.0.13
+    - 3.7.0.3
+    - 3.7.0.4
+    - 3.7.0.6
+    - 3.7.0.7
+    - 3.7.0.9
+  - dependency-name: AWSSDK.SimpleNotificationService
+    versions:
+    - 3.5.1.36
+    - 3.5.1.37
+    - 3.5.1.38
+    - 3.5.1.39
+    - 3.5.1.40
+    - 3.5.1.41
+    - 3.5.1.44
+    - 3.5.1.47
+    - 3.5.1.48
+    - 3.7.0.10
+    - 3.7.0.11
+    - 3.7.0.12
+    - 3.7.0.3
+    - 3.7.0.7
+    - 3.7.0.9
+  - dependency-name: AWSSDK.Kinesis
+    versions:
+    - 3.5.0.64
+    - 3.5.0.65
+    - 3.5.0.66
+    - 3.5.0.67
+    - 3.5.0.68
+    - 3.5.0.69
+    - 3.5.0.72
+    - 3.5.0.75
+    - 3.5.0.76
+    - 3.7.0
+    - 3.7.0.11
+    - 3.7.0.2
+    - 3.7.0.6
+    - 3.7.0.8
+    - 3.7.0.9
+  - dependency-name: Microsoft.AspNetCore.SignalR.Client
+    versions:
+    - 5.0.2
+    - 5.0.3
+    - 5.0.4
+  - dependency-name: Microsoft.AspNetCore.Mvc.Testing
+    versions:
+    - 5.0.2
+    - 5.0.3
+    - 5.0.4
+  - dependency-name: coverlet.collector
+    versions:
+    - 3.0.2

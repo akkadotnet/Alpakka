@@ -19,7 +19,7 @@
     <NetFrameworkTestVersion>net461</NetFrameworkTestVersion>
     <XunitVersion>2.4.1</XunitVersion>
     <XunitRunnerVersion>2.4.3</XunitRunnerVersion>
-    <FluentAssertionsVersion>5.10.3</FluentAssertionsVersion>
+    <FluentAssertionsVersion>6.0.0</FluentAssertionsVersion>
     <TestSdkVersion>16.10.0</TestSdkVersion>
     <NBenchVersion>2.0.1</NBenchVersion>
     <HyperionVersion>0.9.16</HyperionVersion>

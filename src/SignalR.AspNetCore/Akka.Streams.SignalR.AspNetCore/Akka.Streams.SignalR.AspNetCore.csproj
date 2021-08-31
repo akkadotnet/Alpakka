@@ -4,13 +4,13 @@
     <PropertyGroup>
         <AssemblyTitle>Akka.Streams.SignalR.AspNetCore</AssemblyTitle>
         <Description>SignalR ASP.Net Core connector for Akka.NET Streams</Description>
-        <TargetFramework>$(NetStandardLibVersion)</TargetFramework>
+        <TargetFramework>netcoreapp3.1</TargetFramework>
         <PackageTags>$(AkkaPackageTags);signalr</PackageTags>
     </PropertyGroup>
 
     <ItemGroup>
         <PackageReference Include="Akka.Streams" Version="$(AkkaVersion)" />
-        <PackageReference Include="microsoft.aspnetcore.signalr" Version="1.1.0" />
+        <FrameworkReference Include="Microsoft.AspNetCore.App" />
     </ItemGroup>
 
     <ItemGroup>

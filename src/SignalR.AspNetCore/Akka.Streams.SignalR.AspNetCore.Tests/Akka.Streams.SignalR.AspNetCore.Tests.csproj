@@ -2,7 +2,7 @@
     <Import Project="..\..\common.props" />
 
     <PropertyGroup>
-        <TargetFrameworks>$(NetCoreTestVersion)</TargetFrameworks>
+        <TargetFramework>$(NetCoreTestVersion)</TargetFramework>
         <IsPackable>false</IsPackable>
     </PropertyGroup>
 

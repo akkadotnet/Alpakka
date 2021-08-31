@@ -26,10 +26,10 @@ jobs:
         persistCredentials: true
 
       - task: UseDotNet@2
-        displayName: 'Use .NET Core SDK 3.1.105'
+        displayName: 'Use .NET 5 SDK 5.0.101'
         inputs:
           packageType: sdk
-          version: 3.1.105
+          version: 5.0.101
 
       # Linux
       # Do build

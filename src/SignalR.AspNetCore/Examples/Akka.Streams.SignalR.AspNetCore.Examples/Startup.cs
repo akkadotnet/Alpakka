@@ -20,6 +20,7 @@ namespace SignalRSample
             app
                 .UseStaticFiles()
                 .UseRouting()
+                .UseDefaultFiles()
                 .UseEndpoints(routes =>
                 {
                     routes.MapHub<EchoHub>("/echo");

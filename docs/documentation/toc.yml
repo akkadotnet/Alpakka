@@ -26,6 +26,8 @@
   href: Channels.md
 - name: Comma Separated Values (CSV)
   href: Csv.md
+- name: File
+  href: File.md  
 - name: SignalR
   href: SignalR.md
 - name: SignalR on Asp.NET Core

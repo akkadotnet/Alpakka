@@ -12,7 +12,7 @@
     <NoWarn>$(NoWarn);CS1591;xUnit1013</NoWarn>
   </PropertyGroup>
   <PropertyGroup>
-    <AkkaVersion>1.4.25</AkkaVersion>
+    <AkkaVersion>1.4.27</AkkaVersion>
     <NetStandardLibVersion>netstandard2.0</NetStandardLibVersion>
     <NetFrameworkLibVersion>net461</NetFrameworkLibVersion>
     <NetCoreTestVersion>netcoreapp3.1</NetCoreTestVersion>

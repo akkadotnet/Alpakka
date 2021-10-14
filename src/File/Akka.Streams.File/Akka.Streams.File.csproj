@@ -1,0 +1,16 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="..\..\common.props" />
+
+  <PropertyGroup>
+    <AssemblyTitle>Akka.Streams.File</AssemblyTitle>
+    <Description>The File connectors provide additional connectors for filesystems complementing the sources and sinks for files already included in core Akka.NET Streams</Description>
+    <TargetFramework>$(NetStandardLibVersion)</TargetFramework>
+    <LangVersion>8.0</LangVersion>
+    <PackageTags>$(AkkaPackageTags);azure;file</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Akka.Streams" Version="$(AkkaVersion)" />
+  </ItemGroup>
+
+</Project>

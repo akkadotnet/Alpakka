@@ -272,7 +272,25 @@ namespace Akka.Streams.File.Tests
             foreach (var path in files)
             {
                 sizes.Add(new FileInfo(path).Length);
-                data.Add(ByteString.FromBytes(System.IO.File.ReadAllBytes(path)));
+                var retry = 5;
+                var success = false;
+                while (!success)
+                {
+                    try
+                    {
+                        data.Add(ByteString.FromBytes(System.IO.File.ReadAllBytes(path)));
+                    }
+                    catch (IOException e)
+                    {
+                        retry--;
+                        if (retry == 0)
+                            throw new Exception($"Unable to read file [{path}] after 5 retries", e);
+                        Thread.Sleep(100);
+                        continue;
+                    }
+
+                    success = true;
+                }
                 System.IO.File.Delete(path);
             }
 

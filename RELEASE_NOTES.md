@@ -1,3 +1,6 @@
+#### 1.0.0-beta8 December 20 2021 ####
+* Upgraded to [Akka.NET v1.4.31](https://github.com/akkadotnet/akka.net/releases/tag/1.4.31)
+
 #### 1.0.0-beta7 December 13 2021 ####
 * Upgraded to [Akka.NET v1.4.29](https://github.com/akkadotnet/akka.net/releases/tag/1.4.29)
 * [Akka.Streams.File: Added LogRotatorSink implementation](https://github.com/akkadotnet/Alpakka/pull/664)

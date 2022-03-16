@@ -110,7 +110,46 @@ namespace Akka.Streams.Kinesis.Tests
             probe.ExpectNext("a");
             probe.ExpectNext("b");
         }
+        [Fact]
+        public void KinesisSource_must_poll_for_batched_records_with_multiple_requests()
+        {
+            var data = new[] { "a", "b" };
+            WithGetShardIteratorSuccess();
+            WithGetRecordsSuccess(data);
 
+            var probe = this.CreateManualSubscriberProbe<string>();
+            KinesisSource.Basic(_settings, () => _kinesisClient)
+                .Select(x => Encoding.UTF8.GetString(x.Data.ToArray()))
+                .To(Sink.FromSubscriber(probe))
+                .Run(_materializer);
+
+            var subscription = probe.ExpectSubscription();
+
+            subscription.Request(2);
+            probe.ExpectNext("a");
+            probe.ExpectNext("b");
+
+            probe.ExpectNoMsg(1.Seconds());
+
+            subscription.Request(2);
+            probe.ExpectNext("a");
+            probe.ExpectNext("b");
+
+            var data2 = new[] { "c", "d" };
+            WithGetRecordsSuccess(data2);
+            subscription.Request(4);
+            probe.ExpectNext("a");
+            probe.ExpectNext("b");
+            probe.ExpectNext("c");
+            probe.ExpectNext("d");
+
+            probe.ExpectNoMsg(1.Seconds());
+
+
+            subscription.Request(2);
+            probe.ExpectNext("c");
+            probe.ExpectNext("d");
+        }
         [Fact]
         public void KinesisSource_must_wait_for_request_before_passing_downstream()
         {

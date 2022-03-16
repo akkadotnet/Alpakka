@@ -80,6 +80,7 @@ namespace Akka.Streams.Kinesis
             private readonly Queue<Record> _buffer = new Queue<Record>();
             private StageActor _actor;
             private IActorRef _self;
+            private const string _timerKey = "GET_RECORDS";
 
             public Logic(KinesisSourceStage stage) : base(stage.Shape)
             {
@@ -172,7 +173,7 @@ namespace Akka.Streams.Kinesis
                         }
                         else
                         {
-                            ScheduleOnce("GET_RECORDS", _settings.RefreshInterval);
+                            ScheduleOnce(_timerKey, _settings.RefreshInterval);
                         }
                         break;
                     case GetRecordsFailure f:
@@ -202,7 +203,7 @@ namespace Akka.Streams.Kinesis
 
             protected override void OnTimer(object timerKey)
             {
-                if ("GETRECORDS" == (string)timerKey)
+                if (_timerKey == (string)timerKey)
                     RequestRecords(_self);
             }
         }

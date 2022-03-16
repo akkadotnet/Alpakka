@@ -9,7 +9,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Akka.Streams" Version="1.4.34" />
+        <PackageReference Include="Akka.Streams" Version="$(AkkaVersion)" />
         <PackageReference Include="AWSSDK.Kinesis" Version="3.7.1.5" />
     </ItemGroup>
 </Project>

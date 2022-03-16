@@ -202,7 +202,7 @@ namespace Akka.Streams.Kinesis
 
             protected override void OnTimer(object timerKey)
             {
-                if ("GETRECORDS" == (string)timerKey)
+                if ("GET_RECORDS" == (string)timerKey)
                     RequestRecords(_self);
             }
         }

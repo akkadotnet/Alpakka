@@ -4,12 +4,12 @@
     <PropertyGroup>
         <AssemblyTitle>Akka.Streams.Kinesis</AssemblyTitle>
         <Description>AWS Kinesis adapter for Akka.NET Streams</Description>
-        <TargetFramework>$(NetStandardLibVersion)</TargetFramework>
+        <TargetFramework>net6.0</TargetFramework>
         <PackageTags>$(AkkaPackageTags);Amazon;AWS;Kinesis</PackageTags>
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Akka.Streams" Version="$(AkkaVersion)" />
+        <PackageReference Include="Akka.Streams" Version="1.4.34" />
         <PackageReference Include="AWSSDK.Kinesis" Version="3.7.1.5" />
     </ItemGroup>
 </Project>

@@ -146,9 +146,7 @@ namespace Akka.Streams.Kinesis.Tests
             probe.ExpectNoMsg(1.Seconds());
 
 
-            subscription.Request(4);
-            probe.ExpectNext("a");
-            probe.ExpectNext("b");
+            subscription.Request(2);
             probe.ExpectNext("c");
             probe.ExpectNext("d");
         }

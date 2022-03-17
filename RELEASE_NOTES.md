@@ -1,3 +1,8 @@
+#### 1.0.0-beta9 March 17 2022 ####
+* Upgraded to [Akka.NET v1.4.34](https://github.com/akkadotnet/akka.net/releases/tag/1.4.34)
+* [Fix Kinesis timer key bug](https://github.com/akkadotnet/Alpakka/pull/900)
+* Upgraded all SDK versions
+
 #### 1.0.0-beta8 December 20 2021 ####
 * Upgraded to [Akka.NET v1.4.31](https://github.com/akkadotnet/akka.net/releases/tag/1.4.31)
 

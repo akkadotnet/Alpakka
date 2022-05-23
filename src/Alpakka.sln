@@ -124,6 +124,10 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Akka.Streams.File", "File\A
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Akka.Streams.File.Tests", "File\Akka.Streams.File.Tests\Akka.Streams.File.Tests.csproj", "{D3217296-C1D3-4156-9D88-2752FFCB582C}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Akka.Streams.Azure.EventHub.V5", "Azure\Akka.Streams.Azure.EventHub.V5\Akka.Streams.Azure.EventHub.V5.csproj", "{FB973142-2F74-415E-B588-ADDCBA5F9F99}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Akka.Streams.Azure.EventHub.V5.Examples", "Azure\Examples\Akka.Streams.Azure.EventHub.V5.Examples\Akka.Streams.Azure.EventHub.V5.Examples.csproj", "{FA1BD6C6-8EDE-4671-A11E-0A7A28B49F71}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -254,6 +258,14 @@ Global
 		{D3217296-C1D3-4156-9D88-2752FFCB582C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D3217296-C1D3-4156-9D88-2752FFCB582C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D3217296-C1D3-4156-9D88-2752FFCB582C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FB973142-2F74-415E-B588-ADDCBA5F9F99}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FB973142-2F74-415E-B588-ADDCBA5F9F99}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FB973142-2F74-415E-B588-ADDCBA5F9F99}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FB973142-2F74-415E-B588-ADDCBA5F9F99}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FA1BD6C6-8EDE-4671-A11E-0A7A28B49F71}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FA1BD6C6-8EDE-4671-A11E-0A7A28B49F71}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FA1BD6C6-8EDE-4671-A11E-0A7A28B49F71}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FA1BD6C6-8EDE-4671-A11E-0A7A28B49F71}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -299,6 +311,8 @@ Global
 		{80039FDA-5979-4AA2-B380-08AEE3C6EF26} = {D2FE5AD5-7AF4-4749-82C6-5E1CAD4D0AAF}
 		{6BB0AA85-56F3-4DC3-A65B-B99FCE875D52} = {066C465C-949E-4BDE-8977-E5DCFC75842F}
 		{D3217296-C1D3-4156-9D88-2752FFCB582C} = {066C465C-949E-4BDE-8977-E5DCFC75842F}
+		{FB973142-2F74-415E-B588-ADDCBA5F9F99} = {76BFA9AB-B23C-4B42-8FCC-0CEBED2CBFA9}
+		{FA1BD6C6-8EDE-4671-A11E-0A7A28B49F71} = {00D302CC-A29C-47D2-B2EF-F236656A2608}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {BE1A9436-C6F6-4C73-9EB4-32DEC9C841A5}

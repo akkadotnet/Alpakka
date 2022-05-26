@@ -6,7 +6,7 @@ using Akka.Streams.Azure.Utils;
 using Akka.Streams.Dsl;
 using Akka.Streams.Stage;
 using Akka.Streams.Supervision;
-using Microsoft.ServiceBus.Messaging;
+using Microsoft.Azure.EventHubs;
 
 namespace Akka.Streams.Azure.EventHub
 {
@@ -60,7 +60,7 @@ namespace Akka.Streams.Azure.EventHub
             private void TrySend(List<EventData> events)
             {
                 _isSendInProgress = true;
-                _sink._client.SendBatchAsync(events).ContinueWith(t => _eventsSend(Tuple.Create(t, events)));
+                _sink._client.SendAsync(events).ContinueWith(t => _eventsSend(Tuple.Create(t, events)));
             }
 
             private void OnEventsSend(Tuple<Task, List<EventData>> t)
@@ -122,40 +122,16 @@ namespace Akka.Streams.Azure.EventHub
             return Sink.FromGraph(new EventHubSink(client));
         }
 
-        /// <summary>
-        /// Creates a <see cref="Sink{TIn,TMat}"/> for the Azure EventHub
-        /// </summary>
-        /// <param name="sender">The <see cref="EventHubSender"/> that sends the events to the EventHub</param>
-        /// <returns>The <see cref="Sink{TIn,TMat}"/> for the Azure EventHub</returns>
-        public static Sink<IEnumerable<EventData>, Task> Create(EventHubSender sender)
-        {
-            return Sink.FromGraph(new EventHubSink(sender));
-        }
-
-        private readonly IHubClient _client;
-
-        private EventHubSink(IHubClient client)
-        {
-            _client = client;
-            Shape = new SinkShape<IEnumerable<EventData>>(In);
-        }
+        private readonly EventHubClient _client;
 
         /// <summary>
         /// Create a new instance of the <see cref="EventHubSink"/>
         /// </summary>
         /// <param name="client">The <see cref="EventHubClient"/> that sends the events to the EventHub</param></param>
-        public EventHubSink(EventHubClient client) : this(new HubClientWrapper(client))
+        public EventHubSink(EventHubClient client)
         {
-            
-        }
-
-        /// <summary>
-        /// Create a new instance of the <see cref="EventHubSink"/>
-        /// </summary>
-        /// <param name="sender">The <see cref="EventHubSender"/> that sends the events to the EventHub</param>
-        public EventHubSink(EventHubSender sender) : this(new HubSenderWrapper(sender))
-        {
-            
+            _client = client;
+            Shape = new SinkShape<IEnumerable<EventData>>(In);
         }
 
         public Inlet<IEnumerable<EventData>> In { get; } = new Inlet<IEnumerable<EventData>>("EventHubSink.In");

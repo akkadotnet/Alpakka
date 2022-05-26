@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Threading;
 using System.Threading.Tasks;
+using Akka.Streams.Azure.Utils;
 using Akka.Streams.Dsl;
 using Akka.Streams.Stage;
+using Akka.Streams.Supervision;
 using Akka.Util;
-using Microsoft.ServiceBus.Messaging;
+using Microsoft.Azure.EventHubs;
+using Microsoft.Azure.EventHubs.Processor;
 
 namespace Akka.Streams.Azure.EventHub
 {
@@ -38,41 +40,50 @@ namespace Akka.Streams.Azure.EventHub
         {
             private readonly AtomicBoolean _started = new AtomicBoolean();
             private readonly EventHubSource _source;
-            private Action<TaskCompletionSource<NotUsed>> _openCallback;
-            private Action<TaskCompletionSource<NotUsed>> _closeCallback;
+            private Action<(TaskCompletionSource<NotUsed>, PartitionContext)> _openCallback;
+            private Action<(TaskCompletionSource<NotUsed>, PartitionContext, CloseReason)> _closeCallback;
             private Action<ProcessContext> _processCallback;
+            private Action<(TaskCompletionSource<NotUsed>, PartitionContext, Exception)> _errorCallback;
             private TaskCompletionSource<NotUsed> _pendingCompletion;
             private Queue<EventData> _pendingEvents;
             private PartitionContext _currentContext;
             private int _partitionCount;
+            private readonly Decider _decider;
 
-            public Logic(EventHubSource source) : base(source.Shape)
+            public Logic(EventHubSource source, Attributes inheritedAttributes) : base(source.Shape)
             {
                 _source = source;
+                _decider = inheritedAttributes.GetDeciderOrDefault();
                 SetHandler(source.Out, TryPush);
             }
 
             public override void PreStart()
             {
-                _openCallback = GetAsyncCallback<TaskCompletionSource<NotUsed>>(OnOpen);
-                _closeCallback = GetAsyncCallback<TaskCompletionSource<NotUsed>>(OnClose);
+                _openCallback = GetAsyncCallback<(TaskCompletionSource<NotUsed>, PartitionContext)>(OnOpen);
+                _closeCallback = GetAsyncCallback<(TaskCompletionSource<NotUsed>, PartitionContext, CloseReason)>(OnClose);
                 _processCallback = GetAsyncCallback<ProcessContext>(OnProcessEvents);
+                _errorCallback = GetAsyncCallback<(TaskCompletionSource<NotUsed>, PartitionContext, Exception)>(OnError);
                 _started.CompareAndSet(false, true);
             }
 
-            public Task OpenAsync(PartitionContext context)
+            public async Task OpenAsync(PartitionContext context)
             {
                 // It's possible that PreStart wasn't called before this code executes
                 while (!_started)
-                    Thread.Sleep(500);
+                    await Task.Delay(500);
 
                 var completion = new TaskCompletionSource<NotUsed>();
-                _openCallback(completion);
-                return completion.Task;
+                _openCallback((completion, context));
+                await completion.Task;
             }
 
-            private void OnOpen(TaskCompletionSource<NotUsed> completion)
+            private void OnOpen((TaskCompletionSource<NotUsed>, PartitionContext) args)
             {
+                var (completion, context) = args;
+                
+                if(Log.IsDebugEnabled)
+                    Log.Debug("Partition initializing. Partition: [{0}]", context.ToString());
+                
                 // We need to count the partitions to close the stage only on the last close call,
                 // otherwise further calls to the _closeCallback wouldn't be handled because they
                 // are moved to DeadLetters and the close task is never completed
@@ -80,33 +91,66 @@ namespace Akka.Streams.Azure.EventHub
                 completion.TrySetResult(NotUsed.Instance);
             }
 
-            public Task CloseAsync(PartitionContext context, CloseReason reason)
+            public async Task CloseAsync(PartitionContext context, CloseReason reason)
             {
                 var completion = new TaskCompletionSource<NotUsed>();
-                _closeCallback(completion);
+                _closeCallback((completion, context, reason));
+                await completion.Task;
 
-                return _source._createCheckpointOnClose
-                    ? Task.WhenAll(completion.Task, context.CheckpointAsync())
-                    : completion.Task;
+                if (_source._createCheckpointOnClose)
+                    await context.CheckpointAsync();
             }
 
-            private void OnClose(TaskCompletionSource<NotUsed> completion)
+            private void OnClose((TaskCompletionSource<NotUsed>, PartitionContext, CloseReason) args)
             {
+                var (completion, context, reason) = args;
+                if(Log.IsDebugEnabled)
+                    Log.Debug("Partition closing. Partition: [{0}], Reason: [{1}]", context.ToString(), reason);
+                
                 if(--_partitionCount == 0)
                     CompleteStage();
                 completion.TrySetResult(NotUsed.Instance);
             }
 
-            public Task ProcessEventsAsync(PartitionContext context, IEnumerable<EventData> messages)
+            public async Task ProcessErrorAsync(PartitionContext context, Exception error)
+            {
+                var completion = new TaskCompletionSource<NotUsed>();
+                _errorCallback((completion, context, error));
+                await completion.Task;
+            }
+
+            private void OnError((TaskCompletionSource<NotUsed>, PartitionContext, Exception) args)
+            {
+                var (completion, context, cause) = args;
+                
+                Log.Error(cause, "Error while processing event. Partition: [{0}]", context.ToString());
+                switch (_decider(cause))
+                {
+                    case Directive.Stop:
+                        // Throw
+                        completion.TrySetException(cause);
+                        FailStage(cause);
+                        break;
+                    case Directive.Resume:
+                    case Directive.Restart:
+                        // Push the next element or complete
+                        PushOrComplete();
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException();
+                }
+            }
+
+            public async Task ProcessEventsAsync(PartitionContext context, IEnumerable<EventData> messages)
             {
                 var completion = new TaskCompletionSource<NotUsed>();
                 _processCallback(new ProcessContext(completion, context, messages));
+                await completion.Task;
 
-                return _source._createCheckpointForEveryBatch
-                    ? Task.WhenAll(completion.Task, context.CheckpointAsync())
-                    : completion.Task;
+                if (!completion.Task.IsCanceled && !completion.Task.IsFaulted && _source._createCheckpointForEveryBatch)
+                    await context.CheckpointAsync();
             }
-
+            
             private void OnProcessEvents(ProcessContext context)
             {
                 // ProcessEventsAsync is only called when the previous task is completed, 
@@ -118,20 +162,41 @@ namespace Akka.Streams.Azure.EventHub
                 TryPush();
             }
 
+            private void PushOrComplete()
+            {
+                if (IsClosed(_source.Out))
+                {
+                    _pendingEvents.Clear();
+                    _pendingCompletion.TrySetCanceled();
+                    CompleteStage();
+                }
+                else
+                {
+                    TryPush();
+                }
+            }
+            
             private void TryPush()
             {
+                // Something happened to the last batch, abort the send
+                if (_pendingEvents.Count > 0 && _pendingCompletion.Task.IsCanceled || _pendingCompletion.Task.IsFaulted)
+                {
+                    _pendingEvents.Clear();
+                    return;
+                }
+                
                 // Wait for new messages
                 if(_pendingEvents == null || _pendingEvents.Count == 0)
                     return;
 
-                if (IsAvailable(_source.Out))
-                {
-                    Push(_source.Out, Tuple.Create(_currentContext, _pendingEvents.Dequeue()));
+                if (!IsAvailable(_source.Out)) 
+                    return;
+                
+                Push(_source.Out, Tuple.Create(_currentContext, _pendingEvents.Dequeue()));
 
-                    // We have processed all messages so we can handle more
-                    if (_pendingEvents.Count == 0)
-                        _pendingCompletion.TrySetResult(NotUsed.Instance);
-                }
+                // We have processed all messages so we can handle more
+                if (_pendingEvents.Count == 0)
+                    _pendingCompletion.TrySetResult(NotUsed.Instance);
             }
         }
 
@@ -145,7 +210,7 @@ namespace Akka.Streams.Azure.EventHub
         /// <returns>The processor</returns>
         public static Source<Tuple<PartitionContext, EventData>, IEventProcessor> Create(bool createCheckpointOnClose = true, bool createCheckpointForEveryBatch = false)
         {
-            return Source.FromGraph(new EventHubSource(createCheckpointOnClose));
+            return Source.FromGraph(new EventHubSource(createCheckpointOnClose, createCheckpointForEveryBatch));
         }
 
         private readonly bool _createCheckpointOnClose;
@@ -171,7 +236,7 @@ namespace Akka.Streams.Azure.EventHub
         public override ILogicAndMaterializedValue<IEventProcessor> CreateLogicAndMaterializedValue(
             Attributes inheritedAttributes)
         {
-            var logic = new Logic(this);
+            var logic = new Logic(this, inheritedAttributes);
             return new LogicAndMaterializedValue<IEventProcessor>(logic, logic);
         }
     }

@@ -1,9 +1,8 @@
-﻿// //-----------------------------------------------------------------------
-// // <copyright file="MultiProcessorExample.cs" company="Akka.NET Project">
-// //     Copyright (C) 2009-2022 Lightbend Inc. <http://www.lightbend.com>
-// //     Copyright (C) 2013-2022 .NET Foundation <https://github.com/akkadotnet/akka.net>
-// // </copyright>
-// //-----------------------------------------------------------------------
+﻿//-----------------------------------------------------------------------
+// <copyright file="MultiProcessorExample.cs" company="Akka.NET Project">
+//     Copyright (C) 2013-2022 .NET Foundation <https://github.com/akkadotnet/akka.net>
+// </copyright>
+//-----------------------------------------------------------------------
 
 using System;
 using System.Collections.Generic;
@@ -11,11 +10,12 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Akka.Actor;
+using Akka.Configuration;
 using Akka.Streams.Dsl;
 using Azure.Messaging.EventHubs;
 using Azure.Messaging.EventHubs.Producer;
 
-namespace Akka.Streams.Azure.EventHub.V5.Examples.Multiple
+namespace Akka.Streams.Azure.EventHub.Examples.Multiple
 {
     public static class MultiProcessorExample
     {
@@ -23,11 +23,12 @@ namespace Akka.Streams.Azure.EventHub.V5.Examples.Multiple
         // NOTE: Should never exceed the number of partition of the EventHub
         private const int WorkerCount = 2;
         
-        public static async Task Run()
+        public static async Task Run(bool batched)
         {
-            using var sys = ActorSystem.Create("EventHubSystem");
+            using var sys = ActorSystem.Create("EventHubSystem", ConfigurationFactory.ParseString("akka.loglevel = DEBUG"));
             
-            var eventHubActor = sys.ActorOf(EventHubProcessorActor.Props(WorkerCount));
+            var eventHubActor = sys.ActorOf(EventHubProcessorActor.Props(WorkerCount, batched));
+            
             eventHubActor.Tell(Start.Instance);
             
             Console.WriteLine("Press enter key to send some messages into the EventHub.");

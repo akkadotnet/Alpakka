@@ -1,4 +1,10 @@
-﻿using System;
+﻿//-----------------------------------------------------------------------
+// <copyright file="EventHubSink.cs" company="Akka.NET Project">
+//     Copyright (C) 2013-2022 .NET Foundation <https://github.com/akkadotnet/akka.net>
+// </copyright>
+//-----------------------------------------------------------------------
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -10,7 +16,7 @@ using Azure.Messaging.EventHubs.Producer;
 using Decider = Akka.Streams.Supervision.Decider;
 using Directive = Akka.Streams.Supervision.Directive;
 
-namespace Akka.Streams.Azure.EventHub.V5
+namespace Akka.Streams.Azure.EventHub
 {
     /// <summary>
     /// A <see cref="Sink{TIn,TMat}"/> for the Azure EventHub
@@ -25,7 +31,7 @@ namespace Akka.Streams.Azure.EventHub.V5
             private readonly TaskCompletionSource<NotUsed> _completion;
             private readonly Decider _decider;
             private bool _isSendInProgress;
-            private IActorRef _self;
+            private IActorRef? _self;
             private readonly List<EventData> _pendingSend = new List<EventData>();
 
             public Logic(EventHubSink sink, Attributes inheritedAttributes, TaskCompletionSource<NotUsed> completion) : base(sink.Shape)
@@ -55,7 +61,7 @@ namespace Akka.Streams.Azure.EventHub.V5
             {
                 _self = GetStageActor(args =>
                 {
-                    var (sender, msg) = args;
+                    var (_, msg) = args;
                     switch (msg)
                     {
                         case Status.Success _:

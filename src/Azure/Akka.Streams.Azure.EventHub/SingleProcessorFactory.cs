@@ -1,4 +1,4 @@
-﻿using Microsoft.ServiceBus.Messaging;
+﻿using Microsoft.Azure.EventHubs.Processor;
 
 namespace Akka.Streams.Azure.EventHub
 {

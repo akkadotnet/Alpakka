@@ -7,6 +7,8 @@
         <TargetFramework>$(NetStandardLibVersion)</TargetFramework>
         <PackageTags>$(AkkaPackageTags);azure;EventHubs</PackageTags>
         <LangVersion>8.0</LangVersion>
+        <RootNamespace>Akka.Streams.Azure.EventHub</RootNamespace>
+        <Nullable>enable</Nullable>
     </PropertyGroup>
 
     <ItemGroup>

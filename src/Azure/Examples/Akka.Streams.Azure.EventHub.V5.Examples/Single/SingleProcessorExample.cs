@@ -1,9 +1,8 @@
-﻿// //-----------------------------------------------------------------------
-// // <copyright file="SingleProcessorExample.cs" company="Akka.NET Project">
-// //     Copyright (C) 2009-2022 Lightbend Inc. <http://www.lightbend.com>
-// //     Copyright (C) 2013-2022 .NET Foundation <https://github.com/akkadotnet/akka.net>
-// // </copyright>
-// //-----------------------------------------------------------------------
+﻿//-----------------------------------------------------------------------
+// <copyright file="SingleProcessorExample.cs" company="Akka.NET Project">
+//     Copyright (C) 2013-2022 .NET Foundation <https://github.com/akkadotnet/akka.net>
+// </copyright>
+//-----------------------------------------------------------------------
 
 using System;
 using System.Collections.Concurrent;
@@ -14,30 +13,48 @@ using System.Threading.Tasks;
 using Akka.Actor;
 using Akka.Streams.Dsl;
 using Azure.Messaging.EventHubs;
+using Azure.Messaging.EventHubs.Primitives;
 using Azure.Messaging.EventHubs.Producer;
 
-namespace Akka.Streams.Azure.EventHub.V5.Examples.Single
+namespace Akka.Streams.Azure.EventHub.Examples.Single
 {
     public static class SingleProcessorExample
     {
         private static readonly ConcurrentDictionary<string, int> PartitionEventCount = new ConcurrentDictionary<string, int>();
         
-        public static async Task Run()
+        public static async Task Run(bool batched)
         {
             using var sys = ActorSystem.Create("EventHubSystem");
             using var mat = sys.Materializer();
 
-            var factory = new ProcessorFactory.EventProcessorFactory();
-            var processor = Source.FromGraph(new EventHubSource(factory))
-                .SelectAsync(1, async t =>
-                {
-                    Console.WriteLine($"Message from Partition: {t.Partition.PartitionId}");
-                    await Business(t);
-                    return Done.Instance;
-                })
-                .ToMaterialized(Sink.Ignore<Done>(), Keep.Left)
-                .Run(mat);
-            
+            EventProcessor<EventProcessorPartition> processor;
+            if (batched)
+            {
+                var factory = new ProcessorFactory.BatchedEventProcessorFactory();
+                processor = BatchedEventHubSource.Create(factory)
+                    .SelectAsync(1, async t =>
+                    {
+                        Console.WriteLine($"Message from Partition: {t.Partition.PartitionId}");
+                        await Business(t);
+                        return Done.Instance;
+                    })
+                    .ToMaterialized(Sink.Ignore<Done>(), Keep.Left)
+                    .Run(mat);
+            }
+            else
+            {
+                var factory = new ProcessorFactory.EventProcessorFactory();
+                processor = EventHubSource.Create(factory)
+                    .SelectAsync(1, async t =>
+                    {
+                        Console.WriteLine($"Message from Partition: {t.Partition.PartitionId}");
+                        await Business(t);
+                        return Done.Instance;
+                    })
+                    .ToMaterialized(Sink.Ignore<Done>(), Keep.Left)
+                    .Run(mat);
+            }
+
             Console.WriteLine("Press enter key to send some messages into the EventHub.");
             Console.ReadLine();
 
@@ -61,9 +78,12 @@ namespace Akka.Streams.Azure.EventHub.V5.Examples.Single
             Console.ReadLine();
         }
 
-        private static async Task Business(EventHubSource.ProcessContext context)
+        private static async Task Business(ProcessContext context)
         {
-            var body = Encoding.UTF8.GetString(context.Event.Body.Span);
+            if (context.Data == null)
+                return;
+            
+            var body = Encoding.UTF8.GetString(context.Data.Body.Span);
             Console.WriteLine($"Processing message: {body}");
             
             var totalEvents = PartitionEventCount.AddOrUpdate(
@@ -77,5 +97,21 @@ namespace Akka.Streams.Azure.EventHub.V5.Examples.Single
                 await context.UpdateCheckpointAsync();
             }
         }
+        
+        private static async Task Business(BatchProcessContext context)
+        {
+            if (context.Data == null)
+                return;
+            
+            foreach (var data in context.Data)
+            {
+                var body = Encoding.UTF8.GetString(data.Body.Span);
+                Console.WriteLine($"Processing message: {body}");
+            }
+
+            Console.WriteLine("Updating checkpoint for partition [{0}]. Total events: [{1}]", context.Partition, context.Data.Count);
+            await context.UpdateCheckpointAsync();
+        }
+        
     }
 }

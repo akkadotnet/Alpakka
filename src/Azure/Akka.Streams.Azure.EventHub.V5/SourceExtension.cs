@@ -1,10 +1,16 @@
-﻿using System.Collections.Generic;
+﻿//-----------------------------------------------------------------------
+// <copyright file="SourceExtension.cs" company="Akka.NET Project">
+//     Copyright (C) 2013-2022 .NET Foundation <https://github.com/akkadotnet/akka.net>
+// </copyright>
+//-----------------------------------------------------------------------
+
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Akka.Streams.Dsl;
 using Azure.Messaging.EventHubs;
 using Azure.Messaging.EventHubs.Producer;
 
-namespace Akka.Streams.Azure.EventHub.V5
+namespace Akka.Streams.Azure.EventHub
 {
     public static class SourceExtension
     {

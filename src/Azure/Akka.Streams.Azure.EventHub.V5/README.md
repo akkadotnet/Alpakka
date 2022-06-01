@@ -52,18 +52,25 @@ var task = Source.From(Enumerable.Range(1, 100))
 
 The materialized value of the sink is a `Task` which is completed with result when the stream completes or with exception if an error occurs.
 
-## EventHubSource
+## EventHub Sources
 
-`EventHubSource` is used to consume messages from an EventHub name/topic. The source emits `EventHubSource.ProcessContext` to be consumed by the stream. The materialized value of the source is an `EventProcessorClient` created by the `IProcessorFactory` that can be used to stop the client from processing further events from EventHub.
+### EventHubSource
+`EventHubSource` is used to consume messages from an EventHub name/topic. The source emits `ProcessContext` to be consumed by the stream. The materialized value of the source is an `EventProcessorClient` created by the processor factory that can be used to stop the client from processing further events from EventHub.
 
-### Processor Factory
+`ProcessContext` encapsulates the `PartitionContext` and `DataEvent` of the currently processed event. It also contains an `UpdateCheckpointAsync()` method that can be used to update the current EventHub checkpoint to the current event offset.
+
+> __NOTE__
+> 
+> The `DataEvent` property can be null when 'EventProcessorClient' emit an empty event. Trying to call `UpdateCheckpointAsync()` on an empty event will throw an exception.
+
+#### EventProcessorClient Factory
 
 `IProcessorFactory` is a simple interface that contains a single `CreateProcessor()` method that needs to be implemented by the user. Inside this method, the user is responsible of creating a new instance of `EventProcessorClient` that can be used by the source to receive events from EventHub. A single `IProcessorFactory` can be used to configure multiple `EventHubSource` graphs.
 
-Please refer to Azure EventHub documentation on how to create a `EventProcessorClient` specific to your network configuration needs.
+`EventProcessorClient` is the default EventHub processor that came built-in inside `Azure.Messaging.EventHubs.Processor` package. Please refer to Azure EventHub documentation on how to create a `EventProcessorClient` specific to your network configuration needs.
 
 ```c#
-public class EventProcessorFactory : IProcessorFactory
+public class EventProcessorFactory : IProcessorFactory<EventProcessorClient>
 {
     public EventProcessorClient CreateProcessor()
     {
@@ -79,7 +86,7 @@ public class EventProcessorFactory : IProcessorFactory
 }
 ```
 
-### Creating the EventHubSource
+#### Creating the EventHubSource
 
 To create the `EventHubSource`, you will need to pass in the `IProcessorFactory` implementation instance.
 
@@ -99,6 +106,62 @@ You can stop the processor from consuming more events from EventHub by calling `
 
 > __NOTE__
 > 
+> There are instances where `EventProcessorClient` deadlocks itself when `StopProcessingAsync()` are invoked. Make sure that you guard the await invocation to make sure you don't deadlock your own application.
+
+## BatchedEventHubSource
+
+`BatchedEventHubSource` is a specialized stream source that is used to consume messages from an EventHub name/topic and emits batches of messages. The source emits `BatchProcessContext` to be consumed by the stream. The materialized value of the source is a custom `BatchedEventProcessorClient` created by the processor factory that can be used to stop the client from processing further events from EventHub.
+
+`BatchProcessContext` encapsulates the `PartitionContext` and `List<DataEvent>` of the currently processed event batch. It also contains an `UpdateCheckpointAsync()` method that can be used to update the current EventHub checkpoint to the highest event offset inside the batch.
+
+> __NOTE__
+>
+> The `List<DataEvent>` property can be null when `BatchedEventProcessorClient` emit an empty event. Trying to call `UpdateCheckpointAsync()` on an empty event will throw an exception.
+
+#### BatchedEventProcessorClient Factory
+
+Just like using `EventProcessorClient`, you need to implement `IProcessorFactory.CreateProcessor()` that returns an instance of `BatchedEventProcessorClient`. A single processor factory can be used to configure multiple `BatchedEventHubSource` graphs.
+
+`BatchedEventProcessorClient` is a custom EventHub processor that emits events in batches; it has the same exact constructors and can be configured the same way as `EventProcessorClient`. Please refer to Azure EventHub documentation on `EventProcessorClient` creation as it also applies to `BatchedEventProcessorClient`.
+
+```c#
+public class BatchedEventProcessorFactory 
+    : IProcessorFactory<BatchedEventProcessorClient>
+{
+    public BatchedEventProcessorClient CreateProcessor()
+    {
+        var storageClient  = new BlobContainerClient(
+            "{StorageConnectionString}", 
+            "{BlobContainerName}");
+        return new BatchedEventProcessorClient(
+            storageClient, 
+            "{ConsumerGroupName}",
+            "{EventHubConnectionString}",
+            "{EventHubName}");
+    }
+}
+```
+
+#### Creating the BatchedEventHubSource
+
+To create the `BatchedEventHubSource`, you will need to pass in the `IProcessorFactory` implementation instance.
+
+```c#
+var processor = Source.FromGraph(new EventHubSource(new BatchedEventProcessorFactory()))
+    .SelectAsync(1, async t =>
+    {
+        Console.WriteLine($"Message from Partition: {t.Partition.PartitionId}");
+        await Business(t);
+        return Done.Instance;
+    })
+    .ToMaterialized(Sink.Ignore<Done>(), Keep.Left)
+    .Run(mat);
+```
+
+You can stop the processor from consuming more events from EventHub by calling `processor.StopProcessingAsync()`.
+
+> __NOTE__
+>
 > There are instances where `EventProcessorClient` deadlocks itself when `StopProcessingAsync()` are invoked. Make sure that you guard the await invocation to make sure you don't deadlock your own application.
 
 ## Error handling

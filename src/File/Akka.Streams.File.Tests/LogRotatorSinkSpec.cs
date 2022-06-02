@@ -54,7 +54,7 @@ namespace Akka.Streams.File.Tests
         }
 
         public LogRotatorSinkSpec(ITestOutputHelper output)
-            : base(output: output)
+            : base(config:"{akka.loglevel = DEBUG}", output: output)
         {
             _materializer = Sys.Materializer();
 
@@ -347,26 +347,32 @@ namespace Akka.Streams.File.Tests
 
             public override ILogicAndMaterializedValue<Task<Done>> CreateLogicAndMaterializedValue(Attributes inheritedAttributes)
             {
-                var completion = new TaskCompletionSource<Done>();
-                var logic = new StrangeSlowSinkLogic(this, completion);
-                return new LogicAndMaterializedValue<Task<Done>>(logic, completion.Task);
+                var logic = new StrangeSlowSinkLogic(this);
+                return new LogicAndMaterializedValue<Task<Done>>(logic, logic.Task);
             }
 
             private sealed class StrangeSlowSinkLogic : GraphStageLogic
             {
+                private readonly Action _startCallback;
                 private readonly StrangeSlowSink<T> _sink;
+                private readonly TaskCompletionSource<Done> _promise;
+
+                public Task<Done> Task => _promise.Task;
 
                 public override void PreStart()
                 {
-                    Thread.Sleep(_sink._waitBeforePull);
                     base.PreStart();
-                    Pull(_sink.In);
+#pragma warning disable CS4014
+                    // Task is intentionally not awaited
+                    DelayedStart();
+#pragma warning restore CS4014
                 }
 
-                public StrangeSlowSinkLogic(StrangeSlowSink<T> sink, TaskCompletionSource<Done> promise)
-                    : base(sink.Shape)
+                public StrangeSlowSinkLogic(StrangeSlowSink<T> sink) : base(sink.Shape)
                 {
                     _sink = sink;
+                    _promise = new TaskCompletionSource<Done>();
+                    _startCallback = GetAsyncCallback(() => Pull(_sink.In));
 
                     SetHandler(sink.In,
                         onPush: () =>
@@ -376,9 +382,23 @@ namespace Akka.Streams.File.Tests
                         },
                         onUpstreamFinish: () =>
                         {
-                            Thread.Sleep(_sink._waitAfterComplete);
-                            promise.TrySetResult(Done.Instance);
+#pragma warning disable CS4014
+                            // Task is intentionally not awaited
+                            DelayedStop();
+#pragma warning restore CS4014
                         });
+                }
+
+                private async Task DelayedStop()
+                {
+                    await System.Threading.Tasks.Task.Delay(_sink._waitAfterComplete);
+                    _promise.TrySetResult(Done.Instance);
+                }
+
+                private async Task DelayedStart()
+                {
+                    await System.Threading.Tasks.Task.Delay(_sink._waitBeforePull);
+                    _startCallback();
                 }
             }
         }

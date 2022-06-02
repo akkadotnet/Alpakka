@@ -314,7 +314,9 @@ namespace Akka.Streams.File.Tests
         {
             try
             {
-                task.Wait(timeout ?? TimeSpan.FromSeconds(3));
+                timeout ??= TimeSpan.FromSeconds(3);
+                if (!task.Wait(timeout.Value))
+                    throw new TimeoutException($"Task failed to complete within {timeout.Value.TotalSeconds} seconds");
                 return task.Result;
             }
             catch (Exception ex)

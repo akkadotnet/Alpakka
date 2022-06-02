@@ -3,6 +3,7 @@
 
   <PropertyGroup>
     <TargetFrameworks>$(NetCoreTestVersion)</TargetFrameworks>
+    <LangVersion>8.0</LangVersion>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 

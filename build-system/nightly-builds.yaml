@@ -2,7 +2,7 @@
 # See https://docs.microsoft.com/en-us/azure/devops/pipelines/yaml-schema for reference
 
 pool:
-  vmImage: vs2017-win2016
+  vmImage: windows-2019
   demands: Cmd
 
 trigger: none
@@ -19,13 +19,17 @@ variables:
   - group: nugetKeys #create this group with SECRET variables `nugetKey`
 
 steps:
-  - task: UseDotNet@2
-    displayName: 'Use .NET Core SDK 3.1.105'
-    inputs:
-      packageType: sdk
-      version: 3.1.105
-  - task: BatchScript@1
-    displayName: 'FAKE Build'
-    inputs:
-      filename: build.cmd
-      arguments: 'Nuget nugetprerelease=dev nugetpublishurl=$(nightlyUrl) nugetkey=$(nightlyKey)'
+- task: UseDotNet@2
+  displayName: 'Use .NET 5 SDK 6.0.100'
+  inputs:
+    version: 6.0.100
+- task: UseDotNet@2
+  displayName: 'Use .NET Core Runtime 3.1.10'
+  inputs:
+    packageType: runtime
+    version: 3.1.10
+- task: BatchScript@1
+  displayName: 'FAKE Build'
+  inputs:
+    filename: build.cmd
+    arguments: 'Nuget nugetprerelease=dev nugetpublishurl=$(nightlyUrl) nugetkey=$(nightlyKey)'

@@ -14,9 +14,8 @@
   <PropertyGroup>
     <AkkaVersion>1.4.39</AkkaVersion>
     <NetStandardLibVersion>netstandard2.0</NetStandardLibVersion>
-    <NetFrameworkLibVersion>net461</NetFrameworkLibVersion>
     <NetCoreTestVersion>netcoreapp3.1</NetCoreTestVersion>
-    <NetFrameworkTestVersion>net461</NetFrameworkTestVersion>
+    <NetFrameworkTestVersion>net471</NetFrameworkTestVersion>
     <XunitVersion>2.4.1</XunitVersion>
     <XunitRunnerVersion>2.4.3</XunitRunnerVersion>
     <FluentAssertionsVersion>5.10.3</FluentAssertionsVersion>

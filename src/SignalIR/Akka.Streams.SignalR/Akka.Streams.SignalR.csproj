@@ -4,7 +4,7 @@
     <PropertyGroup>
         <AssemblyTitle>Akka.Streams.SignalR</AssemblyTitle>
         <Description>SignalR connector for Akka.NET Streams</Description>
-        <TargetFramework>$(NetFrameworkLibVersion)</TargetFramework>
+        <TargetFramework>$(NetStandardLibVersion)</TargetFramework>
         <PackageTags>$(AkkaPackageTags);signalr</PackageTags>
     </PropertyGroup>
 

@@ -17,7 +17,7 @@
     <NetCoreTestVersion>netcoreapp3.1</NetCoreTestVersion>
     <NetFrameworkTestVersion>net471</NetFrameworkTestVersion>
     <XunitVersion>2.4.1</XunitVersion>
-    <XunitRunnerVersion>2.4.3</XunitRunnerVersion>
+    <XunitRunnerVersion>2.4.5</XunitRunnerVersion>
     <FluentAssertionsVersion>5.10.3</FluentAssertionsVersion>
     <TestSdkVersion>17.2.0</TestSdkVersion>
     <NBenchVersion>2.0.1</NBenchVersion>

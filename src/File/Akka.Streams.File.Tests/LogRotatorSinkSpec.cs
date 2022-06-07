@@ -18,8 +18,10 @@ using Akka.Streams.Stage;
 using Akka.Streams.TestKit;
 using Akka.Util;
 using FluentAssertions;
+using FluentAssertions.Extensions;
 using Xunit;
 using Xunit.Abstractions;
+using static FluentAssertions.FluentActions;
 
 namespace Akka.Streams.File.Tests
 {
@@ -73,18 +75,19 @@ namespace Akka.Streams.File.Tests
         }
 
         [Fact]
-        public void LogRotatorSink_must_complete_when_consuming_an_empty_source()
+        public async Task LogRotatorSink_must_complete_when_consuming_an_empty_source()
         {
             Option<string> TriggerCreator(ByteString element) => throw new Exception("trigger creator should not be called");
 
             var rotatorSink = LogRotatorSink.Create(TriggerCreator);
 
             var completion = Source.Empty<ByteString>().RunWith(rotatorSink, _materializer);
+            await ShouldCompleteWithin(completion, 3.Seconds());
             completion.Result.Should().Be(Done.Instance);
         }
 
         [Fact]
-        public void LogRotatorSink_must_work_for_size_based_rotation()
+        public async Task LogRotatorSink_must_work_for_size_based_rotation()
         {
             const int max = 10 * 1024 * 1024;
             var size = (long)max;
@@ -107,11 +110,12 @@ namespace Akka.Streams.File.Tests
                 .Select(ByteString.FromString)
                 .RunWith(sizeRotatorSink, _materializer);
 
+            await ShouldCompleteWithin(fileSizeCompletion, 3.Seconds());
             fileSizeCompletion.Result.Should().Be(Done.Instance);
         }
 
         [Fact]
-        public void LogRotatorSink_must_work_for_time_based_rotation()
+        public async Task LogRotatorSink_must_work_for_time_based_rotation()
         {
             var destinationDir = Path.GetTempPath();
             var currentFilename = Option<string>.None;
@@ -133,11 +137,12 @@ namespace Akka.Streams.File.Tests
                 .Select(ByteString.FromString)
                 .RunWith(timeBasedRotatorSink, _materializer);
 
+            await ShouldCompleteWithin(timeBaseCompletion, 3.Seconds());
             timeBaseCompletion.Result.Should().Be(Done.Instance);
         }
 
         [Fact]
-        public void LogRotatorSink_must_write_lines_to_a_single_file()
+        public async Task LogRotatorSink_must_write_lines_to_a_single_file()
         {
             var files = new List<string>();
             string fileName = null;
@@ -154,27 +159,27 @@ namespace Akka.Streams.File.Tests
             }
 
             var completion = Source.From(_testByteStrings).RunWith(LogRotatorSink.Create(TriggerFunctionCreator), _materializer);
-            completion.Wait(TimeSpan.FromSeconds(3)).Should().BeTrue();
+            await ShouldCompleteWithin(completion, 3.Seconds());
 
-            var (contents, sizes) = ReadUpFilesAndSizesThenClean(files);
+            var (contents, sizes) = await ReadUpFilesAndSizesThenClean(files);
             sizes.Should().BeEquivalentTo(new List<long> { 6006L });
             contents.Should().BeEquivalentTo(new List<string> { string.Join("", _testLines) });
         }
 
         [Fact]
-        public void LogRotatorSink_must_write_lines_to_multiple_files_due_to_fileSize()
+        public async Task LogRotatorSink_must_write_lines_to_multiple_files_due_to_fileSize()
         {
             var (triggerFunctionCreator, files) = FileLengthTriggerCreator();
             var completion = Source.From(_testByteStrings).RunWith(LogRotatorSink.Create(triggerFunctionCreator), _materializer);
-            completion.Wait(TimeSpan.FromSeconds(3)).Should().BeTrue();
+            await ShouldCompleteWithin(completion, 3.Seconds());
 
-            var (contents, sizes) = ReadUpFilesAndSizesThenClean(files());
+            var (contents, sizes) = await ReadUpFilesAndSizesThenClean(files());
             sizes.Should().BeEquivalentTo(new List<long> { 2002L, 2002L, 2002L });
             contents.Should().BeEquivalentTo(Slide(_testLines).Select(tuple => tuple.Item1 + tuple.Item2));
         }
 
         [Fact]
-        public void LogRotatorSink_must_correctly_close_sinks()
+        public async Task LogRotatorSink_must_correctly_close_sinks()
         {
             var test = Enumerable.Range(1, 3).Select(m => m.ToString()).ToList();
             var @out = ImmutableList<string>.Empty;
@@ -187,12 +192,12 @@ namespace Akka.Streams.File.Tests
                     _ => Flow.Create<ByteString>()
                         .ToMaterialized(new StrangeSlowSink<ByteString>(Add, TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(200)), Keep.Right)), _materializer);
 
-            AwaitResult(completion, TimeSpan.FromSeconds(3));
+            await ShouldCompleteWithin(completion, 3.Seconds());
             @out.Should().BeEquivalentTo(test);
         }
 
         [Fact]
-        public void LogRotatorSink_must_upstream_fail_before_first_file_creation()
+        public async Task LogRotatorSink_must_upstream_fail_before_first_file_creation()
         {
             var (triggerFunctionCreator, files) = FileLengthTriggerCreator();
             var (probe, completion) = this.SourceProbe<ByteString>()
@@ -202,13 +207,13 @@ namespace Akka.Streams.File.Tests
             var ex = new Exception("my-exception");
             probe.SendError(ex);
 
-            var exception = Assert.Throws<Exception>(() => AwaitResult(completion, TimeSpan.FromSeconds(3)));
+            var exception = await ShouldThrowWithin<Exception>(completion, 3.Seconds());
             exception.Should().BeEquivalentTo(ex);
             files().Should().BeEmpty();
         }
 
         [Fact]
-        public void LogRotatorSink_must_upstream_fail_after_first_file_creation()
+        public async Task LogRotatorSink_must_upstream_fail_after_first_file_creation()
         {
             var (triggerFunctionCreator, files) = FileLengthTriggerCreator();
             var (probe, completion) = this.SourceProbe<ByteString>()
@@ -219,14 +224,14 @@ namespace Akka.Streams.File.Tests
             probe.SendNext(ByteString.FromString("test"));
             probe.SendError(ex);
 
-            var exception = Assert.Throws<Exception>(() => AwaitResult(completion, TimeSpan.FromSeconds(3)));
+            var exception = await ShouldThrowWithin<Exception>(completion, 3.Seconds());
             exception.Should().BeEquivalentTo(ex);
             files().Count.Should().Be(1);
-            ReadUpFilesAndSizesThenClean(files());
+            await ReadUpFilesAndSizesThenClean(files());
         }
 
         [Fact]
-        public void LogRotatorSink_must_function_fail_on_path_creation()
+        public async Task LogRotatorSink_must_function_fail_on_path_creation()
         {
             var ex = new Exception("my-exception");
             Option<string> TriggerFunctionCreator(ByteString element) => throw ex;
@@ -237,12 +242,12 @@ namespace Akka.Streams.File.Tests
 
             probe.SendNext(ByteString.FromString("test"));
 
-            var exception = Assert.Throws<Exception>(() => AwaitResult(completion, TimeSpan.FromSeconds(3)));
+            var exception = await ShouldThrowWithin<Exception>(completion, 3.Seconds());
             exception.Should().BeEquivalentTo(ex);
         }
 
         [Fact]
-        public void LogRotatorSink_must_downstream_fail_on_file_write()
+        public async Task LogRotatorSink_must_downstream_fail_on_file_write()
         {
             var path = Path.Combine(Path.GetTempPath(), "out-" + DateTime.UtcNow.Ticks + ".log");
             Option<string> TriggerFunctionCreator(ByteString element) => new Option<string>(path);
@@ -255,16 +260,16 @@ namespace Akka.Streams.File.Tests
             probe.SendNext(ByteString.FromString("test"));
             probe.ExpectCancellation();
 
-            Assert.Throws<FileNotFoundException>(() => AwaitResult(completion, TimeSpan.FromSeconds(3)));
+            await ShouldThrowWithin<FileNotFoundException>(completion, 3.Seconds());
         }
 
-        private (List<string>, List<long>) ReadUpFilesAndSizesThenClean(IEnumerable<string> files)
+        private static async Task<(List<string>, List<long>)> ReadUpFilesAndSizesThenClean(IEnumerable<string> files)
         {
-            var (bytes, sizes) = ReadUpFileBytesAndSizesThenClean(files);
+            var (bytes, sizes) = await ReadUpFileBytesAndSizesThenClean(files);
             return (bytes.Select(b => b.ToString()).ToList(), sizes);
         }
 
-        private static (List<ByteString>, List<long>) ReadUpFileBytesAndSizesThenClean(IEnumerable<string> files)
+        private static async Task<(List<ByteString>, List<long>)> ReadUpFileBytesAndSizesThenClean(IEnumerable<string> files)
         {
             var sizes = new List<long>();
             var data = new List<ByteString>();
@@ -278,14 +283,14 @@ namespace Akka.Streams.File.Tests
                 {
                     try
                     {
-                        data.Add(ByteString.FromBytes(System.IO.File.ReadAllBytes(path)));
+                        data.Add(ByteString.FromBytes(await System.IO.File.ReadAllBytesAsync(path)));
                     }
                     catch (IOException e)
                     {
                         retry--;
                         if (retry == 0)
                             throw new Exception($"Unable to read file [{path}] after 5 retries", e);
-                        Thread.Sleep(100);
+                        await Task.Delay(100);
                         continue;
                     }
 
@@ -310,21 +315,16 @@ namespace Akka.Streams.File.Tests
             }
         }
 
-        private static T AwaitResult<T>(Task<T> task, TimeSpan? timeout = null)
+        private static Task ShouldCompleteWithin(Task task, TimeSpan timeout)
+            => Awaiting(async () => await task).Should().CompleteWithinAsync(timeout);
+        
+        private static async Task<T> ShouldThrowWithin<T>(Task task, TimeSpan timeout) where T: Exception
         {
-            try
+            var exception = await Awaiting(async () =>
             {
-                timeout ??= TimeSpan.FromSeconds(3);
-                if (!task.Wait(timeout.Value))
-                    throw new TimeoutException($"Task failed to complete within {timeout.Value.TotalSeconds} seconds");
-                return task.Result;
-            }
-            catch (Exception ex)
-            {
-                throw ex is AggregateException aggregateException
-                    ? aggregateException.Flatten().InnerExceptions[0]
-                    : ex;
-            }
+                await ShouldCompleteWithin(task, timeout);
+            }).Should().ThrowAsync<T>();
+            return (T) exception.And.Should().Subject;
         }
 
         private class StrangeSlowSink<T> : GraphStageWithMaterializedValue<SinkShape<T>, Task<Done>>

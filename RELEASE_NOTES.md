@@ -1,3 +1,12 @@
+#### 1.0.1-beta1 June 7 2022 ####
+* Upgraded to [Akka.NET v1.4.39](https://github.com/akkadotnet/akka.net/releases/tag/1.4.39)
+* [[EventHubs] Added support for `Microsoft.Azure.EventHubs` to `Akka.Streams.Azure.EventHubs`](https://github.com/akkadotnet/Alpakka/pull/981)
+* [[EventHubs] Added support for `Azure.Messaging.EventHubs` to `Akka.Streams.Azure.EventHubs.V5`](https://github.com/akkadotnet/Alpakka/pull/985)
+* [[EventHubs] Added batch processing support to `Akka.Streams.Azure.EventHubs.V5`](https://github.com/akkadotnet/Alpakka/pull/993)
+* [[EventHubs] Added documentation to `Akka.Streams.Azure.EventHubs` packages](https://github.com/akkadotnet/Alpakka/pull/999)
+* [[File] Added `DirectoryChangesSource` support](https://github.com/akkadotnet/Alpakka/pull/962)
+* Upgraded all SDK versions
+
 #### 1.0.0-beta9 March 17 2022 ####
 * Upgraded to [Akka.NET v1.4.34](https://github.com/akkadotnet/akka.net/releases/tag/1.4.34)
 * [Fix Kinesis timer key bug](https://github.com/akkadotnet/Alpakka/pull/900)

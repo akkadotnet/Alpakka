@@ -117,7 +117,7 @@ namespace Akka.Streams.Channels.Tests
         }
 
         [Fact]
-        public async ValueTask ChannelSink_writer_should_propagate_elements_to_channel()
+        public async Task ChannelSink_writer_should_propagate_elements_to_channel()
         {
             var probe = this.CreateManualPublisherProbe<int>();
             var channel = Channel.CreateBounded<int>(10);
@@ -198,7 +198,7 @@ namespace Akka.Streams.Channels.Tests
         }
 
         [Fact]
-        public async ValueTask ChannelSink_reader_should_propagate_elements_to_channel()
+        public async Task ChannelSink_reader_should_propagate_elements_to_channel()
         {
             var probe = this.CreateManualPublisherProbe<int>();
 
@@ -219,7 +219,9 @@ namespace Akka.Streams.Channels.Tests
 
             for (int j = 0; j < n; j++)
             {
+                Sys.Log.Info("Request: {0}",j);
                 var value = await reader.ReadAsync(cancel.Token);
+                Sys.Log.Info("Received: {0}",value);
                 value.Should().Be(j + 1);
             }
 

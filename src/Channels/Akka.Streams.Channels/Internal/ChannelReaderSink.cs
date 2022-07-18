@@ -122,6 +122,12 @@ namespace Akka.Streams.Channels.Internal
                 _writer.TryComplete(e);
         }
 
+        public override void PreStart()
+        {
+            Pull(_inlet);
+            base.PreStart();
+        }
+
         public override void OnPush()
         {
             var element = Grab(_inlet);

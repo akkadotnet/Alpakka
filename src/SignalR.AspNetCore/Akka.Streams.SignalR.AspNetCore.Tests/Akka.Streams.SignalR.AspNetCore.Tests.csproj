@@ -14,16 +14,17 @@
         <PackageReference Include="xunit" Version="$(XunitVersion)" />
         <PackageReference Include="xunit.runner.visualstudio" Version="$(XunitRunnerVersion)" />
         <PackageReference Include="coverlet.collector" Version="3.1.2" />
-
-        <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="5.0.17" />
     </ItemGroup>
     
     <ItemGroup Condition=" '$(TargetFramework)' == '$(NetCoreTestVersion)' ">
+        <!-- These packages are version locked due to bacward compatibility problems with netcoreapp3.1 -->
+        <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="5.0.17" />
         <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="3.1.27"/>
     </ItemGroup>
 
     <!-- We're not targetting .NET 6.0 yet, need to upgrade the build.fsx script -->
     <ItemGroup Condition=" '$(TargetFramework)' == '$(NetTestVersion)' ">
+        <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="6.0.7" />
         <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="6.0.7"/>
     </ItemGroup>
 

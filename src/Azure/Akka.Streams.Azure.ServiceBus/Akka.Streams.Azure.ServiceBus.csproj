@@ -11,7 +11,7 @@
 
     <ItemGroup>
         <PackageReference Include="Akka.Streams" Version="$(AkkaVersion)" />
-        <PackageReference Include="Azure.Messaging.ServiceBus" Version="7.8.1" />
+        <PackageReference Include="Azure.Messaging.ServiceBus" Version="7.9.0" />
     </ItemGroup>
 
 </Project>

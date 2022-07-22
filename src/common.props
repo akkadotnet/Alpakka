@@ -28,7 +28,7 @@
     <FsCheckVersion>2.14.3</FsCheckVersion>
     <HoconVersion>2.0.3</HoconVersion>
     <ConfigurationManagerVersion>4.7.0</ConfigurationManagerVersion>
-    <DockerDotNetVersion>3.125.5</DockerDotNetVersion>
+    <DockerDotNetVersion>3.125.10</DockerDotNetVersion>
     <AkkaPackageTags>akka;actors;actor model;Akka;concurrency;streams</AkkaPackageTags>
   </PropertyGroup>
   <PropertyGroup>

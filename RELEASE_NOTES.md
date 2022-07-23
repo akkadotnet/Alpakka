@@ -1,3 +1,8 @@
+#### 1.0.1-beta2 June 7 2022 ####
+* Upgraded to [Akka.NET v1.4.40](https://github.com/akkadotnet/akka.net/releases/tag/1.4.40)
+* [[Channels] Fix ChannelReaderSink startup](https://github.com/akkadotnet/Alpakka/pull/1068) 
+* Upgraded all SDK versions
+
 #### 1.0.1-beta1 June 7 2022 ####
 * Upgraded to [Akka.NET v1.4.39](https://github.com/akkadotnet/akka.net/releases/tag/1.4.39)
 * [[EventHubs] Added support for `Microsoft.Azure.EventHubs` to `Akka.Streams.Azure.EventHubs`](https://github.com/akkadotnet/Alpakka/pull/981)

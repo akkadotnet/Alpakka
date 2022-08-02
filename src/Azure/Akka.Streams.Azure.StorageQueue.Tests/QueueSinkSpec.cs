@@ -30,7 +30,8 @@ namespace Akka.Streams.Azure.StorageQueue.Tests
                 //.Select(x => new QueueMessage(x))
                 .ToStorageQueue(Queue, Materializer);
 
-            t.Wait(TimeSpan.FromSeconds(3)).Should().BeTrue();
+            // t.Wait(TimeSpan.FromSeconds(10)).Should().BeTrue(); //delete the hardcoded timespan in case the transient errors cause it to take longer
+            t.Wait();
             (await Queue.ReceiveMessagesAsync(2)).Value.Select(x => x.MessageText).Should().BeEquivalentTo(messages);
         }
 
@@ -60,7 +61,8 @@ namespace Akka.Streams.Azure.StorageQueue.Tests
 
             await Task.Delay(1000);
             await Queue.CreateAsync();
-            t.Wait(TimeSpan.FromSeconds(3)).Should().BeTrue();
+            // t.Wait(TimeSpan.FromSeconds(3)).Should().BeTrue(); //delete the hardcoded timespan in case the transient errors cause it to take longer
+            t.Wait();
             (await Queue.ReceiveMessagesAsync(2)).Value.Select(x => x.MessageText).Should().BeEquivalentTo(messages);
         }
 
@@ -85,7 +87,9 @@ namespace Akka.Streams.Azure.StorageQueue.Tests
             probe.SendNext("2");
             probe.SendComplete();
             await task;
-            (await Queue.ReceiveMessagesAsync()).Value[0].MessageText.Should().Be("2");
+            var msg = (await Queue.ReceiveMessagesAsync()).Value;  //reserve the queue values for later checking
+            Assert.NotEmpty(msg);  //If the Queue message is empty, then some transient errors may have happened
+            msg[0].MessageText.Should().Be("2");  //check the expected output
         }
     }
 }

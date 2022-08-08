@@ -8,6 +8,7 @@ using Akka.Streams.TestKit;
 using FluentAssertions;
 using Azure.Storage.Queues;
 using Azure.Storage.Queues.Models;
+using FluentAssertions.Extensions;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -29,8 +30,7 @@ namespace Akka.Streams.Azure.StorageQueue.Tests
             var t = Source.From(messages)
                 //.Select(x => new QueueMessage(x))
                 .ToStorageQueue(Queue, Materializer);
-
-            t.Wait(TimeSpan.FromSeconds(3)).Should().BeTrue();
+            t.Wait(15.Seconds()).Should().BeTrue();
             (await Queue.ReceiveMessagesAsync(2)).Value.Select(x => x.MessageText).Should().BeEquivalentTo(messages);
         }
 
@@ -60,7 +60,7 @@ namespace Akka.Streams.Azure.StorageQueue.Tests
 
             await Task.Delay(1000);
             await Queue.CreateAsync();
-            t.Wait(TimeSpan.FromSeconds(3)).Should().BeTrue();
+            t.Wait(15.Seconds()).Should().BeTrue();
             (await Queue.ReceiveMessagesAsync(2)).Value.Select(x => x.MessageText).Should().BeEquivalentTo(messages);
         }
 
@@ -85,7 +85,9 @@ namespace Akka.Streams.Azure.StorageQueue.Tests
             probe.SendNext("2");
             probe.SendComplete();
             await task;
-            (await Queue.ReceiveMessagesAsync()).Value[0].MessageText.Should().Be("2");
+            var msg = (await Queue.ReceiveMessagesAsync()).Value;
+            Assert.NotEmpty(msg);
+            msg[0].MessageText.Should().Be("2");
         }
     }
 }

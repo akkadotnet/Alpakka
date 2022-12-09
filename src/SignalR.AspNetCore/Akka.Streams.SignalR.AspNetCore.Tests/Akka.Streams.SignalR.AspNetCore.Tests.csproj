@@ -13,7 +13,7 @@
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="$(TestSdkVersion)" />
         <PackageReference Include="xunit" Version="$(XunitVersion)" />
         <PackageReference Include="xunit.runner.visualstudio" Version="$(XunitRunnerVersion)" />
-        <PackageReference Include="coverlet.collector" Version="3.1.2" />
+        <PackageReference Include="coverlet.collector" Version="3.2.0" />
     </ItemGroup>
     
     <ItemGroup Condition=" '$(TargetFramework)' == '$(NetCoreTestVersion)' ">

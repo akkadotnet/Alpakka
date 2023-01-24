@@ -10,7 +10,7 @@
 
     <ItemGroup>
         <PackageReference Include="Akka.Streams" Version="$(AkkaVersion)" />
-        <PackageReference Include="AWSSDK.SimpleNotificationService" Version="3.7.100.45" />
+        <PackageReference Include="AWSSDK.SimpleNotificationService" Version="3.7.100.60" />
     </ItemGroup>
 
 </Project>

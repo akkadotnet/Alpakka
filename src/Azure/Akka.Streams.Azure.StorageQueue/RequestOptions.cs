@@ -26,7 +26,7 @@ namespace Akka.Streams.Azure.StorageQueue
     }
 
     /// <summary>
-    /// Wraper for the <see cref="CloudQueue.GetMessagesAsync(int)"/> parameter
+    /// Wrapper for the <see cref="QueueClient.ReceiveMessagesAsync()"/> parameter
     /// </summary>
     public class GetRequestOptions
     {

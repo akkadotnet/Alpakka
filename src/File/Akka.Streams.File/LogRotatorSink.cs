@@ -38,10 +38,10 @@ namespace Akka.Streams.File
             Sink.FromGraph(new LogRotatorSink<ByteString, TC, TR>(triggerGeneratorCreator, sinkFactory));
 
         /// <summary>
-        /// Sink directing the incoming <see cref="T"/>s to a new <seealso cref="Sink" /> created by `sinkFactory` whenever `triggerGenerator` returns a value.
+        /// Sink directing the incoming <typeparam name="T"/>s to a new <seealso cref="Sink" /> created by `sinkFactory` whenever `triggerGenerator` returns a value.
         /// </summary>
         /// <param name="triggerGeneratorCreator">Creates a function that triggers rotation by returning a value</param>
-        /// <param name="sinkFactory">Creates sinks for <see cref="T"/>s from the value returned by `triggerGenerator`</param>
+        /// <param name="sinkFactory">Creates sinks for <typeparam name="T"/>s from the value returned by `triggerGenerator`</param>
         public static Sink<T, Task<Done>> WithTypedSinkFactory<T, TC, TR>(Func<T, Option<TC>> triggerGeneratorCreator, Func<TC, Sink<T, Task<TR>>> sinkFactory) =>
             Sink.FromGraph(new LogRotatorSink<T, TC, TR>(triggerGeneratorCreator, sinkFactory));
     }

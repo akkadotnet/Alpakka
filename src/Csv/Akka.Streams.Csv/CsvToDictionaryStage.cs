@@ -10,7 +10,7 @@ using Akka.Streams.Stage;
 namespace Akka.Streams.Csv
 {
     /// <summary>
-    /// Internal API: Converts incoming <see cref="ImmutableList{ByteString}"/> to <see cref="Dictionary{string, ByteString}"/>
+    /// Internal API: Converts incoming <see cref="ImmutableList{ByteString}"/> to <see cref="Dictionary{String, ByteString}"/>
     /// </summary>
     internal class CsvToDictionaryStage:GraphStage<FlowShape<ImmutableList<ByteString>, Dictionary<string, ByteString>>>
     {
@@ -68,7 +68,7 @@ namespace Akka.Streams.Csv
         private readonly Encoding _encoding;
 
         /// <summary>
-        /// Internal API: Converts incoming <see cref="ImmutableList{ByteString}"/> to <see cref="Dictionary{string, ByteString}"/>
+        /// Internal API: Converts incoming <see cref="ImmutableList{ByteString}"/> to <see cref="Dictionary{String, ByteString}"/>
         /// </summary>
         /// <param name="columnNames">If given, these names are used as map keys; if not first stream element is used</param>
         /// <param name="encoding">Character encoding used to convert header line ByteString to String</param>

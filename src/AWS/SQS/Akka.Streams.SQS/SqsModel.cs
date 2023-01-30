@@ -105,7 +105,7 @@ namespace Akka.Streams.SQS
     }
 
     /// <summary>
-    /// Messages returned by a <see cref="SqsPublishFlow.Grouped"/> or <see cref="SqsPublishFlow.Batched"/>.
+    /// Messages returned by a <see cref="SqsPublishFlow.Grouped"/> or <see cref="SqsPublishFlow.Batch"/>.
     /// </summary>
     public sealed class SqsPublishResultEntry : ISqsResult
     {

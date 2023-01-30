@@ -12,7 +12,7 @@ namespace Akka.Streams.Csv.Dsl
     public static class CsvToDictionary
     {
         /// <summary>
-        /// A flow translating incoming <see cref="ImmutableList{ByteString}"/> to <see cref="Dictionary{string, ByteString}"/> 
+        /// A flow translating incoming <see cref="ImmutableList{ByteString}"/> to <see cref="Dictionary{String, ByteString}"/> 
         /// using the streams first element's values as keys.
         /// </summary>
         /// <param name="encoding">the encoding to decode <see cref="ByteString"/> to <see cref="string"/>, defaults to <see cref="Encoding.UTF8"/></param>
@@ -28,7 +28,7 @@ namespace Akka.Streams.Csv.Dsl
         }
 
         /// <summary>
-        /// A flow translating incoming <see cref="ImmutableList{ByteString}"/> to <see cref="Dictionary{string, ByteString}"/> 
+        /// A flow translating incoming <see cref="ImmutableList{ByteString}"/> to <see cref="Dictionary{String, ByteString}"/> 
         /// using the given headers as keys.
         /// </summary>
         /// <param name="headers">column names to be used as dictionary keys</param>

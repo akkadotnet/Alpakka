@@ -1,12 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
-    <Import Project="..\..\common.props" />
-
     <PropertyGroup>
         <AssemblyTitle>Akka.Streams.Azure.EventHubs.V5</AssemblyTitle>
         <Description>Azure EventHubs adapter for Akka.NET Streams</Description>
-        <TargetFramework>$(NetStandardLibVersion)</TargetFramework>
+        <TargetFrameworks>$(NetStandardLibVersion);$(NetLibVersion)</TargetFrameworks>
         <PackageTags>$(AkkaPackageTags);azure;EventHubs</PackageTags>
-        <LangVersion>8.0</LangVersion>
         <RootNamespace>Akka.Streams.Azure.EventHub</RootNamespace>
         <Nullable>enable</Nullable>
     </PropertyGroup>

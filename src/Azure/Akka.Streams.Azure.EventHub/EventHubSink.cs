@@ -127,7 +127,7 @@ namespace Akka.Streams.Azure.EventHub
         /// <summary>
         /// Create a new instance of the <see cref="EventHubSink"/>
         /// </summary>
-        /// <param name="client">The <see cref="EventHubClient"/> that sends the events to the EventHub</param></param>
+        /// <param name="client">The <see cref="EventHubClient"/> that sends the events to the EventHub</param>
         public EventHubSink(EventHubClient client)
         {
             _client = client;

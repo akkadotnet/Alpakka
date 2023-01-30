@@ -1,8 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
-    <Import Project="..\..\common.props" />
-
     <PropertyGroup>
-        <TargetFrameworks>$(NetCoreTestVersion)</TargetFrameworks>
+        <TargetFrameworks>$(NetCoreTestVersion);$(NetTestVersion)</TargetFrameworks>
         <IsPackable>false</IsPackable>
     </PropertyGroup>
 

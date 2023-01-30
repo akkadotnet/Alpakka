@@ -1,6 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk">
-    <Import Project="..\..\common.props" />
-
     <PropertyGroup>
         <AssemblyTitle>Akka.Streams.SignalR</AssemblyTitle>
         <Description>SignalR connector for Akka.NET Streams</Description>

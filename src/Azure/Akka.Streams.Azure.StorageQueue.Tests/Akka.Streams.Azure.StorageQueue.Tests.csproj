@@ -1,6 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
-        <TargetFrameworks>$(NetCoreTestVersion);$(NetTestVersion)</TargetFrameworks>
+        <TargetFrameworks>$(NetCoreTestVersion);$(NetTestVersion);$(NetFrameworkTestVersion)</TargetFrameworks>
         <IsPackable>false</IsPackable>
     </PropertyGroup>
 
@@ -17,12 +17,6 @@
 
     <ItemGroup>
       <ProjectReference Include="..\Akka.Streams.Azure.StorageQueue\Akka.Streams.Azure.StorageQueue.csproj" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <None Update="environment.json">
-        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-      </None>
     </ItemGroup>
 
 </Project>

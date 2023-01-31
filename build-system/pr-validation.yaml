@@ -25,7 +25,6 @@ jobs:
       scriptArgs: runTests
       outputDirectory: 'TestResults'
       artifactName: 'netfx_tests_windows-$(Build.BuildId)'
-      azureTestUseDocker: false # Flag for Azure storage queue test to use docker
       amqpTestUseDocker: true # Flag for AQMP test to use RabbitMQ docker
 
   - template: azure-pipeline.template.yaml
@@ -37,17 +36,37 @@ jobs:
       scriptArgs: runTestsNetCore
       outputDirectory: 'TestResults'
       artifactName: 'net_core_tests_windows-$(Build.BuildId)'
-      azureTestUseDocker: false # Flag for azure storage queue test to use docker
+      amqpTestUseDocker: true # Flag for AQMP test to use RabbitMQ docker
+
+  - template: azure-pipeline.template.yaml
+    parameters:
+      name: 'net_tests_windows'
+      displayName: '.NET Core Unit Tests (Windows)'
+      vmImage: 'windows-latest'
+      scriptFileName: build.cmd
+      scriptArgs: runTestsNet
+      outputDirectory: 'TestResults'
+      artifactName: 'net_core_tests_windows-$(Build.BuildId)'
       amqpTestUseDocker: true # Flag for AQMP test to use RabbitMQ docker
 
   - template: azure-pipeline.template.yaml
     parameters:
       name: 'net_core_tests_linux'
-      displayName: '.NET Core Unit Tests (Linux)'
+      displayName: '.NET 6 Unit Tests (Linux)'
       vmImage: 'ubuntu-latest'
       scriptFileName: './build.sh'
       scriptArgs: runTestsNetCore
       outputDirectory: 'TestResults'
       artifactName: 'net_core_tests_linux-$(Build.BuildId)'
-      azureTestUseDocker: false # Flag for azure storage queue test to use docker
+      amqpTestUseDocker: true # Flag for AQMP test to use RabbitMQ docker
+
+  - template: azure-pipeline.template.yaml
+    parameters:
+      name: 'net_core_tests_linux'
+      displayName: '.NET 6 Unit Tests (Linux)'
+      vmImage: 'ubuntu-latest'
+      scriptFileName: './build.sh'
+      scriptArgs: runTestsNet
+      outputDirectory: 'TestResults'
+      artifactName: 'net_core_tests_linux-$(Build.BuildId)'
       amqpTestUseDocker: true # Flag for AQMP test to use RabbitMQ docker

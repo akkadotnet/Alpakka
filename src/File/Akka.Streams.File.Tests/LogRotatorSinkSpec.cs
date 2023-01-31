@@ -283,7 +283,7 @@ namespace Akka.Streams.File.Tests
                 {
                     try
                     {
-                        data.Add(ByteString.FromBytes(await System.IO.File.ReadAllBytesAsync(path)));
+                        data.Add(ByteString.FromBytes(System.IO.File.ReadAllBytes(path)));
                     }
                     catch (IOException e)
                     {

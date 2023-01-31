@@ -50,8 +50,9 @@ let runIncrementally = hasBuildParam "incremental"
 let incrementalistReport = output @@ "incrementalist.txt"
 
 // Configuration values for tests
-let testNetFrameworkVersion = "net461"
+let testNetFrameworkVersion = "net471"
 let testNetCoreVersion = "netcoreapp3.1"
+let testNetVersion = "net6.0"
 
 Target "Clean" (fun _ ->
     ActivateFinalTarget "KillCreatedProcesses"
@@ -221,7 +222,9 @@ Target "RunTests" (fun _ ->
     let projects = 
         let rawProjects = match (isWindows) with 
                             | true -> !! "./src/**/*.Tests.*sproj"
+                                      -- "./src/**/*.SignalR.AspNetCore.Tests.csproj" // ASP.NET signalr spec does not support .NET FX
                             | _ -> !! "./src/**/*.Tests.*sproj" // if you need to filter specs for Linux vs. Windows, do it here
+                                   -- "./src/**/*.SignalR.AspNetCore.Tests.csproj" // ASP.NET signalr spec does not support .NET FX
         rawProjects |> Seq.choose filterProjects
     
     let runSingleProject project =
@@ -268,36 +271,31 @@ Target "RunTestsNetCore" (fun _ ->
         projects |> Seq.iter (runSingleProject)
 )
 
-Target "NBench" (fun _ ->
-    ensureDirectory outputPerfTests
-    let projects = 
-        let rawProjects = match (isWindows) with 
-                            | true -> !! "./src/**/*Tests.Performance.csproj"
-                            | _ -> !! "./src/**/*Tests.Performance.csproj" // if you need to filter specs for Linux vs. Windows, do it here
-        rawProjects |> Seq.choose filterProjects
+Target "RunTestsNet" (fun _ ->
+    if not skipBuild.Value then
+        let projects = 
+            let rawProjects = match (isWindows) with 
+                                | true -> !! "./src/**/*.Tests.*sproj"
+                                | _ -> !! "./src/**/*.Tests.*sproj" // if you need to filter specs for Linux vs. Windows, do it here
+                                       -- "./src/**/Akka.Streams.Amqp.RabbitMq.Tests.csproj" // RabbitMQ container doesn't work well with linux networking setup
+                                       -- "./src/**/Akka.Streams.Amqp.V1.Tests.csproj" // RabbitMQ container doesn't work well with linux networking setup
+            rawProjects |> Seq.choose filterProjects
+     
+        let runSingleProject project =
+            let arguments =
+                match (hasTeamCity) with
+                | true -> (sprintf "test -c Release --no-build --logger:trx --logger:\"console;verbosity=normal\" --framework %s --results-directory \"%s\" -- -parallel none -teamcity" testNetVersion outputTests)
+                | false -> (sprintf "test -c Release --no-build --logger:trx --logger:\"console;verbosity=normal\" --framework %s --results-directory \"%s\" -- -parallel none" testNetVersion outputTests)
 
-    projects |> Seq.iter(fun project -> 
-        let args = new StringBuilder()
-                |> append "run"
-                |> append "--no-build"
-                |> append "-c"
-                |> append configuration
-                |> append " -- "
-                |> append "--output"
-                |> append outputPerfTests
-                |> append "--concurrent" 
-                |> append "true"
-                |> append "--trace"
-                |> append "true"
-                |> append "--diagnostic"               
-                |> toText
+            let result = ExecProcess(fun info ->
+                info.FileName <- "dotnet"
+                info.WorkingDirectory <- (Directory.GetParent project).FullName
+                info.Arguments <- arguments) (TimeSpan.FromMinutes 60.0) // Need to bump this because pulling docker image takes a long time
+        
+            ResultHandling.failBuildIfXUnitReportedError TestRunnerErrorLevel.DontFailBuild result
 
-        let result = ExecProcess(fun info -> 
-            info.FileName <- "dotnet"
-            info.WorkingDirectory <- (Directory.GetParent project).FullName
-            info.Arguments <- args) (System.TimeSpan.FromMinutes 15.0) (* Reasonably long-running task. *)
-        if result <> 0 then failwithf "NBench.Runner failed. %s %s" "dotnet" args
-    )
+        CreateDir outputTests
+        projects |> Seq.iter (runSingleProject)
 )
 
 //--------------------------------------------------------------------------------
@@ -462,7 +460,6 @@ Target "RunTestsNetCoreFull" DoNothing
 // tests dependencies
 "Build" ==> "RunTests"
 "Build" ==> "RunTestsNetCore"
-"Build" ==> "NBench"
 
 // nuget dependencies
 "BuildRelease" ==> "CreateNuget" ==> "PublishNuget" ==> "Nuget"
@@ -474,6 +471,5 @@ Target "RunTestsNetCoreFull" DoNothing
 "BuildRelease" ==> "All"
 "RunTests" ==> "All"
 "RunTestsNetCore" ==> "All"
-"NBench" ==> "All"
 
 RunTargetOrDefault "Help"

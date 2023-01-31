@@ -7,7 +7,6 @@ parameters:
   outputDirectory : ''
   artifactName: ''
   timeoutInMinutes: 120
-  azureTestUseDocker : false # Flag for Akka.Streams.Azure.StorageQueue.Test to use docker
   amqpTestUseDocker : false # Flag for Akka.Streams.Azure.StorageQueue.Test to use docker
 
 jobs:
@@ -17,7 +16,6 @@ jobs:
     pool:
       vmImage: ${{ parameters.vmImage }}
     variables:
-      Alpakka_Azure_Test_UseDocker: ${{ parameters.azureTestUseDocker }}
       Alpakka_AMQP_Test_UseDocker: ${{ parameters.amqpTestUseDocker }}
     steps:
       - checkout: self  # self represents the repo where the initial Pipelines YAML file was found

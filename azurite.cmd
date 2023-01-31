@@ -1,0 +1,1 @@
+start /B azurite --silent --location azurite --debug azurite/debug.log

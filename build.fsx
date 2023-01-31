@@ -254,6 +254,8 @@ Target "RunTestsNetCore" (fun _ ->
                                           -- "./src/**/*.RabbitMq.Tests.csproj" // Skip RabbitMq tests, no compatible windows docker image
                                           -- "./src/**/*.Amqp.V1.Tests.csproj" // Skip AMQP tests, no compatible windows docker image
                                 | _ -> !! "./src/**/*.Tests.*sproj" // if you need to filter specs for Linux vs. Windows, do it here
+                                       -- "./src/**/*.RabbitMq.Tests.csproj" // Skip RabbitMq tests, incompatible socket
+                                       -- "./src/**/*.Amqp.V1.Tests.csproj" // Skip AMQP tests, incompatible socket
             rawProjects |> Seq.choose filterProjects
      
         let runSingleProject project =

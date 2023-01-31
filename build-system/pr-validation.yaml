@@ -20,7 +20,7 @@ jobs:
     parameters:
       name: 'netfx_tests_windows'
       displayName: '.NET Framework Unit Tests (Windows)'
-      vmImage: 'windows-2019'
+      vmImage: 'windows-latest'
       scriptFileName: build.cmd
       scriptArgs: runTests
       outputDirectory: 'TestResults'
@@ -32,7 +32,7 @@ jobs:
     parameters:
       name: 'net_core_tests_windows'
       displayName: '.NET Core Unit Tests (Windows)'
-      vmImage: 'windows-2019'
+      vmImage: 'windows-latest'
       scriptFileName: build.cmd
       scriptArgs: runTestsNetCore
       outputDirectory: 'TestResults'
@@ -44,7 +44,7 @@ jobs:
     parameters:
       name: 'net_core_tests_linux'
       displayName: '.NET Core Unit Tests (Linux)'
-      vmImage: 'ubuntu-18.04'
+      vmImage: 'ubuntu-latest'
       scriptFileName: './build.sh'
       scriptArgs: runTestsNetCore
       outputDirectory: 'TestResults'

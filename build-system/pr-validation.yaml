@@ -46,7 +46,7 @@ jobs:
       scriptFileName: build.cmd
       scriptArgs: runTestsNet
       outputDirectory: 'TestResults'
-      artifactName: 'net_core_tests_windows-$(Build.BuildId)'
+      artifactName: 'net_tests_windows-$(Build.BuildId)'
       amqpTestUseDocker: true # Flag for AQMP test to use RabbitMQ docker
 
   - template: azure-pipeline.template.yaml
@@ -68,5 +68,5 @@ jobs:
       scriptFileName: './build.sh'
       scriptArgs: runTestsNet
       outputDirectory: 'TestResults'
-      artifactName: 'net_core_tests_linux-$(Build.BuildId)'
+      artifactName: 'net_tests_linux-$(Build.BuildId)'
       amqpTestUseDocker: true # Flag for AQMP test to use RabbitMQ docker

@@ -223,6 +223,8 @@ Target "RunTests" (fun _ ->
         let rawProjects = match (isWindows) with 
                             | true -> !! "./src/**/*.Tests.*sproj"
                                       -- "./src/**/*.SignalR.AspNetCore.Tests.csproj" // ASP.NET signalr spec does not support .NET FX
+                                      -- "./src/**/*.RabbitMq.Tests.csproj" // Skip RabbitMq tests, no compatible windows docker image
+                                      -- "./src/**/*.Amqp.V1.Tests.csproj" // Skip AMQP tests, no compatible windows docker image
                             | _ -> !! "./src/**/*.Tests.*sproj" // if you need to filter specs for Linux vs. Windows, do it here
                                    -- "./src/**/*.SignalR.AspNetCore.Tests.csproj" // ASP.NET signalr spec does not support .NET FX
         rawProjects |> Seq.choose filterProjects
@@ -249,9 +251,9 @@ Target "RunTestsNetCore" (fun _ ->
         let projects = 
             let rawProjects = match (isWindows) with 
                                 | true -> !! "./src/**/*.Tests.*sproj"
+                                          -- "./src/**/*.RabbitMq.Tests.csproj" // Skip RabbitMq tests, no compatible windows docker image
+                                          -- "./src/**/*.Amqp.V1.Tests.csproj" // Skip AMQP tests, no compatible windows docker image
                                 | _ -> !! "./src/**/*.Tests.*sproj" // if you need to filter specs for Linux vs. Windows, do it here
-                                       -- "./src/**/Akka.Streams.Amqp.RabbitMq.Tests.csproj" // RabbitMQ container doesn't work well with linux networking setup
-                                       -- "./src/**/Akka.Streams.Amqp.V1.Tests.csproj" // RabbitMQ container doesn't work well with linux networking setup
             rawProjects |> Seq.choose filterProjects
      
         let runSingleProject project =
@@ -276,9 +278,9 @@ Target "RunTestsNet" (fun _ ->
         let projects = 
             let rawProjects = match (isWindows) with 
                                 | true -> !! "./src/**/*.Tests.*sproj"
+                                          -- "./src/**/*.RabbitMq.Tests.csproj" // Skip RabbitMq tests, no compatible windows docker image
+                                          -- "./src/**/*.Amqp.V1.Tests.csproj" // Skip AMQP tests, no compatible windows docker image
                                 | _ -> !! "./src/**/*.Tests.*sproj" // if you need to filter specs for Linux vs. Windows, do it here
-                                       -- "./src/**/Akka.Streams.Amqp.RabbitMq.Tests.csproj" // RabbitMQ container doesn't work well with linux networking setup
-                                       -- "./src/**/Akka.Streams.Amqp.V1.Tests.csproj" // RabbitMQ container doesn't work well with linux networking setup
             rawProjects |> Seq.choose filterProjects
      
         let runSingleProject project =

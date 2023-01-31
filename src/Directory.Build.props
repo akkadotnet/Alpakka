@@ -6,7 +6,7 @@
         <PackageIconUrl>http://getakka.net/images/akkalogo.png</PackageIconUrl>
         <PackageProjectUrl>https://github.com/akkadotnet/Alpakka</PackageProjectUrl>
         <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
-        <LangVersion>10</LangVersion>
+        <LangVersion>9.0</LangVersion>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <TargetIsMono Condition="'$(TargetFramework)' == '$(NetFrameworkLibVersion)' and '$(OS)' == 'Unix'">true</TargetIsMono>
         <NoWarn>$(NoWarn);CS1591;xUnit1013</NoWarn>

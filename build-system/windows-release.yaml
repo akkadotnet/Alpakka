@@ -27,14 +27,12 @@ steps:
     inputs:
       version: 7.0.x
   - task: UseDotNet@2 # to keep DocFx happy
-    displayName: "Use .NET 6 Runtime 6.0"
+    displayName: "Use .NET 6 SDK 6.0"
     inputs:
-      packageType: runtime
       version: 6.0.x
   - task: UseDotNet@2
-    displayName: 'Use .NET Core Runtime 3.1'
+    displayName: 'Use .NET Core SDK 3.1'
     inputs:
-      packageType: runtime
       version: 3.1.x
 
   - task: BatchScript@1

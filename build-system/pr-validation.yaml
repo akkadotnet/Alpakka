@@ -49,5 +49,5 @@ jobs:
       scriptArgs: runTestsNetCore
       outputDirectory: 'TestResults'
       artifactName: 'net_core_tests_linux-$(Build.BuildId)'
-      azureTestUseDocker: true # Flag for azure storage queue test to use docker
+      azureTestUseDocker: false # Flag for azure storage queue test to use docker
       amqpTestUseDocker: true # Flag for AQMP test to use RabbitMQ docker

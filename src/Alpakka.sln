@@ -33,9 +33,9 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 	ProjectSection(SolutionItems) = preProject
 		.editorconfig = .editorconfig
 		..\build.fsx = ..\build.fsx
-		common.props = common.props
 		..\RELEASE_NOTES.md = ..\RELEASE_NOTES.md
 		xunit.runner.json = xunit.runner.json
+		Directory.Build.props = Directory.Build.props
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "SNS", "SNS", "{805C6D37-6F39-4EAE-BEED-61100104FF3D}"

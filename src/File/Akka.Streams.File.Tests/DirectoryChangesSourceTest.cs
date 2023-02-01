@@ -45,7 +45,8 @@ namespace Akka.Streams.File.Tests
             pair1.Item1.Should().Be(createdFile.Name);
 
             // Flush to disk after writing, otherwise FileSystemWatcher won't pick up the changes
-            createdFile.Write(Encoding.UTF8.GetBytes("Some data"));
+            var data = Encoding.UTF8.GetBytes("Some data");
+            createdFile.Write(data, 0, data.Length);
             createdFile.Flush(flushToDisk: true);
 
             var pair2 = probe.RequestNext();

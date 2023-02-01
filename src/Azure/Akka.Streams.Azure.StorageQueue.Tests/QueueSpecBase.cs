@@ -11,10 +11,10 @@ namespace Akka.Streams.Azure.StorageQueue.Tests
 {
     public abstract class QueueSpecBase : Akka.TestKit.Xunit2.TestKit, IAsyncLifetime
     {
-        protected QueueSpecBase(AzureFixture fixture, ITestOutputHelper output) : base((ActorSystem)null, output)
+        protected QueueSpecBase(ITestOutputHelper output) : base((ActorSystem)null, output)
         {
             Materializer = Sys.Materializer();
-            Queue = new QueueClient(fixture.QueueUri, new StorageSharedKeyCredential(fixture.AccountName, fixture.AccountKey));
+            Queue = new QueueClient("UseDevelopmentStorage=true", "testqueue");
         }
 
         public QueueClient Queue { get; }

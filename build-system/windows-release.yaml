@@ -23,10 +23,17 @@ variables:
     value: akkadotnet/Alpakka
 steps:
   - task: UseDotNet@2
-    displayName: 'Use .NET Core SDK 3.1.105'
+    displayName: 'Use .NET 7 SDK 7.0'
     inputs:
-      packageType: sdk
-      version: 3.1.105
+      version: 7.0.x
+  - task: UseDotNet@2 # to keep DocFx happy
+    displayName: "Use .NET 6 SDK 6.0"
+    inputs:
+      version: 6.0.x
+  - task: UseDotNet@2
+    displayName: 'Use .NET Core SDK 3.1'
+    inputs:
+      version: 3.1.x
 
   - task: BatchScript@1
     displayName: 'FAKE Build'

@@ -14,13 +14,10 @@ using Xunit.Abstractions;
 
 namespace Akka.Streams.Azure.StorageQueue.Tests
 {
-    [Collection("StorageQueueSpec")]
     public class QueueSinkSpec : QueueSpecBase
     {
-        private readonly AzureFixture _fixture;
-        public QueueSinkSpec(AzureFixture fixture, ITestOutputHelper output) : base(fixture, output)
+        public QueueSinkSpec(ITestOutputHelper output) : base(output)
         {
-            _fixture = fixture;
         }
 
         [Fact]

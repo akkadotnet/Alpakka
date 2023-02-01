@@ -19,7 +19,7 @@ namespace Akka.Streams.Csv.Dsl
         public const char DoubleQuote = '"';
 
         /// <summary>
-        /// Create a Flow for converting <see cref="IImmutableList{string}"/> to ByteString.
+        /// Create a Flow for converting <see cref="IImmutableList{String}"/> to ByteString.
         /// </summary>
         /// <param name="delimiter">Value delimiter, defaults to comma</param>
         /// <param name="quoteChar">Quote character, defaults to double quote</param>

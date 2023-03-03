@@ -9,6 +9,7 @@ using System;
 using System.Collections.Immutable;
 using System.IO;
 using System.Threading.Tasks;
+using Akka.Event;
 using Akka.IO;
 using Akka.Streams.Dsl;
 using Akka.Streams.Implementation;

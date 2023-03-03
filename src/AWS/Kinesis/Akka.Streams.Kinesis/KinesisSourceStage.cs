@@ -10,6 +10,7 @@
 using System;
 using System.Collections.Generic;
 using Akka.Actor;
+using Akka.Event;
 using Akka.Streams.Stage;
 using Amazon.Kinesis;
 using Amazon.Kinesis.Model;

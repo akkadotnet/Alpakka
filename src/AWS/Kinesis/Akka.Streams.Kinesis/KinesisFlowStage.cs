@@ -15,6 +15,7 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Threading.Tasks;
 using Akka.Actor;
+using Akka.Event;
 using Akka.Pattern;
 using Amazon.Kinesis;
 
@@ -281,7 +282,7 @@ namespace Akka.Streams.Kinesis
                 if (_waitingRetries.Count == 0 && !HasBeenPulled(_in)) TryPull(_in);
             }
 
-            public void OnDownstreamFinish()
+            public void OnDownstreamFinish(Exception e)
             {
                 CompleteStage();
             }

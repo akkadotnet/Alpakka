@@ -1,11 +1,13 @@
-﻿using Akka.Streams.Stage;
-﻿using System;
+﻿using Akka.Event;
+using Akka.Streams.Stage;
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using Amqp;
 using System.Threading.Tasks;
 using Akka.Streams.Amqp.V1.Internal;
 using Amqp.Framing;
+using Error = Amqp.Framing.Error;
 
 namespace Akka.Streams.Amqp.V1
 {

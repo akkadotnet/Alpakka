@@ -18,7 +18,7 @@ namespace Akka.Streams.Sns
         /// <summary>
         /// Creates a <see cref="Sink"/> to publish messages to a SNS topic using an <see cref="IAmazonSimpleNotificationService"/>
         /// </summary>
-        public static Sink<string, Task> PlainSink(string topicArn, IAmazonSimpleNotificationService snsService)
+        public static Sink<string, Task<Done>> PlainSink(string topicArn, IAmazonSimpleNotificationService snsService)
         {
             return PlainFlow(topicArn, snsService).ToMaterialized(Sink.Ignore<PublishResponse>(), Keep.Right);
         }

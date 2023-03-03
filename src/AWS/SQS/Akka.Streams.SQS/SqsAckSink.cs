@@ -18,14 +18,14 @@ namespace Akka.Streams.SQS
         /// <summary>
         /// Creates a <see cref="Sink{TIn,TMat}"/> for ack a single SQS message at a time using a <paramref name="client"/>.
         /// </summary>
-        public static Sink<MessageAction, Task> Default(IAmazonSQS client, string queueUrl, SqsAckSettings settings = null) =>
+        public static Sink<MessageAction, Task<Done>> Default(IAmazonSQS client, string queueUrl, SqsAckSettings settings = null) =>
             SqsAckFlow.Default(client, queueUrl, settings)
                 .ToMaterialized(Sink.Ignore<ISqsAckResult>(), Keep.Right);
         
         /// <summary>
         /// Creates a <see cref="Sink{TIn,TMat}"/> for ack grouped SQS messages using a <paramref name="client"/>.
         /// </summary>
-        public static Sink<MessageAction, Task> Grouped(IAmazonSQS client, string queueUrl, SqsAckGroupedSettings settings = null) =>
+        public static Sink<MessageAction, Task<Done>> Grouped(IAmazonSQS client, string queueUrl, SqsAckGroupedSettings settings = null) =>
             SqsAckFlow.Grouped(client, queueUrl, settings)
                 .ToMaterialized(Sink.Ignore<ISqsAckResultEntry>(), Keep.Right);
     }

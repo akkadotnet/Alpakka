@@ -58,7 +58,7 @@ namespace Akka.Streams.Amqp.RabbitMq
                             PushMessage(_queue.Dequeue());
                         }
                     },
-                    onDownstreamFinish: () =>
+                    onDownstreamFinish: ex =>
                     {
                         SetKeepGoing(true);
                         if (_unackedMessages == 0) 

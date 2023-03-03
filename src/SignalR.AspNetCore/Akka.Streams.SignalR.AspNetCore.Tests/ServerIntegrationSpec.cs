@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
+using Akka.Event;
 using Akka.Streams.Dsl;
 using Akka.Streams.SignalR.AspNetCore.Tests.Infrastructure;
 using Akka.Streams.TestKit;

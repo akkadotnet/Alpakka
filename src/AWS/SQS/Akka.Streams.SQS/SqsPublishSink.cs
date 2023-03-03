@@ -25,7 +25,7 @@ namespace Akka.Streams.SQS
         /// Creates a <see cref="Sink{TIn,TMat}"/> that accepts strings and publishes them as messages
         /// to a SQS queue using a <paramref name="client"/>.
         /// </summary>
-        public static Sink<string, Task> Default(IAmazonSQS client, string queueUrl, SqsPublishSettings settings = null) =>
+        public static Sink<string, Task<Done>> Default(IAmazonSQS client, string queueUrl, SqsPublishSettings settings = null) =>
             Flow.FromFunction((string msg) => new SendMessageRequest(queueUrl, msg))
                 .ToMaterialized(MessageSink(client, queueUrl, settings), Keep.Right);
 
@@ -33,7 +33,7 @@ namespace Akka.Streams.SQS
         /// Creates a <see cref="Sink{TIn,TMat}"/> that accepts strings and publishes them as messages
         /// to a SQS queue using a <paramref name="client"/>.
         /// </summary>
-        public static Sink<SendMessageRequest, Task> MessageSink(IAmazonSQS client, string queueUrl, SqsPublishSettings settings = null) =>
+        public static Sink<SendMessageRequest, Task<Done>> MessageSink(IAmazonSQS client, string queueUrl, SqsPublishSettings settings = null) =>
             SqsPublishFlow.Default(client, queueUrl, settings)
                 .ToMaterialized(Sink.Ignore<SqsPublishResult>(), Keep.Right);
 
@@ -42,7 +42,7 @@ namespace Akka.Streams.SQS
         /// them as messages in batches to a SQS queue using a <paramref name="client"/>.
         /// See also: https://getakka.net/articles/streams/builtinstages.html#groupedwithin
         /// </summary>
-        public static Sink<string, Task> Grouped(IAmazonSQS client, string queueUrl, SqsPublishGroupedSettings settings = null) =>
+        public static Sink<string, Task<Done>> Grouped(IAmazonSQS client, string queueUrl, SqsPublishGroupedSettings settings = null) =>
             Flow.FromFunction((string msg) => new SendMessageRequest(queueUrl, msg))
                 .ToMaterialized(GroupedMessageSink(client, queueUrl, settings), Keep.Right);
 
@@ -51,7 +51,7 @@ namespace Akka.Streams.SQS
         /// them in batches to a SQS queue using a <paramref name="client"/>.
         /// See also: https://getakka.net/articles/streams/builtinstages.html#groupedwithin
         /// </summary>
-        public static Sink<SendMessageRequest, Task> GroupedMessageSink(IAmazonSQS client, string queueUrl, SqsPublishGroupedSettings settings = null) =>
+        public static Sink<SendMessageRequest, Task<Done>> GroupedMessageSink(IAmazonSQS client, string queueUrl, SqsPublishGroupedSettings settings = null) =>
             SqsPublishFlow.Grouped(client, queueUrl, settings)
                 .ToMaterialized(Sink.Ignore<SqsPublishResultEntry>(), Keep.Right);
 
@@ -60,7 +60,7 @@ namespace Akka.Streams.SQS
         /// them as messages in batches to a SQS queue using a <paramref name="client"/>.
         /// See also: https://getakka.net/articles/streams/builtinstages.html#groupedwithin
         /// </summary>
-        public static Sink<IEnumerable<string>, Task> Batch(IAmazonSQS client, string queueUrl,
+        public static Sink<IEnumerable<string>, Task<Done>> Batch(IAmazonSQS client, string queueUrl,
             SqsPublishBatchSettings settings = null) =>
             Flow.FromFunction((IEnumerable<string> msgs) => 
                     msgs.Select(msg => new SendMessageRequest(queueUrl, msg)))
@@ -71,7 +71,7 @@ namespace Akka.Streams.SQS
         /// to a SQS queue using a <paramref name="client"/>.
         /// See also: https://getakka.net/articles/streams/builtinstages.html#groupedwithin
         /// </summary>
-        public static Sink<IEnumerable<SendMessageRequest>, Task> BatchedMessageSink(IAmazonSQS client, string queueUrl, SqsPublishBatchSettings settings = null) =>
+        public static Sink<IEnumerable<SendMessageRequest>, Task<Done>> BatchedMessageSink(IAmazonSQS client, string queueUrl, SqsPublishBatchSettings settings = null) =>
             SqsPublishFlow.Batch(client, queueUrl, settings)
                 .ToMaterialized(Sink.Ignore<IReadOnlyList<SqsPublishResultEntry>>(), Keep.Right);
     }

@@ -1,4 +1,5 @@
-﻿using Akka.Streams.Amqp.V1.Util;
+﻿using Akka.Event;
+using Akka.Streams.Amqp.V1.Util;
 using Akka.Streams.Stage;
 using Akka.Streams.Supervision;
 using Amqp;
@@ -9,6 +10,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Akka.Streams.Amqp.V1.Internal;
+using Error = Amqp.Framing.Error;
 
 namespace Akka.Streams.Amqp.V1
 {
@@ -64,7 +66,7 @@ namespace Akka.Streams.Amqp.V1
                     {
                         PushMessage(msg);
                     }
-                }, onDownstreamFinish: CompleteStage);
+                }, onDownstreamFinish: ex => CompleteStage());
             }
 
             private void HandleConnectionResult(ConnectResult result)

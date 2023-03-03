@@ -7,6 +7,7 @@
 // -----------------------------------------------------------------------
 #endregion
 
+using Akka.Event;
 using Akka.Streams.Dsl;
 using Akka.Streams.TestKit;
 using FluentAssertions;

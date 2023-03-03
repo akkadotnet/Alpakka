@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Akka.Event;
 using Akka.Streams.Azure.Utils;
 using Akka.Streams.Dsl;
 using Akka.Streams.Stage;

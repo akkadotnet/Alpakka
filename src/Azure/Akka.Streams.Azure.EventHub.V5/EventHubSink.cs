@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Akka.Actor;
+using Akka.Event;
 using Akka.Streams.Dsl;
 using Akka.Streams.Stage;
 using Azure.Messaging.EventHubs;

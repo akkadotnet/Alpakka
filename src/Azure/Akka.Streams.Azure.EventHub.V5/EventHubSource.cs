@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Akka.Event;
 using Akka.Streams.Dsl;
 using Akka.Streams.Stage;
 using Akka.Streams.Supervision;

@@ -182,7 +182,7 @@ namespace Akka.Streams.File
             /// </summary>
             private void Rotate(TC triggerValue, T data)
             {
-                var prevOut = new Option<SubSourceOutlet<T>>(_sourceOut);
+                var prevOut = Option<SubSourceOutlet<T>>.Create(_sourceOut);
 
                 _sourceOut = new SubSourceOutlet<T>(this, "LogRotatorSink.Sub-Out");
                 _sourceOut.SetHandler(new LambdaOutHandler(onPull: () =>

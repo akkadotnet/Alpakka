@@ -10,7 +10,6 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 using Akka.IO;
 using Akka.Streams.Dsl;
@@ -77,7 +76,7 @@ namespace Akka.Streams.File.Tests
         [Fact]
         public async Task LogRotatorSink_must_complete_when_consuming_an_empty_source()
         {
-            Option<string> TriggerCreator(ByteString element) => throw new Exception("trigger creator should not be called");
+            static Option<string> TriggerCreator(ByteString element) => throw new Exception("trigger creator should not be called");
 
             var rotatorSink = LogRotatorSink.Create(TriggerCreator);
 
@@ -129,7 +128,7 @@ namespace Akka.Streams.File.Tests
                 }
 
                 currentFilename = newName;
-                return new Option<string>(Path.Combine(destinationDir, newName));
+                return Option<string>.Create(Path.Combine(destinationDir, newName));
             }
 
             var timeBasedRotatorSink = LogRotatorSink.Create(TimeBasedTriggerCreator);
@@ -188,7 +187,7 @@ namespace Akka.Streams.File.Tests
 
             var completion = Source.From(test.Select(ByteString.FromString))
                 .RunWith(LogRotatorSink.WithSinkFactory(
-                    _ => new Option<Task>(Task.CompletedTask),
+                    _ => Option<Task>.Create(Task.CompletedTask),
                     _ => Flow.Create<ByteString>()
                         .ToMaterialized(new StrangeSlowSink<ByteString>(Add, TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(200)), Keep.Right)), _materializer);
 
@@ -250,7 +249,7 @@ namespace Akka.Streams.File.Tests
         public async Task LogRotatorSink_must_downstream_fail_on_file_write()
         {
             var path = Path.Combine(Path.GetTempPath(), "out-" + DateTime.UtcNow.Ticks + ".log");
-            Option<string> TriggerFunctionCreator(ByteString element) => new Option<string>(path);
+            Option<string> TriggerFunctionCreator(ByteString element) => Option<string>.Create(path);
 
             var (probe, completion) = this.SourceProbe<ByteString>()
                 .ToMaterialized(LogRotatorSink.Create(TriggerFunctionCreator, FileMode.Open), Keep.Both)
@@ -304,14 +303,12 @@ namespace Akka.Streams.File.Tests
 
         private static IEnumerable<(T, T)> Slide<T>(IEnumerable<T> source)
         {
-            using (var iterator = source.GetEnumerator())
+            using var iterator = source.GetEnumerator();
+            while (iterator.MoveNext())
             {
-                while (iterator.MoveNext())
-                {
-                    var first = iterator.Current;
-                    var second = iterator.MoveNext() ? iterator.Current : default;
-                    yield return (first, second);
-                }
+                var first = iterator.Current;
+                var second = iterator.MoveNext() ? iterator.Current : default;
+                yield return (first, second);
             }
         }
 

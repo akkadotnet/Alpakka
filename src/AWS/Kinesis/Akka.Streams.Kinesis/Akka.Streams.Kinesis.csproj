@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <AssemblyTitle>Akka.Streams.Kinesis</AssemblyTitle>
         <Description>AWS Kinesis adapter for Akka.NET Streams</Description>
@@ -8,6 +8,6 @@
 
     <ItemGroup>
         <PackageReference Include="Akka.Streams" Version="$(AkkaVersion)" />
-        <PackageReference Include="AWSSDK.Kinesis" Version="3.7.102.1" />
+        <PackageReference Include="AWSSDK.Kinesis" Version="3.7.102.43" />
     </ItemGroup>
 </Project>

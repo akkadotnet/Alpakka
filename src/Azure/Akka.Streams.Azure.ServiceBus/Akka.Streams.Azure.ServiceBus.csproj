@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <AssemblyTitle>Akka.Streams.Azure.ServiceBus</AssemblyTitle>
         <Description>Azure ServiceBus adapter for Akka.NET Streams</Description>
@@ -9,7 +9,7 @@
 
     <ItemGroup>
         <PackageReference Include="Akka.Streams" Version="$(AkkaVersion)" />
-        <PackageReference Include="Azure.Messaging.ServiceBus" Version="7.12.0" />
+        <PackageReference Include="Azure.Messaging.ServiceBus" Version="7.14.0" />
     </ItemGroup>
 
 </Project>

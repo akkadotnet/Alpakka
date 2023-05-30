@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <AssemblyTitle>Akka.Streams.Amqp</AssemblyTitle>
         <Description>AMQP adapter for Akka.NET Streams</Description>
@@ -8,6 +8,6 @@
 
     <ItemGroup>
         <PackageReference Include="Akka.Streams" Version="$(AkkaVersion)" />
-        <PackageReference Include="RabbitMQ.Client" Version="6.4.0" />
+        <PackageReference Include="RabbitMQ.Client" Version="6.5.0" />
     </ItemGroup>
 </Project>

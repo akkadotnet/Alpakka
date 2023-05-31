@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <TargetFrameworks>$(NetCoreTestVersion);$(NetTestVersion);$(NetFrameworkTestVersion)</TargetFrameworks>
         <IsPackable>false</IsPackable>
@@ -12,7 +12,7 @@
         <PackageReference Include="xunit" Version="$(XunitVersion)" />
         <PackageReference Include="xunit.runner.visualstudio" Version="$(XunitRunnerVersion)" />
         <PackageReference Include="coverlet.collector" Version="3.2.0" />
-        <PackageReference Include="Docker.DotNet" Version="3.125.12" />
+        <PackageReference Include="Docker.DotNet" Version="3.125.15" />
     </ItemGroup>
 
     <ItemGroup>

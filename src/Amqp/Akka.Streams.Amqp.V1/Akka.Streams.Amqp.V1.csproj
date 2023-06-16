@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
       <AssemblyTitle>Akka.Streams.Amqp.V1</AssemblyTitle>
       <Description>AMQP V1 adapter for Akka.NET Streams</Description>
@@ -8,7 +8,7 @@
 
     <ItemGroup>
         <PackageReference Include="Akka.Streams" Version="$(AkkaVersion)" />
-        <PackageReference Include="AMQPNetLite.Core" Version="2.4.5" />
+        <PackageReference Include="AMQPNetLite.Core" Version="2.4.6" />
         <PackageReference Include="AMQPNetLite.Serialization" Version="2.4.5" />
     </ItemGroup>
 

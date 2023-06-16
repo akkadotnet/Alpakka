@@ -10,7 +10,7 @@
 
     <ItemGroup>
         <PackageReference Include="Akka.Streams" Version="$(AkkaVersion)" />
-        <PackageReference Include="Azure.Messaging.EventHubs.Processor" Version="5.8.1" />
+        <PackageReference Include="Azure.Messaging.EventHubs.Processor" Version="5.9.2" />
     </ItemGroup>
 
 </Project>

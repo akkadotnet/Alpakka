@@ -69,7 +69,7 @@ namespace Akka.Streams.Amqp.RabbitMq
                         throw new ArgumentException("You need to supply at least one host/port pair.", nameof(settings));
 
                     return factory.CreateConnection(details.HostAndPortList
-                        .Select(pair => new AmqpTcpEndpoint(pair.host, pair.port)).ToList());
+                        .Select(pair => new AmqpTcpEndpoint(pair.host, pair.port, details.Ssl)).ToList());
                 }
                 default:
                     return factory.CreateConnection();

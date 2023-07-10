@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+<Project Sdk="Microsoft.NET.Sdk.Web">
     <PropertyGroup>
         <TargetFrameworks>$(NetCoreTestVersion);$(NetTestVersion)</TargetFrameworks>
         <IsPackable>false</IsPackable>
@@ -16,13 +16,13 @@
     
     <ItemGroup Condition=" '$(TargetFramework)' == '$(NetCoreTestVersion)' ">
         <!-- These packages are version locked due to bacward compatibility problems with netcoreapp3.1 -->
-        <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="5.0.17" />
+        <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="7.0.8" />
         <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="3.1.27"/>
     </ItemGroup>
 
     <!-- We're not targetting .NET 6.0 yet, need to upgrade the build.fsx script -->
     <ItemGroup Condition=" '$(TargetFramework)' == '$(NetTestVersion)' ">
-        <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="6.0.7" />
+        <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="7.0.8" />
         <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="6.0.7"/>
     </ItemGroup>
 

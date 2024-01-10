@@ -9,6 +9,7 @@ using FluentAssertions;
 using Azure.Storage.Queues;
 using Azure.Storage.Queues.Models;
 using FluentAssertions.Extensions;
+using static FluentAssertions.FluentActions;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -27,8 +28,10 @@ namespace Akka.Streams.Azure.StorageQueue.Tests
             var t = Source.From(messages)
                 //.Select(x => new QueueMessage(x))
                 .ToStorageQueue(Queue, Materializer);
-            t.Wait(15.Seconds()).Should().BeTrue();
-            (await Queue.ReceiveMessagesAsync(2)).Value.Select(x => x.MessageText).Should().BeEquivalentTo(messages);
+            await Awaiting(() => t).Should().CompleteWithinAsync(15.Seconds());
+            var result = await Awaiting(() => Queue.ReceiveMessagesAsync(2))
+                .Should().CompleteWithinAsync(15.Seconds());
+            result.Subject.Value.Select(x => x.MessageText).Should().BeEquivalentTo(messages);
         }
 
         [Fact]
@@ -40,7 +43,7 @@ namespace Akka.Streams.Azure.StorageQueue.Tests
                 .Run(Materializer);
 
             probe.SendError(new Exception("Boom"));
-            task.Invoking(async x => await x).Should().Throw<Exception>().WithMessage("Boom");
+            await Awaiting(() => task).Should().ThrowAsync<Exception>().WithMessage("Boom");
         }
 
         [Fact]
@@ -57,8 +60,11 @@ namespace Akka.Streams.Azure.StorageQueue.Tests
 
             await Task.Delay(1000);
             await Queue.CreateAsync();
-            t.Wait(15.Seconds()).Should().BeTrue();
-            (await Queue.ReceiveMessagesAsync(2)).Value.Select(x => x.MessageText).Should().BeEquivalentTo(messages);
+
+            await Awaiting(() => t).Should().CompleteWithinAsync(15.Seconds());
+            var result = await Awaiting(() => Queue.ReceiveMessagesAsync(2))
+                .Should().CompleteWithinAsync(15.Seconds());
+            result.Subject.Value.Select(x => x.MessageText).Should().BeEquivalentTo(messages);
         }
 
         [Fact]

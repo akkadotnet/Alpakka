@@ -13,6 +13,7 @@ using System.Linq;
 using Akka.Streams.Dsl;
 using Amazon.SQS;
 using Amazon.SQS.Model;
+using NotSupportedException = System.NotSupportedException;
 
 namespace Akka.Streams.SQS
 {
@@ -75,9 +76,9 @@ namespace Akka.Streams.SQS
 
                 var merge = builder.Add(new Merge<ISqsAckResultEntry>(3));
 
-                var delete = builder.Add(Flow.Create<MessageAction>().Collect(a => a as Delete));
-                var changeMessageVisibility = builder.Add(Flow.Create<MessageAction>().Collect(a => a as ChangeMessageVisibility));
-                var ignore = builder.Add(Flow.Create<MessageAction>().Collect(a => a as Ignore));
+                var delete = builder.Add(Flow.Create<MessageAction>().Collect(_ => true, a => a as Delete));
+                var changeMessageVisibility = builder.Add(Flow.Create<MessageAction>().Collect(_ => true, a => a as ChangeMessageVisibility));
+                var ignore = builder.Add(Flow.Create<MessageAction>().Collect(_ => true, a => a as Ignore));
 
                 builder.From(p.Out(0)).Via(delete).Via(GroupedDelete(client, queueUrl, settings).Select(x => (ISqsAckResultEntry)x)).To(merge.In(0));
                 builder.From(p.Out(1)).Via(changeMessageVisibility).Via(GroupedChangeMessageVisibility(client, queueUrl, settings).Select(x => (ISqsAckResultEntry)x)).To(merge.In(1));

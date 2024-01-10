@@ -228,7 +228,7 @@ namespace Akka.Streams.Amqp.Tests
                         tcpClient.Close();
                         break;
                     }
-                    catch (SocketException _)
+                    catch (SocketException)
                     {
                         // no-op
                     }

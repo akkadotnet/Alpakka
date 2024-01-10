@@ -8,8 +8,8 @@
 
     <ItemGroup>
         <PackageReference Include="Akka.Streams" Version="$(AkkaVersion)" />
-        <PackageReference Include="AMQPNetLite.Core" Version="2.4.7" />
-        <PackageReference Include="AMQPNetLite.Serialization" Version="2.4.5" />
+        <PackageReference Include="AMQPNetLite.Core" Version="2.4.8" />
+        <PackageReference Include="AMQPNetLite.Serialization" Version="2.4.8" />
     </ItemGroup>
 
 </Project>

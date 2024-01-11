@@ -39,7 +39,7 @@ jobs:
       # Linux
       # Install Azurite in linux
       - bash: |
-          sudo npm install -g azurite@3.19.0
+          sudo npm install -g azurite@3.26.0
           sudo mkdir azurite
           sudo azurite --silent --location azurite --debug azirute/debug.log &
         displayName: 'Install and Run Azurite (Linux)'
@@ -57,7 +57,7 @@ jobs:
       # Windows
       # Start Azure Storage Emulator in windows
       - powershell: |
-          npm install -g azurite@3.19.0
+          npm install -g azurite@3.26.0
           mkdir azurite
           Start-Process azurite.cmd -PassThru
         displayName: 'Install and Run Azurite (Windows)'

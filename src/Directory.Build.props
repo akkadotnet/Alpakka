@@ -23,7 +23,7 @@
     <XunitVersion>2.6.6</XunitVersion>
     <XunitRunnerVersion>2.5.6</XunitRunnerVersion>
     <FluentAssertionsVersion>5.10.3</FluentAssertionsVersion>
-    <TestSdkVersion>17.7.1</TestSdkVersion>
+    <TestSdkVersion>17.8.0</TestSdkVersion>
     <NBenchVersion>2.0.1</NBenchVersion>
     <HyperionVersion>0.9.16</HyperionVersion>
     <NewtonsoftJsonVersion>12.0.3</NewtonsoftJsonVersion>

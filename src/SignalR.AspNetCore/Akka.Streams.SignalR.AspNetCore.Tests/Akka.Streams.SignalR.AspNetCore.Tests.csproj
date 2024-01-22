@@ -23,7 +23,7 @@
     <!-- We're not targetting .NET 6.0 yet, need to upgrade the build.fsx script -->
     <ItemGroup Condition=" '$(TargetFramework)' == '$(NetTestVersion)' ">
         <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="7.0.10" />
-        <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="6.0.7"/>
+        <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="6.0.26"/>
     </ItemGroup>
 
     <ItemGroup>

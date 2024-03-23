@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
@@ -10,8 +9,6 @@ using Akka.Streams.Amqp.RabbitMq;
 using Akka.Streams.Amqp.RabbitMq.Dsl;
 using Akka.Streams.Dsl;
 using Akka.Streams.TestKit;
-using Akka.Util;
-using Akka.Util.Internal;
 using FluentAssertions;
 using FluentAssertions.Extensions;
 using static FluentAssertions.FluentActions;

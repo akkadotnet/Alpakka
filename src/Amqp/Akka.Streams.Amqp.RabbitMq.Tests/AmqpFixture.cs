@@ -43,6 +43,8 @@ namespace Akka.Streams.Amqp.Tests
         {
             Container = new RabbitMqBuilder()
                 .WithName(RabbitContainerName)
+                .WithUsername(UserName)
+                .WithPassword(Password)
                 .Build();
             
             await Container.StartAsync();

@@ -51,7 +51,6 @@ let incrementalistReport = output @@ "incrementalist.txt"
 
 // Configuration values for tests
 let testNetFrameworkVersion = "net471"
-let testNetCoreVersion = "netcoreapp3.1"
 let testNetVersion = "net6.0"
 
 Target "Clean" (fun _ ->
@@ -192,7 +191,7 @@ type Runtime =
 
 let getTestAssembly runtime project =
     let assemblyPath = match runtime with
-                        | NetCore -> !! ("src" @@ "**" @@ "bin" @@ "Release" @@ testNetCoreVersion @@ fileNameWithoutExt project + ".dll")
+                        | NetCore -> !! ("src" @@ "**" @@ "bin" @@ "Release" @@ testNetVersion @@ fileNameWithoutExt project + ".dll")
                         | NetFramework -> !! ("src" @@ "**" @@ "bin" @@ "Release" @@ testNetFrameworkVersion @@ fileNameWithoutExt project + ".dll")
 
     if Seq.isEmpty assemblyPath then
@@ -244,35 +243,6 @@ Target "RunTests" (fun _ ->
 
     CreateDir outputTests
     projects |> Seq.iter (runSingleProject)
-)
-
-Target "RunTestsNetCore" (fun _ ->
-    if not skipBuild.Value then
-        let projects = 
-            let rawProjects = match (isWindows) with 
-                                | true -> !! "./src/**/*.Tests.*sproj"
-                                          -- "./src/**/*.RabbitMq.Tests.csproj" // Skip RabbitMq tests, no compatible windows docker image
-                                          -- "./src/**/*.Amqp.V1.Tests.csproj" // Skip AMQP tests, no compatible windows docker image
-                                | _ -> !! "./src/**/*.Tests.*sproj" // if you need to filter specs for Linux vs. Windows, do it here
-                                       -- "./src/**/*.RabbitMq.Tests.csproj" // Skip RabbitMq tests, incompatible socket
-                                       -- "./src/**/*.Amqp.V1.Tests.csproj" // Skip AMQP tests, incompatible socket
-            rawProjects |> Seq.choose filterProjects
-     
-        let runSingleProject project =
-            let arguments =
-                match (hasTeamCity) with
-                | true -> (sprintf "test -c Release --no-build --logger:trx --logger:\"console;verbosity=normal\" --framework %s --results-directory \"%s\" -- -parallel none -teamcity" testNetCoreVersion outputTests)
-                | false -> (sprintf "test -c Release --no-build --logger:trx --logger:\"console;verbosity=normal\" --framework %s --results-directory \"%s\" -- -parallel none" testNetCoreVersion outputTests)
-
-            let result = ExecProcess(fun info ->
-                info.FileName <- "dotnet"
-                info.WorkingDirectory <- (Directory.GetParent project).FullName
-                info.Arguments <- arguments) (TimeSpan.FromMinutes 60.0) // Need to bump this because pulling docker image takes a long time
-        
-            ResultHandling.failBuildIfXUnitReportedError TestRunnerErrorLevel.DontFailBuild result
-
-        CreateDir outputTests
-        projects |> Seq.iter (runSingleProject)
 )
 
 Target "RunTestsNet" (fun _ ->
@@ -463,7 +433,7 @@ Target "RunTestsNetCoreFull" DoNothing
 
 // tests dependencies
 "Build" ==> "RunTests"
-"Build" ==> "RunTestsNetCore"
+"Build" ==> "RunTestsNet"
 
 // nuget dependencies
 "BuildRelease" ==> "CreateNuget" ==> "PublishNuget" ==> "Nuget"
@@ -474,6 +444,6 @@ Target "RunTestsNetCoreFull" DoNothing
 // all
 "BuildRelease" ==> "All"
 "RunTests" ==> "All"
-"RunTestsNetCore" ==> "All"
+"RunTestsNet" ==> "All"
 
 RunTargetOrDefault "Help"

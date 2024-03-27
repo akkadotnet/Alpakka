@@ -19,7 +19,7 @@ namespace Akka.Streams.RabbitMq.Amqp.Benchmarks;
 
 [SimpleJob(RunStrategy.ColdStart, iterationCount:10, warmupCount:0)]
 [MemoryDiagnoser]
-public sealed class RabbitMqWriteEnd2EndBenchmarks
+public class RabbitMqWriteEnd2EndBenchmarks
 {
     private IMaterializer? _materializer;
     private AmqpFixture _fixture = new();

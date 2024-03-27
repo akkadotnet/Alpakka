@@ -31,7 +31,7 @@ public class AmqpFixture : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        await using var outputConsumer = new OutputConsumer();
+        using var outputConsumer = new OutputConsumer();
         
         Container = new RabbitMqBuilder()
             .WithName(RabbitContainerName)

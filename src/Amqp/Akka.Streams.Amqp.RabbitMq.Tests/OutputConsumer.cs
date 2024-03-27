@@ -78,12 +78,8 @@ public static class OutputConsumerExtensions
 /// <summary>
 /// TODO: Should probably put this into a shared library for internal use
 /// </summary>
-public sealed class OutputConsumer: IOutputConsumer, IAsyncDisposable
+public sealed class OutputConsumer: IOutputConsumer
 {
-    public OutputConsumer()
-    {
-    }
-
     public bool Enabled => true;
     public Stream Stdout { get; } = new MemoryStream();
     public Stream Stderr { get; } = new MemoryStream();
@@ -92,16 +88,5 @@ public sealed class OutputConsumer: IOutputConsumer, IAsyncDisposable
     {
         Stdout.Dispose();
         Stderr.Dispose();
-    }
-
-    public async ValueTask DisposeAsync()
-    {
-        #if NET5_0_OR_GREATER
-        await Stdout.DisposeAsync();
-        await Stderr.DisposeAsync();
-        #else
-        Stdout.Dispose();
-        Stderr.Dispose();
-        #endif
     }
 }

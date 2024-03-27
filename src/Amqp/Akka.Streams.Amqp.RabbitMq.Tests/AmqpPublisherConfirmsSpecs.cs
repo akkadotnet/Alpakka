@@ -6,12 +6,14 @@
 //-----------------------------------------------------------------------
 
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using Akka.IO;
 using Akka.Streams.Amqp.RabbitMq;
 using Akka.Streams.Amqp.RabbitMq.Dsl;
 using Akka.Streams.Dsl;
 using FluentAssertions;
+using Nito.AsyncEx;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -38,7 +40,7 @@ public class AmqpPublisherConfirmsSpecs : Akka.TestKit.Xunit2.TestKit
     }
     
     [Fact]
-    public async Task AmqpPublisherConfirms_should_publish_messages_with_confirms()
+    public Task AmqpPublisherConfirms_should_publish_messages_with_confirms()
     {
         var queueName = "amqp-conn-it-spec-simple-queue-" + Environment.TickCount;
         var queueDeclaration = QueueDeclaration.Create(queueName).WithDurable(false).WithAutoDelete(true);
@@ -51,9 +53,11 @@ public class AmqpPublisherConfirmsSpecs : Akka.TestKit.Xunit2.TestKit
         );
 
         var messages = new[] { "one", "two", "three", "four", "five" };
-        await Source.From(messages)
+        var task = Source.From(messages)
             .Select(ByteString.FromString)
-            .RunWith(amqpSink, _mat)
-            .WaitAsync(RemainingOrDefault);
+            .RunWith(amqpSink, _mat);
+        
+        using var cts = new CancellationTokenSource(RemainingOrDefault);
+        return task.WaitAsync(cts.Token);
     }
 }

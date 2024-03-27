@@ -149,17 +149,28 @@ namespace Akka.Streams.Amqp.RabbitMq
     public sealed class AmqpSinkSettings : IAmqpConnectorSettings
     {
         private AmqpSinkSettings(IAmqpConnectionSettings connectionSettings, string exchange = null,
-            string routingKey = null, IReadOnlyList<IDeclaration> declarations = null)
+            string routingKey = null, IReadOnlyList<IDeclaration> declarations = null, TimeSpan? waitForConfirms = null)
         {
             ConnectionSettings = connectionSettings;
             Exchange = exchange;
             RoutingKey = routingKey;
             Declarations = declarations ?? new List<IDeclaration>();
+            WaitForConfirmsTimeout = waitForConfirms;
         }
 
         public IAmqpConnectionSettings ConnectionSettings { get; }
         public string Exchange { get; }
         public string RoutingKey { get; }
+
+        /// <summary>
+        /// When enabled, forces the sink to wait for a confirmation from the broker that the message has been received.
+        /// </summary>
+        /// <remarks>
+        /// See https://www.rabbitmq.com/docs/confirms#publisher-confirms for details.
+        /// </remarks>
+        public bool WaitForConfirms => WaitForConfirmsTimeout is not null;
+        
+        public TimeSpan? WaitForConfirmsTimeout { get; }
         public IReadOnlyList<IDeclaration> Declarations { get; }
 
         public static AmqpSinkSettings Create(IAmqpConnectionSettings connectionSettings = null) => 

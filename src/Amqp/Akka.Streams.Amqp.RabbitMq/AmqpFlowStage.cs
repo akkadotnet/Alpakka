@@ -12,11 +12,11 @@ namespace Akka.Streams.Amqp.RabbitMq
     public class AmqpFlowStage<TPassThrough> : GraphStageWithMaterializedValue<FlowShape<(OutgoingMessage, TPassThrough), TPassThrough>, Task>
     {
         public static readonly Attributes DefaultAttributes =
-            Attributes.CreateName("AmqpFlow").And(ActorAttributes.CreateDispatcher("akka.stream.default-blocking-io-dispatcher"));
+            Attributes.CreateName("AmqpFlow");
 
         public AmqpSinkSettings Settings { get; }
-        public readonly Inlet<(OutgoingMessage, TPassThrough)> In = new Inlet<(OutgoingMessage, TPassThrough)>("AmqpFlow.in");
-        public readonly Outlet<TPassThrough> Out = new Outlet<TPassThrough>("AmqpFlow.out");
+        public readonly Inlet<(OutgoingMessage, TPassThrough)> In = new("AmqpFlow.in");
+        public readonly Outlet<TPassThrough> Out = new("AmqpFlow.out");
 
         public AmqpFlowStage(AmqpSinkSettings settings)
         {

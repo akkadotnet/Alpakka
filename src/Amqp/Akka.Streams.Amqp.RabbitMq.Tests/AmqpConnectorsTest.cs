@@ -268,7 +268,7 @@ namespace Akka.Streams.Amqp.Tests
             // wait for each branch to be discovered, one by one
             foreach (var expectedSeenCount in Enumerable.Range(1, fanoutSize - 1))
             {
-                AwaitCondition(() => seenBranches.Count >= expectedSeenCount, TimeSpan.FromMinutes(5));
+                AwaitCondition(() => seenBranches.Count >= expectedSeenCount, TimeSpan.FromSeconds(5));
             }
         }
 

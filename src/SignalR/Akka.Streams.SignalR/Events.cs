@@ -1,7 +1,7 @@
-﻿using Microsoft.AspNetCore.SignalR;
-using System;
+﻿using System;
+using Microsoft.AspNetCore.SignalR;
 
-namespace Akka.Streams.SignalR.AspNetCore
+namespace Akka.Streams.SignalR
 {
     /// <summary>
     /// A common interface for all events incoming from SignalR socket.

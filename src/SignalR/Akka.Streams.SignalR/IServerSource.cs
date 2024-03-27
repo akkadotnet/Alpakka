@@ -1,9 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 
-namespace Akka.Streams.SignalR.AspNetCore
+namespace Akka.Streams.SignalR
 {
     public interface IServerSource
     {

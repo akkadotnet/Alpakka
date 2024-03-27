@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Threading.Tasks;
 using Akka.Streams.Stage;
 using RabbitMQ.Client;
@@ -47,6 +48,7 @@ namespace Akka.Streams.Amqp.RabbitMq
             {
                 _promise = promise;
                 _stage = stage;
+                
                 SetHandler(_stage.In, () =>
                 {
                     var elem = Grab(_stage.In);
@@ -56,6 +58,14 @@ namespace Akka.Streams.Amqp.RabbitMq
                         elem.Mandatory,
                         elem.Properties,
                         elem.Bytes.ToArray());
+                    
+                    if(_stage.Settings.WaitForConfirms)
+                    {
+                        // https://www.rabbitmq.com/docs/confirms#publisher-confirms - waiting for confirms from broker
+                        Debug.Assert(_stage.Settings.WaitForConfirmsTimeout != null, "_stage.Settings.WaitForConfirmsTimeout != null");
+                        Channel.WaitForConfirmsOrDie(_stage.Settings.WaitForConfirmsTimeout.Value);
+                    }
+
                     Pull(_stage.In);
                 }, onUpstreamFinish: () => { _promise.SetResult(Done.Instance); }, onUpstreamFailure: ex => { _promise.SetException(ex); });
             }
@@ -82,6 +92,12 @@ namespace Akka.Streams.Amqp.RabbitMq
                     _promise.SetException(exception);
                     FailStage(exception);
                 });
+                
+                if (_stage.Settings.WaitForConfirms)
+                {
+                    // enable publisher confirms
+                    Channel.ConfirmSelect();
+                }
 
                 Channel.ModelShutdown += OnChannelShutdown;
 

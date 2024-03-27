@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Akka.Streams.SignalR.AspNetCore.Internals
+namespace Akka.Streams.SignalR.Internals
 {
     public interface IStreamDispatcher
     {

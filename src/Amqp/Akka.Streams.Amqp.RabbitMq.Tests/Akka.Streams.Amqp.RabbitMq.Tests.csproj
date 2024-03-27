@@ -13,7 +13,7 @@
         <PackageReference Include="Testcontainers.RabbitMq" Version="3.8.0" />
         <PackageReference Include="xunit" Version="$(XunitVersion)" />
         <PackageReference Include="xunit.runner.visualstudio" Version="$(XunitRunnerVersion)" />
-        <PackageReference Include="coverlet.collector" Version="6.0.0" />
+        <PackageReference Include="coverlet.collector" Version="6.0.2" />
         <PackageReference Include="Docker.DotNet" Version="3.125.15" />
     </ItemGroup>
 

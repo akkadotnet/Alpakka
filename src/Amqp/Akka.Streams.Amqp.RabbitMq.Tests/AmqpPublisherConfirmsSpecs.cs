@@ -40,7 +40,7 @@ public class AmqpPublisherConfirmsSpecs : Akka.TestKit.Xunit2.TestKit
     }
     
     [Fact]
-    public Task AmqpPublisherConfirms_should_publish_messages_with_confirms()
+    public Task AmqpSink_should_publish_messages_with_confirms()
     {
         var queueName = "amqp-conn-it-spec-simple-queue-" + Environment.TickCount;
         var queueDeclaration = QueueDeclaration.Create(queueName).WithDurable(false).WithAutoDelete(true);
@@ -56,6 +56,35 @@ public class AmqpPublisherConfirmsSpecs : Akka.TestKit.Xunit2.TestKit
         var task = Source.From(messages)
             .Select(ByteString.FromString)
             .RunWith(amqpSink, _mat);
+#if NET6_0_OR_GREATER
+        using var cts = new CancellationTokenSource(RemainingOrDefault);
+        return task.WaitAsync(cts.Token);
+#else
+#pragma warning disable xUnit1031
+        task.Wait(TimeSpan.FromSeconds(5)).Should().BeTrue();
+#pragma warning restore xUnit1031
+        return Task.CompletedTask;
+#endif
+    }
+    
+    [Fact]
+    public Task AmqpFlow_should_publish_messages_with_confirms()
+    {
+        var queueName = "amqp-conn-it-spec-simple-queue2-" + Environment.TickCount;
+        var queueDeclaration = QueueDeclaration.Create(queueName).WithDurable(false).WithAutoDelete(true);
+
+        var amqpFlow = AmqpFlow.Create<string>(
+            AmqpSinkSettings.Create(_connectionSettings)
+                .WithRoutingKey(queueName)
+                .WithDeclarations(queueDeclaration)
+                .WithWaitForConfirms(TimeSpan.FromSeconds(5))
+        );
+
+        var messages = new[] { "one", "two", "three", "four", "five" };
+        var task = Source.From(messages)
+            .Select(s => (new OutgoingMessage(ByteString.FromString(s), true, true), s))
+            .Via(amqpFlow)
+            .RunForeach(c => { }, _mat);
 #if NET6_0_OR_GREATER
         using var cts = new CancellationTokenSource(RemainingOrDefault);
         return task.WaitAsync(cts.Token);

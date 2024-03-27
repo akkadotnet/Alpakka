@@ -102,6 +102,12 @@ namespace Akka.Streams.Amqp.RabbitMq
                     _promise.SetException(exception);
                     FailStage(exception);
                 });
+                
+                if (_stage.Settings.WaitForConfirms)
+                {
+                    // enable publisher confirms
+                    Channel.ConfirmSelect();
+                }
 
                 Channel.ModelShutdown += OnChannelShutdown;
             }

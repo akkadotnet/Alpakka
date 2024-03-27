@@ -48,6 +48,7 @@ namespace Akka.Streams.Amqp.RabbitMq
             {
                 _promise = promise;
                 _stage = stage;
+                
                 SetHandler(_stage.In, () =>
                 {
                     var elem = Grab(_stage.In);
@@ -91,6 +92,12 @@ namespace Akka.Streams.Amqp.RabbitMq
                     _promise.SetException(exception);
                     FailStage(exception);
                 });
+                
+                if (_stage.Settings.WaitForConfirms)
+                {
+                    // enable publisher confirms
+                    Channel.ConfirmSelect();
+                }
 
                 Channel.ModelShutdown += OnChannelShutdown;
 

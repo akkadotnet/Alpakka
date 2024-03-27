@@ -110,6 +110,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Akka.Streams.SignalR.Tests"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Akka.Streams.SignalR", "SignalR\Akka.Streams.SignalR\Akka.Streams.SignalR.csproj", "{28EBDF51-F6E1-4610-B243-ADD0B66931ED}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Akka.Streams.RabbitMq.Amqp.Benchmarks", "Amqp\Akka.Streams.RabbitMq.Amqp.Benchmarks\Akka.Streams.RabbitMq.Amqp.Benchmarks.csproj", "{31824765-01E2-40EC-9741-13121CF5AD2A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -228,6 +230,10 @@ Global
 		{28EBDF51-F6E1-4610-B243-ADD0B66931ED}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{28EBDF51-F6E1-4610-B243-ADD0B66931ED}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{28EBDF51-F6E1-4610-B243-ADD0B66931ED}.Release|Any CPU.Build.0 = Release|Any CPU
+		{31824765-01E2-40EC-9741-13121CF5AD2A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{31824765-01E2-40EC-9741-13121CF5AD2A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{31824765-01E2-40EC-9741-13121CF5AD2A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{31824765-01E2-40EC-9741-13121CF5AD2A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -268,6 +274,7 @@ Global
 		{FA1BD6C6-8EDE-4671-A11E-0A7A28B49F71} = {00D302CC-A29C-47D2-B2EF-F236656A2608}
 		{36D95615-B477-4E65-8731-F169ABF3446C} = {EF448678-4308-4DA8-9EF6-3FC16E9571E1}
 		{28EBDF51-F6E1-4610-B243-ADD0B66931ED} = {EF448678-4308-4DA8-9EF6-3FC16E9571E1}
+		{31824765-01E2-40EC-9741-13121CF5AD2A} = {9A8B3B60-F75D-4906-B368-739CA08C25D4}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {BE1A9436-C6F6-4C73-9EB4-32DEC9C841A5}

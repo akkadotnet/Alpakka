@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+<meta charset='utf-8' />
+<title>Akka.Streams.RabbitMq.Amqp.Benchmarks.RabbitMqWriteEnd2EndBenchmarks-20240327-130557</title>
+
+<style type="text/css">
+	table { border-collapse: collapse; display: block; width: 100%; overflow: auto; }
+	td, th { padding: 6px 13px; border: 1px solid #ddd; text-align: right; }
+	tr { background-color: #fff; border-top: 1px solid #ccc; }
+	tr:nth-child(even) { background: #f8f8f8; }
+</style>
+</head>
+<body>
+<pre><code>
+BenchmarkDotNet v0.13.12, Windows 11 (10.0.22631.3296/23H2/2023Update/SunValley3)
+12th Gen Intel Core i7-1260P, 1 CPU, 16 logical and 12 physical cores
+.NET SDK 8.0.101
+  [Host]     : .NET 6.0.26 (6.0.2623.60508), X64 RyuJIT AVX2
+  Job-HWCWUS : .NET 6.0.26 (6.0.2623.60508), X64 RyuJIT AVX2
+</code></pre>
+<pre><code>IterationCount=5  RunStrategy=ColdStart  WarmupCount=0  
+</code></pre>
+
+<table>
+<thead><tr><th>Method     </th><th>Mean</th><th>Error</th><th>StdDev</th>
+</tr>
+</thead><tbody><tr><td>RabbitMqWriteFlow</td><td>9.294 &mu;s</td><td>3.906 &mu;s</td><td>1.014 &mu;s</td>
+</tr></tbody></table>
+</body>
+</html>

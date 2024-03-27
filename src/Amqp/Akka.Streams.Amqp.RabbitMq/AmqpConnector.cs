@@ -25,15 +25,18 @@ namespace Akka.Streams.Amqp.RabbitMq
                         factory.HostName = details.HostAndPortList[0].host;
                         factory.Port = details.HostAndPortList[0].port;
                     }
+
                     if (details.ClientProvidedName != null)
                     {
                         factory.ClientProvidedName = details.ClientProvidedName;
                     }
+
                     if (details.Credentials.HasValue)
                     {
                         factory.UserName = details.Credentials.Value.Username;
                         factory.Password = details.Credentials.Value.Password;
                     }
+
                     if (!string.IsNullOrEmpty(details.VirtualHost))
                         factory.VirtualHost = details.VirtualHost;
                     if (details.Ssl != null)
@@ -56,6 +59,7 @@ namespace Akka.Streams.Amqp.RabbitMq
                     //leave it be as is
                     break;
             }
+
             return factory;
         }
 
@@ -66,10 +70,14 @@ namespace Akka.Streams.Amqp.RabbitMq
                 case AmqpConnectionDetails details:
                 {
                     if (details.HostAndPortList.Count == 0)
-                        throw new ArgumentException("You need to supply at least one host/port pair.", nameof(settings));
+                        throw new ArgumentException("You need to supply at least one host/port pair.",
+                            nameof(settings));
 
                     return factory.CreateConnection(details.HostAndPortList
-                        .Select(pair => new AmqpTcpEndpoint(pair.host, pair.port, details.Ssl)).ToList());
+                        .Select(pair =>
+                            details.Ssl == null
+                                ? new AmqpTcpEndpoint(pair.host, pair.port)
+                                : new AmqpTcpEndpoint(pair.host, pair.port, details.Ssl)).ToList());
                 }
                 default:
                     return factory.CreateConnection();
@@ -86,10 +94,9 @@ namespace Akka.Streams.Amqp.RabbitMq
         protected IModel Channel;
         protected Action<ShutdownEventArgs> ShutdownCallback;
 
-        protected AmqpConnectorLogic(Shape shape) 
+        protected AmqpConnectorLogic(Shape shape)
             : base(shape)
         {
-            
         }
 
         public abstract IAmqpConnectorSettings Settings { get; }
@@ -124,18 +131,19 @@ namespace Akka.Streams.Amqp.RabbitMq
                         case QueueDeclaration queueDeclaration:
                             Channel.QueueDeclare(queueDeclaration.Name, queueDeclaration.Durable,
                                 queueDeclaration.Exclusive,
-                                queueDeclaration.AutoDelete, queueDeclaration.Arguments.ToDictionary(key=> key.Key,val=> val.Value));
+                                queueDeclaration.AutoDelete,
+                                queueDeclaration.Arguments.ToDictionary(key => key.Key, val => val.Value));
                             break;
                         case BindingDeclaration bindingDeclaration:
                             Channel.QueueBind(bindingDeclaration.Queue, bindingDeclaration.Exchange,
-                                bindingDeclaration.RoutingKey ?? "", bindingDeclaration.Arguments.ToDictionary(key => key.Key, val => val.Value));
+                                bindingDeclaration.RoutingKey ?? "",
+                                bindingDeclaration.Arguments.ToDictionary(key => key.Key, val => val.Value));
                             break;
                         case ExchangeDeclaration exchangeDeclaration:
                             Channel.ExchangeDeclare(exchangeDeclaration.Name, exchangeDeclaration.ExchangeType,
                                 exchangeDeclaration.Durable, exchangeDeclaration.AutoDelete,
                                 exchangeDeclaration.Arguments.ToDictionary(key => key.Key, val => val.Value));
                             break;
-
                     }
                 }
 
@@ -165,14 +173,15 @@ namespace Akka.Streams.Amqp.RabbitMq
         {
             if (Channel != null)
             {
-                if(Channel.IsOpen)
+                if (Channel.IsOpen)
                     Channel.Close();
                 Channel.ModelShutdown -= OnChannelShutdown;
                 Channel = null;
             }
+
             if (Connection != null)
             {
-                if(Connection.IsOpen)
+                if (Connection.IsOpen)
                     Connection.Close();
                 Connection.ConnectionShutdown -= OnConnectionShutdown;
                 Connection = null;

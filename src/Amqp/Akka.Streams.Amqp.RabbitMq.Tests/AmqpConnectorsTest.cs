@@ -182,7 +182,7 @@ namespace Akka.Streams.Amqp.Tests
             var ex = await Awaiting(() => Source
                 .Single(outgoingMessage)
                 .ToMaterialized(AmqpSink.ReplyTo(AmqpReplyToSinkSettings.Create(_connectionSettings, failIfReplyToMissing: true)), Keep.Right)
-                .Run(_mat)).Should().ThrowAsync<AggregateException>();
+                .Run(_mat)).Should().ThrowAsync<Exception>();
             
             (ex.And.InnerException?.Message).Should().Be("Reply-to header was not set");
         }

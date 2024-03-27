@@ -56,8 +56,14 @@ public class AmqpPublisherConfirmsSpecs : Akka.TestKit.Xunit2.TestKit
         var task = Source.From(messages)
             .Select(ByteString.FromString)
             .RunWith(amqpSink, _mat);
-        
+#if NET6_0_OR_GREATER
         using var cts = new CancellationTokenSource(RemainingOrDefault);
         return task.WaitAsync(cts.Token);
+#else
+#pragma warning disable xUnit1031
+        task.Wait(TimeSpan.FromSeconds(5)).Should().BeTrue();
+#pragma warning restore xUnit1031
+        return Task.CompletedTask;
+#endif
     }
 }

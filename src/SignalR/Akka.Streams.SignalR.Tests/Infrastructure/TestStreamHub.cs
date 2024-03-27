@@ -1,7 +1,7 @@
-﻿using Akka.Streams.SignalR.AspNetCore.Internals;
+﻿using Akka.Streams.SignalR.Internals;
 using Microsoft.AspNetCore.SignalR;
 
-namespace Akka.Streams.SignalR.AspNetCore.Tests.Infrastructure
+namespace Akka.Streams.SignalR.Tests.Infrastructure
 {
     /// <summary>
     /// Hubs rely on DI to get references.

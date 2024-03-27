@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.SignalR.Client;
 
-namespace Akka.Streams.SignalR.AspNetCore.Tests.Infrastructure
+namespace Akka.Streams.SignalR.Tests.Infrastructure
 {
     public static class WebApplicationFactoryExtensions
     {

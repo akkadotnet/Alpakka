@@ -1,6 +1,6 @@
 ﻿using Akka.Streams.Dsl;
 
-namespace Akka.Streams.SignalR.AspNetCore.Tests.Infrastructure
+namespace Akka.Streams.SignalR.Tests.Infrastructure
 {
     public interface IPublishSinkSource
     {

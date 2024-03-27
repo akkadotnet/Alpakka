@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Threading.Tasks;
-using Akka.Streams.SignalR.AspNetCore.Internals;
+using Akka.Streams.SignalR.Internals;
 using Microsoft.AspNetCore.SignalR;
 
-namespace Akka.Streams.SignalR.AspNetCore
+namespace Akka.Streams.SignalR
 {
     /// <summary>
     /// A variant of <see cref="Hub"/> able to cooperate with Akka.Streams API.

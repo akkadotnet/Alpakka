@@ -1,9 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using Akka.Streams.Stage;
-using Microsoft.AspNetCore.SignalR;
 
-namespace Akka.Streams.SignalR.AspNetCore.Internals
+namespace Akka.Streams.SignalR.Internals
 {
     internal sealed class SignalRSourceStage : GraphStage<SourceShape<ISignalREvent>>
     {

@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Akka.Streams.SignalR.AspNetCore.Tests.Infrastructure
+namespace Akka.Streams.SignalR.Tests.Infrastructure
 {
     public class TestServerAppFactory : WebApplicationFactory<Startup>
     {

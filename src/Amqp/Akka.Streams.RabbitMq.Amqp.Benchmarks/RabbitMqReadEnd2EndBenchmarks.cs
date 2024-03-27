@@ -57,20 +57,20 @@ public class RabbitMqReadEnd2EndBenchmarks
     }
 
     [IterationSetup]
-    public async Task IterationSetup()
+    public void IterationSetup()
     {
-        await Source.From(_payloads)
+        Source.From(_payloads)
             .Select(_ => _byteString)
             .Select(c => (new OutgoingMessage(c, true, true), 1))
             .Via(AmqpFlow.Create<int>(_settings))
-            .RunSum((i, i1) => i + i1, _materializer);
+            .RunSum((i, i1) => i + i1, _materializer).Wait();
     }
 
     [Benchmark(OperationsPerInvoke = WRITE_COUNT)]
     public Task<int> RabbitMqReadFlow()
     {
         return AmqpSource.CommittableSource(_namedQueueSourceSettings, 10)
-            .SelectAsync(10, async c =>
+            .SelectAsync(100, async c =>
             {
                 await c.Ack();
                 return 1;

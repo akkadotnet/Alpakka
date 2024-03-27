@@ -2,7 +2,7 @@
   <PropertyGroup>
     <Copyright>Copyright © 2013-2023 Akka.NET Team</Copyright>
     <Authors>Akka.NET Team</Authors>
-    <VersionPrefix>1.0.1</VersionPrefix>
+    <VersionPrefix>1.5.15</VersionPrefix>
     <PackageIconUrl>http://getakka.net/images/akkalogo.png</PackageIconUrl>
     <PackageProjectUrl>https://github.com/akkadotnet/Alpakka</PackageProjectUrl>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
@@ -15,11 +15,9 @@
   <PropertyGroup>
     <AkkaVersion>1.5.17.1</AkkaVersion>
     <NetStandardLibVersion>netstandard2.0</NetStandardLibVersion>
-    <NetCoreLibVersion>netcoreapp3.1</NetCoreLibVersion>
     <NetLibVersion>net6.0</NetLibVersion>
-    <NetCoreTestVersion>netcoreapp3.1</NetCoreTestVersion>
     <NetTestVersion>net6.0</NetTestVersion>
-    <NetFrameworkTestVersion>net471</NetFrameworkTestVersion>
+    <NetFrameworkTestVersion>net48</NetFrameworkTestVersion>
     <XunitVersion>2.6.6</XunitVersion>
     <XunitRunnerVersion>2.5.7</XunitRunnerVersion>
     <FluentAssertionsVersion>5.10.3</FluentAssertionsVersion>
@@ -37,8 +35,17 @@
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
   <PropertyGroup>
-    <PackageReleaseNotes>Upgraded to [Akka.NET v1.4.45](https://github.com/akkadotnet/akka.net/releases/tag/1.4.45)
-Upgraded all SDK versions</PackageReleaseNotes>
+    <PackageReleaseNotes>Bumped to [Akka.NET v1.5.15](https://github.com/akkadotnet/akka.net/releases/tag/1.5.15)
+Bump all dependency versions
+[Bump AWSSDK.SQS to 3.7.300.33](https://github.com/akkadotnet/Alpakka/pull/1734)
+[Bump AWSSDK.Kinesis to 3.7.301.26](https://github.com/akkadotnet/Alpakka/pull/1785)
+[Bump AWSSDK.SimpleNotificationService to 3.7.300.33](https://github.com/akkadotnet/Alpakka/pull/1786)
+[Bump Microsoft.AspNetCore.SignalR.Client to 7.0.11](https://github.com/akkadotnet/Alpakka/pull/1663)
+[Bump Azure.Storage.Queues to 12.17.1](https://github.com/akkadotnet/Alpakka/pull/1778)
+[Bump Azure.Messaging.ServiceBus to 7.17.1](https://github.com/akkadotnet/Alpakka/pull/1772)
+[Bump Azure.Messaging.EventHubs.Processor to 5.10.0](https://github.com/akkadotnet/Alpakka/pull/1757)
+[Bump AMQPNetLite.Core to 2.4.8](https://github.com/akkadotnet/Alpakka/pull/1774)
+[Bump AMQPNetLite.Serialization to 2.4.8](https://github.com/akkadotnet/Alpakka/pull/1774)</PackageReleaseNotes>
   </PropertyGroup>
   <!-- SourceLink support for all Akka.NET projects -->
   <ItemGroup>

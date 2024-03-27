@@ -15,9 +15,7 @@
   <PropertyGroup>
     <AkkaVersion>1.5.17.1</AkkaVersion>
     <NetStandardLibVersion>netstandard2.0</NetStandardLibVersion>
-    <NetCoreLibVersion>netcoreapp3.1</NetCoreLibVersion>
     <NetLibVersion>net6.0</NetLibVersion>
-    <NetCoreTestVersion>netcoreapp3.1</NetCoreTestVersion>
     <NetTestVersion>net6.0</NetTestVersion>
     <NetFrameworkTestVersion>net471</NetFrameworkTestVersion>
     <XunitVersion>2.6.6</XunitVersion>

@@ -14,7 +14,7 @@
         <PackageReference Include="coverlet.collector" Version="6.0.0" />
     </ItemGroup>
     
-    <ItemGroup Condition=" '$(TargetFramework)' == '$(NetCoreTestVersion)' ">
+    <ItemGroup Condition=" '$(TargetFramework)' == '$(NetTestVersion)' ">
         <!-- These packages are version locked due to bacward compatibility problems with netcoreapp3.1 -->
         <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="8.0.2" />
         <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="6.0.27"/>

@@ -2,7 +2,7 @@
 
     <PropertyGroup>
         <OutputType>Exe</OutputType>
-        <TargetFramework>$(NetCoreTestVersion)</TargetFramework>
+        <TargetFramework>$(NetTestVersion)</TargetFramework>
         <Nullable>enable</Nullable>
         <RootNamespace>Akka.Streams.Azure.EventHub.Examples</RootNamespace>
         <IsPackable>false</IsPackable>

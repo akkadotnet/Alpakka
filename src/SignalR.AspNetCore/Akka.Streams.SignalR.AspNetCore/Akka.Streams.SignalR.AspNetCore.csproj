@@ -2,7 +2,7 @@
     <PropertyGroup>
         <AssemblyTitle>Akka.Streams.SignalR.AspNetCore</AssemblyTitle>
         <Description>SignalR ASP.Net Core connector for Akka.NET Streams</Description>
-        <TargetFrameworks>$(NetCoreLibVersion);$(NetLibVersion)</TargetFrameworks>
+        <TargetFrameworks>$(NetLibVersion);$(NetLibVersion)</TargetFrameworks>
         <PackageTags>$(AkkaPackageTags);signalr</PackageTags>
     </PropertyGroup>
 

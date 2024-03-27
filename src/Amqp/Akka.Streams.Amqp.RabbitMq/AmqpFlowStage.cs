@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Threading.Tasks;
 using Akka.Streams.Stage;
 using RabbitMQ.Client;
@@ -59,6 +60,13 @@ namespace Akka.Streams.Amqp.RabbitMq
                             elem.Mandatory,
                             elem.Properties,
                             elem.Bytes.ToArray());
+                        
+                        if(_stage.Settings.WaitForConfirms)
+                        {
+                            // https://www.rabbitmq.com/docs/confirms#publisher-confirms - waiting for confirms from broker
+                            Debug.Assert(_stage.Settings.WaitForConfirmsTimeout != null, "_stage.Settings.WaitForConfirmsTimeout != null");
+                            Channel.WaitForConfirmsOrDie(_stage.Settings.WaitForConfirmsTimeout.Value);
+                        }
 
                         Push(_stage.Out, passThrough);
                     },

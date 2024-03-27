@@ -1,7 +1,7 @@
-﻿using System.Collections.Generic;
 ﻿using System;
+using System.Collections.Generic;
 
-namespace Akka.Streams.SignalR.AspNetCore
+namespace Akka.Streams.SignalR
 {
     /// <summary>
     /// A common static class for building messages returned to SignalR clients.

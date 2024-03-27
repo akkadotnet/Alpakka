@@ -1,10 +1,7 @@
-﻿using Akka.Streams.SignalR.AspNetCore;
-using Akka.Streams.SignalR.AspNetCore.Internals;
-using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using Akka.Streams.SignalR.Internals;
+using Microsoft.Extensions.DependencyInjection;
 
-namespace Microsoft.Extensions.DependencyInjection
+namespace Akka.Streams.SignalR
 {
     public static class AkkaSignalRDependencyInjectionExtensions
     {

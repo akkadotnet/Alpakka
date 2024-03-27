@@ -1,9 +1,8 @@
 ﻿using System;
-using System.IO;
 using Akka.Actor;
 using Akka.Configuration;
 
-namespace Akka.Streams.SignalR.AspNetCore
+namespace Akka.Streams.SignalR
 {
     public sealed class ConnectionSinkSettings
     {

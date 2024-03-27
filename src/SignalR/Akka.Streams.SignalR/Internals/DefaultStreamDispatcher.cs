@@ -1,11 +1,9 @@
-﻿using Microsoft.AspNetCore.SignalR;
-using Microsoft.Extensions.DependencyInjection;
-using System;
+﻿using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Text;
+using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.DependencyInjection;
 
-namespace Akka.Streams.SignalR.AspNetCore.Internals
+namespace Akka.Streams.SignalR.Internals
 {
     public sealed class DefaultStreamDispatcher : IStreamDispatcher
     {

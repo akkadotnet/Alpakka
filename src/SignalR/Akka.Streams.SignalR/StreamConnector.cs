@@ -1,13 +1,9 @@
 ﻿using System;
-using System.Collections.Concurrent;
-using System.Threading.Tasks;
 using Akka.Streams.Dsl;
-using Akka.Streams.SignalR.AspNetCore.Internals;
-using Microsoft.AspNetCore.Http;
+using Akka.Streams.SignalR.Internals;
 using Microsoft.AspNetCore.SignalR;
-using Microsoft.Extensions.DependencyInjection;
 
-namespace Akka.Streams.SignalR.AspNetCore
+namespace Akka.Streams.SignalR
 {
     /// <summary>
     /// Inherit to connect processing stages to Source to receive incoming SignalR client messages, 

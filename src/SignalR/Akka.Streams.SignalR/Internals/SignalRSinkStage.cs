@@ -1,11 +1,9 @@
 ﻿using System;
 using System.Linq;
-using System.Threading.Tasks;
 using Akka.Streams.Stage;
 using Microsoft.AspNetCore.SignalR;
-using AsyncCallback = Akka.Streams.Stage.AsyncCallback;
 
-namespace Akka.Streams.SignalR.AspNetCore.Internals
+namespace Akka.Streams.SignalR.Internals
 {
     internal sealed class SignalRSinkStage : GraphStage<SinkShape<ISignalRResult>>
     {

@@ -2,7 +2,7 @@
 using System.Threading.Tasks;
 using Akka.Event;
 using Akka.Streams.Dsl;
-using Akka.Streams.SignalR.AspNetCore.Tests.Infrastructure;
+using Akka.Streams.SignalR.Tests.Infrastructure;
 using Akka.Streams.TestKit;
 using FluentAssertions;
 using Microsoft.AspNetCore.Builder;
@@ -13,7 +13,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace Akka.Streams.SignalR.AspNetCore.Tests
+namespace Akka.Streams.SignalR.Tests
 {
     public class ServerIntegrationSpec : 
         Akka.TestKit.Xunit2.TestKit, 

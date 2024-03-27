@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Threading.Tasks;
 using Akka.Streams.Stage;
 using RabbitMQ.Client;
@@ -12,11 +13,11 @@ namespace Akka.Streams.Amqp.RabbitMq
     public class AmqpFlowStage<TPassThrough> : GraphStageWithMaterializedValue<FlowShape<(OutgoingMessage, TPassThrough), TPassThrough>, Task>
     {
         public static readonly Attributes DefaultAttributes =
-            Attributes.CreateName("AmqpFlow").And(ActorAttributes.CreateDispatcher("akka.stream.default-blocking-io-dispatcher"));
+            Attributes.CreateName("AmqpFlow");
 
         public AmqpSinkSettings Settings { get; }
-        public readonly Inlet<(OutgoingMessage, TPassThrough)> In = new Inlet<(OutgoingMessage, TPassThrough)>("AmqpFlow.in");
-        public readonly Outlet<TPassThrough> Out = new Outlet<TPassThrough>("AmqpFlow.out");
+        public readonly Inlet<(OutgoingMessage, TPassThrough)> In = new("AmqpFlow.in");
+        public readonly Outlet<TPassThrough> Out = new("AmqpFlow.out");
 
         public AmqpFlowStage(AmqpSinkSettings settings)
         {
@@ -59,6 +60,13 @@ namespace Akka.Streams.Amqp.RabbitMq
                             elem.Mandatory,
                             elem.Properties,
                             elem.Bytes.ToArray());
+                        
+                        if(_stage.Settings.WaitForConfirms)
+                        {
+                            // https://www.rabbitmq.com/docs/confirms#publisher-confirms - waiting for confirms from broker
+                            Debug.Assert(_stage.Settings.WaitForConfirmsTimeout != null, "_stage.Settings.WaitForConfirmsTimeout != null");
+                            Channel.WaitForConfirmsOrDie(_stage.Settings.WaitForConfirmsTimeout.Value);
+                        }
 
                         Push(_stage.Out, passThrough);
                     },
@@ -94,6 +102,12 @@ namespace Akka.Streams.Amqp.RabbitMq
                     _promise.SetException(exception);
                     FailStage(exception);
                 });
+                
+                if (_stage.Settings.WaitForConfirms)
+                {
+                    // enable publisher confirms
+                    Channel.ConfirmSelect();
+                }
 
                 Channel.ModelShutdown += OnChannelShutdown;
             }

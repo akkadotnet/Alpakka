@@ -116,6 +116,7 @@ namespace Akka.Streams.Amqp.RabbitMq
                 var factory = ConnectionFactoryFrom(Settings.ConnectionSettings);
                 Connection = NewConnection(factory, Settings.ConnectionSettings);
                 Channel = Connection.CreateModel();
+                
                 ShutdownCallback = GetAsyncCallback<ShutdownEventArgs>(args =>
                 {
                     if (args.Initiator != ShutdownInitiator.Application)

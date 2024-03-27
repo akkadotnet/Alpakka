@@ -149,31 +149,45 @@ namespace Akka.Streams.Amqp.RabbitMq
     public sealed class AmqpSinkSettings : IAmqpConnectorSettings
     {
         private AmqpSinkSettings(IAmqpConnectionSettings connectionSettings, string exchange = null,
-            string routingKey = null, IReadOnlyList<IDeclaration> declarations = null)
+            string routingKey = null, IReadOnlyList<IDeclaration> declarations = null, TimeSpan? waitForConfirms = null)
         {
             ConnectionSettings = connectionSettings;
             Exchange = exchange;
             RoutingKey = routingKey;
             Declarations = declarations ?? new List<IDeclaration>();
+            WaitForConfirmsTimeout = waitForConfirms;
         }
 
         public IAmqpConnectionSettings ConnectionSettings { get; }
         public string Exchange { get; }
         public string RoutingKey { get; }
+
+        /// <summary>
+        /// When enabled, forces the sink to wait for a confirmation from the broker that the message has been received.
+        /// </summary>
+        /// <remarks>
+        /// See https://www.rabbitmq.com/docs/confirms#publisher-confirms for details.
+        /// </remarks>
+        public bool WaitForConfirms => WaitForConfirmsTimeout is not null;
+        
+        public TimeSpan? WaitForConfirmsTimeout { get; }
         public IReadOnlyList<IDeclaration> Declarations { get; }
 
-        public static AmqpSinkSettings Create(IAmqpConnectionSettings connectionSettings = null) => 
-            new AmqpSinkSettings(connectionSettings ?? DefaultAmqpConnection.Instance);
+        public static AmqpSinkSettings Create(IAmqpConnectionSettings connectionSettings = null) =>
+            new(connectionSettings ?? DefaultAmqpConnection.Instance);
 
-        public AmqpSinkSettings WithExchange(string exchange) => new AmqpSinkSettings(ConnectionSettings, exchange, RoutingKey, Declarations);
+        public AmqpSinkSettings WithExchange(string exchange) => new(ConnectionSettings, exchange, RoutingKey, Declarations);
 
-        public AmqpSinkSettings WithRoutingKey(string routingKey) => new AmqpSinkSettings(ConnectionSettings, Exchange, routingKey, Declarations);
+        public AmqpSinkSettings WithRoutingKey(string routingKey) => new(ConnectionSettings, Exchange, routingKey, Declarations);
 
-        public AmqpSinkSettings WithDeclarations(params IDeclaration[] declarations) => 
-            new AmqpSinkSettings(ConnectionSettings, Exchange, RoutingKey, declarations);
+        public AmqpSinkSettings WithDeclarations(params IDeclaration[] declarations) =>
+            new(ConnectionSettings, Exchange, RoutingKey, declarations);
+        
+        public AmqpSinkSettings WithWaitForConfirms(TimeSpan? confirmTimeout) => 
+            new(ConnectionSettings, Exchange, RoutingKey, Declarations, confirmTimeout);
 
         public override string ToString() => 
-            $"AmqpSinkSettings(ConnectionSettings={ConnectionSettings}, Exchange={Exchange}, RoutingKey={RoutingKey}, Delcarations={Declarations.Count})";
+            $"AmqpSinkSettings(ConnectionSettings={ConnectionSettings}, Exchange={Exchange}, RoutingKey={RoutingKey}, Delcarations={Declarations.Count}, WaitForConfirms={WaitForConfirms})";
     }
 
     /// <summary>

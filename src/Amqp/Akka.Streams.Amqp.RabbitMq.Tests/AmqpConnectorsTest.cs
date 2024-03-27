@@ -26,7 +26,7 @@ namespace Akka.Streams.Amqp.Tests
         private readonly AmqpFixture _fixture;
 
         public AmqpConnectorsTest(AmqpFixture fixture, ITestOutputHelper output) : 
-            base((ActorSystem)null, output)
+            base(output:output)
         {
             _mat = ActorMaterializer.Create(Sys);
             _connectionSettings =

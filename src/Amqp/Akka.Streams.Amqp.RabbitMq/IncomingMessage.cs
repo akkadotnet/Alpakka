@@ -5,7 +5,7 @@ namespace Akka.Streams.Amqp.RabbitMq
 {
     public sealed class IncomingMessage
     {
-        public IncomingMessage(ByteString bytes, Envelope envelope, IBasicProperties properties)
+        public IncomingMessage(ByteString bytes, in Envelope envelope, IBasicProperties properties)
         {
             Bytes = bytes;
             Envelope = envelope;

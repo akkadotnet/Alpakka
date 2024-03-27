@@ -208,3 +208,4 @@ build/
 .nuget/
 .dotnet/
 .idea
+/src/Amqp/Akka.Streams.RabbitMq.Amqp.Benchmarks/BenchmarkDotNet.Artifacts

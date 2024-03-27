@@ -4,7 +4,7 @@ namespace Akka.Streams.Amqp.RabbitMq
     /// <summary>
     /// Encapsulates a group of parameters used for AMQP's Basic methods
     /// </summary>
-    public sealed class Envelope
+    public readonly struct Envelope
     {
         /// <summary>
         /// Get the delivery tag included in this parameter envelope

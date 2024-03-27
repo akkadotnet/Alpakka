@@ -44,7 +44,7 @@ namespace Akka.Streams.Amqp.RabbitMq
         private class AmqpSourceStageLogic : AmqpConnectorLogic
         {
             private readonly AmqpSourceStage _stage;
-            private readonly Queue<CommittableIncomingMessage> _queue = new Queue<CommittableIncomingMessage>();
+            private readonly Queue<CommittableIncomingMessage> _queue = new();
             private IBasicConsumer _amqpSourceConsumer;
             private int _unackedMessages;
 
@@ -130,12 +130,10 @@ namespace Akka.Streams.Amqp.RabbitMq
 
                 switch (Settings)
                 {
-                    case NamedQueueSourceSettings _:
-                        var namedSourceSettings = (NamedQueueSourceSettings) Settings;
+                    case NamedQueueSourceSettings namedSourceSettings:
                         SetupNamedQueue(namedSourceSettings);
                         break;
-                    case TemporaryQueueSourceSettings _:
-                        var tempSettings = (TemporaryQueueSourceSettings) Settings;
+                    case TemporaryQueueSourceSettings tempSettings:
                         SetupTemporaryQueue(tempSettings);
                         break;
                 }

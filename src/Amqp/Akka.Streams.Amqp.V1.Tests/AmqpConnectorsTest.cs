@@ -6,7 +6,6 @@ using System;
 using System.Threading.Tasks;
 using Akka.Actor;
 using Akka.Streams.Amqp.Tests;
-using Amqp.Sasl;
 using Xunit;
 using Xunit.Abstractions;
 using Address = Amqp.Address;

@@ -20,7 +20,7 @@ public sealed class AmqpSpecFixture : ICollectionFixture<AmqpFixture>
 public class AmqpFixture : IAsyncLifetime
 {
     protected readonly string RabbitContainerName = $"rabbit-{Guid.NewGuid():N}";
-    public string ConnectionString { get; set; }
+    public string? ConnectionString { get; private set; }
     public string HostName => Container!.Hostname;
     public int AmqpPort => Container!.GetMappedPublicPort(RabbitMqBuilder.RabbitMqPort);
 
@@ -49,6 +49,10 @@ public class AmqpFixture : IAsyncLifetime
 
     public async Task DisposeAsync()
     {
-        if (Container != null) await Container.StopAsync();
+        if (Container != null)
+        {
+            await Container.StopAsync();
+            await Container.DisposeAsync();
+        }
     }
 }

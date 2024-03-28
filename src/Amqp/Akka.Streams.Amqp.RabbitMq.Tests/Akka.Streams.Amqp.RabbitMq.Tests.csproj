@@ -14,17 +14,10 @@
         <PackageReference Include="xunit" Version="$(XunitVersion)" />
         <PackageReference Include="xunit.runner.visualstudio" Version="$(XunitRunnerVersion)" />
         <PackageReference Include="coverlet.collector" Version="6.0.0" />
-        <PackageReference Include="Docker.DotNet" Version="3.125.15" />
     </ItemGroup>
 
     <ItemGroup>
       <ProjectReference Include="..\Akka.Streams.Amqp.RabbitMq\Akka.Streams.Amqp.RabbitMq.csproj" />
-    </ItemGroup>
-
-    <ItemGroup>
-        <None Update="environment.json">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
     </ItemGroup>
 
 </Project>

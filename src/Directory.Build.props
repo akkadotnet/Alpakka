@@ -18,7 +18,7 @@
     <NetLibVersion>net6.0</NetLibVersion>
     <NetTestVersion>net6.0</NetTestVersion>
     <NetFrameworkTestVersion>net48</NetFrameworkTestVersion>
-    <XunitVersion>2.6.6</XunitVersion>
+    <XunitVersion>2.7.0</XunitVersion>
     <XunitRunnerVersion>2.5.7</XunitRunnerVersion>
     <FluentAssertionsVersion>5.10.3</FluentAssertionsVersion>
     <TestSdkVersion>17.9.0</TestSdkVersion>

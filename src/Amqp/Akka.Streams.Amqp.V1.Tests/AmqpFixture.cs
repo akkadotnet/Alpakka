@@ -33,79 +33,14 @@ namespace Akka.Streams.Amqp.Tests
         Unknown
     }
 
-    public class AmqpFixture : IAsyncLifetime, IDisposable
+    public class AmqpFixture : IAsyncLifetime
     {
-        private readonly List<string> _variables = new List<string>();
-
-        private OperatingSystem _os;
-
-        protected OperatingSystem OperatingSystem
-        {
-            get
-            {
-                if (_os != OperatingSystem.NotInitialized)
-                    return _os;
-                _os =
-                    RuntimeInformation.IsOSPlatform(OSPlatform.Linux) ? OperatingSystem.Linux :
-                    RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? OperatingSystem.Windows :
-                    OperatingSystem.Unknown;
-                return _os;
-            }
-        }
-
         protected readonly string AqmpContainerName = $"amqp-{Guid.NewGuid():N}";
         protected DockerClient Client;
 
-        protected string ImageName 
-        {
-            get
-            {
-                switch (OperatingSystem)
-                {
-                    case OperatingSystem.Windows:
-                        return "akkadotnet/rabbitmq";
-                    case OperatingSystem.Linux:
-                        return "akkadotnet/rabbitmq-linux";
-                    default:
-                        throw new NotSupportedException($"Unsupported OS [{RuntimeInformation.OSDescription}]");
-                }
-            }
-        }
-
-        protected string ImageTag
-        {
-            get
-            {
-                switch (OperatingSystem)
-                {
-                    case OperatingSystem.Windows:
-                        return "latest";
-                    case OperatingSystem.Linux:
-                        return "latest";
-                    default:
-                        throw new NotSupportedException($"Unsupported OS [{RuntimeInformation.OSDescription}]");
-                }
-            }
-        }
-
+        protected string ImageName => "akkadotnet/rabbitmq-linux"; 
+        protected string ImageTag => "latest";
         protected string AmqpImageName => $"{ImageName}:{ImageTag}";
-
-        private bool? _useDocker = null;
-        public bool UseDockerContainer
-        {
-            get
-            {
-                if (!_useDocker.HasValue)
-                {
-                    var env = Environment.GetEnvironmentVariable("ALPAKKA_AMQP_TEST_USEDOCKER")?.ToLowerInvariant();
-                    
-                    _useDocker = env == null || (env != "false" && env != "no" && env != "off");
-                    Console.WriteLine($"Environment Variable: ALPAKKA_AMQP_TEST_USEDOCKER = {env ?? "null"}");
-                }
-
-                return _useDocker.Value;
-            }
-        }
 
         public string UserName { get; set; } = "guest";
         public string Password { get; set; } = "guest";
@@ -117,52 +52,9 @@ namespace Akka.Streams.Amqp.Tests
 
         public int EpmdPort => 4369;
 
-        private DockerClientConfiguration Config
-        {
-            get
-            {
-                switch (OperatingSystem)
-                {
-                    case OperatingSystem.Linux:
-                        return new DockerClientConfiguration(new Uri("unix://var/run/docker.sock"));
-                    case OperatingSystem.Windows:
-                        return new DockerClientConfiguration(new Uri("npipe://./pipe/docker_engine"));
-                    default:
-                        throw new NotSupportedException($"Unsupported OS [{RuntimeInformation.OSDescription}]");
-                }
-            }
-        }
-
-        public AmqpFixture()
-        {
-            if (!File.Exists("environment.json"))
-                return;
-
-            using (var file = File.OpenText("environment.json"))
-            {
-                var reader = new JsonTextReader(file);
-                var jObject = JObject.Load(reader);
-
-                var variables = jObject.Children<JProperty>();
-                foreach (var variable in variables)
-                {
-                    var value = Environment.GetEnvironmentVariable(variable.Name);
-                    if (value != null) continue;
-
-                    _variables.Add(variable.Name);
-                    Environment.SetEnvironmentVariable(variable.Name, variable.Value.ToString());
-                }
-            }
-        }
-
         public async Task InitializeAsync()
         {
-            if (!UseDockerContainer)
-                return;
-
-            Console.WriteLine("Using Dockerized RabbitMQ Broker");
-
-            Client = Config.CreateClient();
+            Client = new DockerClientConfiguration().CreateClient();
 
             var images = await Client.Images.ListImagesAsync(new ImagesListParameters
             {
@@ -211,7 +103,6 @@ namespace Akka.Streams.Amqp.Tests
             // start the container
             await Client.Containers.StartContainerAsync(AqmpContainerName, new ContainerStartParameters());
 
-
             // Ping server continuously until either we timed out or the server is up.
             // RabbitMQ Windows image takes a very long time to spin up!
             var gracePeriod = TimeSpan.FromMinutes(2);
@@ -229,7 +120,7 @@ namespace Akka.Streams.Amqp.Tests
                         tcpClient.Close();
                         break;
                     }
-                    catch (SocketException _)
+                    catch (SocketException)
                     {
                         // no-op
                     }
@@ -249,10 +140,10 @@ namespace Akka.Streams.Amqp.Tests
         }
 
         public async Task<bool> StopContainer()
-            => !UseDockerContainer || await Client.Containers.StopContainerAsync(AqmpContainerName, new ContainerStopParameters());
+            => await Client.Containers.StopContainerAsync(AqmpContainerName, new ContainerStopParameters());
 
         public async Task<bool> StartContainer()
-            => !UseDockerContainer || await Client.Containers.StartContainerAsync(AqmpContainerName, new ContainerStartParameters());
+            => await Client.Containers.StartContainerAsync(AqmpContainerName, new ContainerStartParameters());
 
         public async Task DisposeAsync()
         {
@@ -262,14 +153,6 @@ namespace Akka.Streams.Amqp.Tests
                 await Client.Containers.RemoveContainerAsync(AqmpContainerName,
                     new ContainerRemoveParameters { Force = true });
                 Client.Dispose();
-            }
-        }
-
-        public void Dispose()
-        {
-            foreach (var variable in _variables)
-            {
-                Environment.SetEnvironmentVariable(variable, null);
             }
         }
     }

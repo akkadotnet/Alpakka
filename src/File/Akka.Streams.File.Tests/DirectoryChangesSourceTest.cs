@@ -48,6 +48,7 @@ namespace Akka.Streams.File.Tests
             var data = Encoding.UTF8.GetBytes("Some data");
             createdFile.Write(data, 0, data.Length);
             createdFile.Flush(flushToDisk: true);
+            createdFile.Close();
 
             var pair2 = probe.RequestNext();
             pair2.Item2.Should().Be(DirectoryChange.Modification);

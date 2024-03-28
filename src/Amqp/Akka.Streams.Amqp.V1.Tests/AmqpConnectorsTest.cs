@@ -6,6 +6,8 @@ using System;
 using System.Threading.Tasks;
 using Akka.Actor;
 using Akka.Streams.Amqp.Tests;
+using Akka.TestKit.Extensions;
+using FluentAssertions.Extensions;
 using Xunit;
 using Xunit.Abstractions;
 using Address = Amqp.Address;
@@ -54,13 +56,12 @@ namespace Akka.Streams.Amqp.V1.Tests
             await Source.From(input).RunWith(amqpSink, _materializer);
             
             //run source
-            var result = amqpSource
+            var task = amqpSource
                             .Take(input.Length)
                             .RunWith(Sink.Seq<string>(), _materializer);
 
-            await result;
-            Assert.True(result.IsCompleted);
-            Assert.Equal(input, result.Result);
+            var result = await task.ShouldCompleteWithin(1.Minutes());
+            Assert.Equal(input, result);
 
             await session.CloseAsync();
             await connection.CloseAsync();

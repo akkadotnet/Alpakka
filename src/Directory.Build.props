@@ -20,7 +20,7 @@
     <NetFrameworkTestVersion>net48</NetFrameworkTestVersion>
     <XunitVersion>2.7.0</XunitVersion>
     <XunitRunnerVersion>2.5.7</XunitRunnerVersion>
-    <FluentAssertionsVersion>5.10.3</FluentAssertionsVersion>
+    <FluentAssertionsVersion>6.12.0</FluentAssertionsVersion>
     <TestSdkVersion>17.9.0</TestSdkVersion>
     <NBenchVersion>2.0.1</NBenchVersion>
     <HyperionVersion>0.9.16</HyperionVersion>

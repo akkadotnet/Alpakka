@@ -26,41 +26,50 @@ namespace Akka.Streams.Azure.EventHub
         GraphStageWithMaterializedValue<SourceShape<ProcessContext>, EventProcessorClient>, 
         IEventHubSource<EventProcessorClient, ProcessContext, EventData>
     {
-        #region Logic
+        private class Holder
+        {
+            public Holder(ProcessContext context)
+            {
+                TaskCompletionSource = new TaskCompletionSource<Done>();
+                ProcessContext = context;
+            }
 
+            public ProcessContext ProcessContext { get; }
+            public TaskCompletionSource<Done> TaskCompletionSource { get; }
+        }
+        
+        #region Logic
         private sealed class Logic : LogicBase<EventProcessorClient, ProcessContext, EventData>
         {
-            private ProcessContext? _pendingEvent;
-            private TaskCompletionSource<Done>? _currentProcessingTask;
-
-            private Action<(TaskCompletionSource<Task<Done>>, ProcessContext)>? _processCallback;
-
+            private readonly Queue<Holder> _pendingQueue = new ();
+            private Action<(TaskCompletionSource<Task>, ProcessContext)>? _processCallback;
+            
             public Logic(IEventHubSource<EventProcessorClient, ProcessContext, EventData> source, Attributes inheritedAttributes) 
                 : base(source, inheritedAttributes)
             {
             }
-
+            
             protected override void InitializeProcessor()
             {
-                _processCallback = GetAsyncCallback<(TaskCompletionSource<Task<Done>>, ProcessContext)>(OnProcessEvents);
-
+                _processCallback = GetAsyncCallback<(TaskCompletionSource<Task>, ProcessContext)>(OnProcessEvents);
+                
                 Processor.PartitionClosingAsync += CloseAsync;
                 Processor.PartitionInitializingAsync += OpenAsync;
                 Processor.ProcessEventAsync += ProcessEventAsync;
                 Processor.ProcessErrorAsync += ErrorAsync;
                 
-                Processor.StartProcessing();
+                Processor.StartProcessing(CompletionCts.Token);
             }
             
             private async Task ProcessEventAsync(ProcessEventArgs args)
             {
-                if (args.CancellationToken.IsCancellationRequested)
+                if (args.CancellationToken.IsCancellationRequested || !args.HasEvent)
                     return;
                 
                 if (_processCallback == null)
                     throw new ArgumentException("Logic PreStart() has not been called");
             
-                var completion = new TaskCompletionSource<Task<Done>>();
+                var completion = new TaskCompletionSource<Task>();
                 _processCallback((completion, new ProcessContext(args)));
                 var processingTask = await completion.Task;
                 
@@ -68,7 +77,7 @@ namespace Akka.Streams.Azure.EventHub
                 await processingTask;
             }
 
-            private void OnProcessEvents((TaskCompletionSource<Task<Done>>, ProcessContext) args)
+            private void OnProcessEvents((TaskCompletionSource<Task>, ProcessContext) args)
             {
                 var (completion, context) = args;
                 if(Log.IsDebugEnabled)
@@ -78,28 +87,30 @@ namespace Akka.Streams.Azure.EventHub
                         context.Partition.PartitionId,
                         context.Partition.ConsumerGroup,
                         context.Partition.EventHubName,
-                        context.Data?.Offset);
+                        context.Data?.Offset.ToString() ?? "null");
                 }
 
-                _pendingEvent = context;
-                _currentProcessingTask = new TaskCompletionSource<Done>();
+                var holder = new Holder(context);
+                _pendingQueue.Enqueue(holder);
                 OnPull();
-                completion.SetResult(_currentProcessingTask.Task);
+                completion.SetResult(holder.TaskCompletionSource.Task);
             }
-            
+
             public override void OnPull()
             {
-                if (IsAvailable(Source.Out) && _pendingEvent != null)
-                {
-                    Push(Source.Out, _pendingEvent);
-                    _pendingEvent = null;
-                    _currentProcessingTask?.TrySetResult(Done.Instance);
-                }
+                if (!IsAvailable(Source.Out) || _pendingQueue.Count == 0) 
+                    return;
+                
+                var holder = _pendingQueue.Dequeue();
+                Push(Source.Out, holder.ProcessContext);
+                holder.TaskCompletionSource.SetResult(Done.Instance);
             }
 
             protected override void OnStageCompleted()
             {
-                _currentProcessingTask?.TrySetResult(Done.Instance);
+                CompletionCts.Cancel();
+                Processor.StopProcessing();
+                CompletionCts.Dispose();
             }
         }
         
@@ -127,7 +138,7 @@ namespace Akka.Streams.Azure.EventHub
             Shape = new SourceShape<ProcessContext>(Out);
         }
 
-        public Outlet<ProcessContext> Out { get; } = new Outlet<ProcessContext>("EventHubSource.Out");
+        public Outlet<ProcessContext> Out { get; } = new ("EventHubSource.Out");
 
         public override ILogicAndMaterializedValue<EventProcessorClient> CreateLogicAndMaterializedValue(Attributes inheritedAttributes)
         {
@@ -142,12 +153,22 @@ namespace Akka.Streams.Azure.EventHub
         GraphStageWithMaterializedValue<SourceShape<BatchProcessContext>, BatchedEventProcessorClient>, 
         IEventHubSource<BatchedEventProcessorClient, BatchProcessContext, List<EventData>>
     {
-        #region Logic
+        private class Holder
+        {
+            public Holder(BatchProcessContext context)
+            {
+                TaskCompletionSource = new TaskCompletionSource<Done>();
+                ProcessContext = context;
+            }
 
+            public BatchProcessContext ProcessContext { get; }
+            public TaskCompletionSource<Done> TaskCompletionSource { get; }
+        }
+        
+        #region Logic
         private sealed class Logic : LogicBase<BatchedEventProcessorClient, BatchProcessContext, List<EventData>>
         {
-            private BatchProcessContext? _pendingBatch;
-            private TaskCompletionSource<Done>? _currentProcessingTask;
+            private readonly Queue<Holder> _pendingQueue = new ();
             
             private Action<(TaskCompletionSource<Task<Done>>, BatchProcessContext)>? _processCallback;
 
@@ -161,13 +182,13 @@ namespace Akka.Streams.Azure.EventHub
             protected override void InitializeProcessor()
             {
                 _processCallback = GetAsyncCallback<(TaskCompletionSource<Task<Done>>, BatchProcessContext)>(OnProcessEvents);
-
+                
                 Processor.PartitionClosingAsync += CloseAsync;
                 Processor.PartitionInitializingAsync += OpenAsync;
                 Processor.ProcessEventBatchAsync += ProcessEventAsync;
                 Processor.ProcessErrorAsync += ErrorAsync;
                 
-                Processor.StartProcessing();
+                Processor.StartProcessing(CompletionCts.Token);
             }
             
             private Task ProcessEventAsync(ProcessEventBatchArgs args)
@@ -205,25 +226,27 @@ namespace Akka.Streams.Azure.EventHub
                         context.Data?.Count ?? 0);
                 }
 
-                _pendingBatch = context;
-                _currentProcessingTask = new TaskCompletionSource<Done>();
+                var holder = new Holder(context);
+                _pendingQueue.Enqueue(holder);
                 OnPull();
-                completion.SetResult(_currentProcessingTask.Task);
+                completion.SetResult(holder.TaskCompletionSource.Task);
             }
             
             public override void OnPull()
             {
-                if (IsAvailable(Source.Out) && _pendingBatch != null)
-                {
-                    Push(Source.Out, _pendingBatch);
-                    _pendingBatch = null;
-                    _currentProcessingTask?.TrySetResult(Done.Instance);
-                }
+                if (!IsAvailable(Source.Out) || _pendingQueue.Count == 0) 
+                    return;
+                
+                var holder = _pendingQueue.Dequeue();
+                Push(Source.Out, holder.ProcessContext);
+                holder.TaskCompletionSource.TrySetResult(Done.Instance);
             }
 
             protected override void OnStageCompleted()
             {
-                _currentProcessingTask?.TrySetResult(Done.Instance);
+                CompletionCts.Cancel();
+                Processor.StopProcessing();
+                CompletionCts.Dispose();
             }
         }
         
@@ -280,26 +303,31 @@ namespace Akka.Streams.Azure.EventHub
     {
         public TData? Data { get; }
         public PartitionContext Partition { get; }
+        public CancellationToken CancellationToken { get; }
 
         public Task UpdateCheckpointAsync(CancellationToken cancellationToken = default);
     }
     
     public sealed class ProcessContext: IProcessContext<EventData>
     {
-        private readonly ProcessEventArgs _args;
         private readonly Func<CancellationToken, Task> _updateCheckpointAsync;
 
         public ProcessContext(ProcessEventArgs eventArg)
         {
-            _args = eventArg;
-            _updateCheckpointAsync = _args.UpdateCheckpointAsync;
+            _updateCheckpointAsync = eventArg.UpdateCheckpointAsync;
+            Partition = eventArg.Partition;
+            Data = eventArg.Data;
+            HasEvent = eventArg.HasEvent;
+            CancellationToken = eventArg.CancellationToken;
         }
 
-        public bool HasEvent => _args.HasEvent;
+        public bool HasEvent { get; }
         
-        public PartitionContext Partition => _args.Partition;
+        public PartitionContext Partition { get; }
 
-        public EventData? Data => _args.Data;
+        public EventData? Data { get; }
+        
+        public CancellationToken CancellationToken { get; }
 
         public Task UpdateCheckpointAsync(CancellationToken cancellationToken = default) 
             => _updateCheckpointAsync(cancellationToken);
@@ -307,20 +335,24 @@ namespace Akka.Streams.Azure.EventHub
     
     public sealed class BatchProcessContext: IProcessContext<List<EventData>>
     {
-        private readonly ProcessEventBatchArgs _args;
         private readonly Func<CancellationToken, Task> _updateCheckpointAsync;
 
         public BatchProcessContext(ProcessEventBatchArgs eventArg)
         {
-            _args = eventArg;
-            _updateCheckpointAsync = _args.UpdateCheckpointAsync;
+            _updateCheckpointAsync = eventArg.UpdateCheckpointAsync;
+            HasEvents = eventArg.HasEvents;
+            Partition = eventArg.Partition;
+            Data = eventArg.Events;
+            CancellationToken = eventArg.CancellationToken;
         }
 
-        public bool HasEvents => _args.HasEvents;
+        public bool HasEvents { get; }
         
-        public PartitionContext Partition => _args.Partition;
+        public PartitionContext Partition { get; }
 
-        public List<EventData>? Data => _args.Events;
+        public List<EventData>? Data { get; }
+        
+        public CancellationToken CancellationToken { get; }
 
         public Task UpdateCheckpointAsync(CancellationToken cancellationToken = default) 
             => _updateCheckpointAsync(cancellationToken);
@@ -334,6 +366,7 @@ namespace Akka.Streams.Azure.EventHub
         where TClientType: EventProcessor<EventProcessorPartition>
     {
         protected readonly IEventHubSource<TClientType, TProcessContext, TData> Source;
+        protected readonly CancellationTokenSource CompletionCts;
         private readonly Lazy<Decider> _decider;
         private int _partitionCount;
         
@@ -347,6 +380,7 @@ namespace Akka.Streams.Azure.EventHub
             : base(source.Shape)
         {
             Source = source;
+            CompletionCts = new CancellationTokenSource();
             _decider = new Lazy<Decider>(inheritedAttributes.GetDeciderOrDefault);
             Processor = Source.Factory.CreateProcessor();
             
@@ -470,7 +504,15 @@ namespace Akka.Streams.Azure.EventHub
             }
             completion.TrySetResult(Done.Instance);
         }
-        
+
+        public override void OnDownstreamFinish(Exception cause)
+        {
+            CompletionCts.Cancel();
+            base.OnDownstreamFinish(cause);
+            OnStageCompleted();
+            CompletionCts.Dispose();
+        }
+
         protected virtual void OnStageCompleted() { }
     }
 }

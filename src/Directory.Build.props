@@ -13,12 +13,12 @@
     <AkkaPackageTags>akka;actors;actor model;Akka;concurrency;streams</AkkaPackageTags>
   </PropertyGroup>
   <PropertyGroup>
-    <AkkaVersion>1.5.18</AkkaVersion>
+    <AkkaVersion>1.5.20</AkkaVersion>
     <NetStandardLibVersion>netstandard2.0</NetStandardLibVersion>
     <NetLibVersion>net6.0</NetLibVersion>
     <NetTestVersion>net6.0</NetTestVersion>
     <NetFrameworkTestVersion>net48</NetFrameworkTestVersion>
-    <XunitVersion>2.7.0</XunitVersion>
+    <XunitVersion>2.8.0</XunitVersion>
     <XunitRunnerVersion>2.5.7</XunitRunnerVersion>
     <FluentAssertionsVersion>5.10.3</FluentAssertionsVersion>
     <TestSdkVersion>17.9.0</TestSdkVersion>

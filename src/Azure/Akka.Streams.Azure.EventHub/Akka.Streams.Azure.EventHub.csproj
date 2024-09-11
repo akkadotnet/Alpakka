@@ -1,14 +1,16 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
-        <AssemblyTitle>Akka.Streams.Azure.EventHubs</AssemblyTitle>
+        <AssemblyTitle>Akka.Streams.Azure.EventHubs.V5</AssemblyTitle>
         <Description>Azure EventHubs adapter for Akka.NET Streams</Description>
         <TargetFrameworks>$(NetStandardLibVersion);$(NetLibVersion)</TargetFrameworks>
         <PackageTags>$(AkkaPackageTags);azure;EventHubs</PackageTags>
+        <RootNamespace>Akka.Streams.Azure.EventHub</RootNamespace>
+        <Nullable>enable</Nullable>
     </PropertyGroup>
 
     <ItemGroup>
         <PackageReference Include="Akka.Streams" Version="$(AkkaVersion)" />
-        <PackageReference Include="Microsoft.Azure.EventHubs.Processor" Version="4.3.2" />
+        <PackageReference Include="Azure.Messaging.EventHubs.Processor" Version="5.11.3" />
     </ItemGroup>
 
 </Project>

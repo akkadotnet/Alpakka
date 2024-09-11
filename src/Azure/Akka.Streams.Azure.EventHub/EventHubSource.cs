@@ -1,244 +1,518 @@
-﻿using System;
+﻿//-----------------------------------------------------------------------
+// <copyright file="EventHubSource.cs" company="Akka.NET Project">
+//     Copyright (C) 2013-2022 .NET Foundation <https://github.com/akkadotnet/akka.net>
+// </copyright>
+//-----------------------------------------------------------------------
+
+using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using Akka.Event;
-using Akka.Streams.Azure.Utils;
 using Akka.Streams.Dsl;
 using Akka.Streams.Stage;
 using Akka.Streams.Supervision;
-using Akka.Util;
-using Microsoft.Azure.EventHubs;
-using Microsoft.Azure.EventHubs.Processor;
+using Azure.Messaging.EventHubs;
+using Azure.Messaging.EventHubs.Consumer;
+using Azure.Messaging.EventHubs.Primitives;
+using Azure.Messaging.EventHubs.Processor;
 
 namespace Akka.Streams.Azure.EventHub
 {
     /// <summary>
     /// A <see cref="Source{TOut,TMat}"/> for the Azure EventHub
-    /// that materialized into an <see cref="IEventProcessor"/>
     /// </summary>
-    public class EventHubSource : GraphStageWithMaterializedValue<SourceShape<Tuple<PartitionContext, EventData>>, IEventProcessor>
+    public class EventHubSource : 
+        GraphStageWithMaterializedValue<SourceShape<ProcessContext>, EventProcessorClient>, 
+        IEventHubSource<EventProcessorClient, ProcessContext, EventData>
     {
-        #region Logic
-
-        private sealed class ProcessContext
+        private class Holder
         {
-            public ProcessContext(TaskCompletionSource<NotUsed> completion, PartitionContext context,
-                IEnumerable<EventData> events)
+            public Holder(ProcessContext context)
             {
-                Completion = completion;
-                Context = context;
-                Events = events;
+                TaskCompletionSource = new TaskCompletionSource<Done>();
+                ProcessContext = context;
             }
 
-            public TaskCompletionSource<NotUsed> Completion { get; }
-
-            public PartitionContext Context { get; }
-
-            public IEnumerable<EventData> Events { get; }
+            public ProcessContext ProcessContext { get; }
+            public TaskCompletionSource<Done> TaskCompletionSource { get; }
         }
-
-        private sealed class Logic : GraphStageLogic, IEventProcessor
+        
+        #region Logic
+        private sealed class Logic : LogicBase<EventProcessorClient, ProcessContext, EventData>
         {
-            private readonly AtomicBoolean _started = new AtomicBoolean();
-            private readonly EventHubSource _source;
-            private Action<(TaskCompletionSource<NotUsed>, PartitionContext)> _openCallback;
-            private Action<(TaskCompletionSource<NotUsed>, PartitionContext, CloseReason)> _closeCallback;
-            private Action<ProcessContext> _processCallback;
-            private Action<(TaskCompletionSource<NotUsed>, PartitionContext, Exception)> _errorCallback;
-            private TaskCompletionSource<NotUsed> _pendingCompletion;
-            private Queue<EventData> _pendingEvents;
-            private PartitionContext _currentContext;
-            private int _partitionCount;
-            private readonly Decider _decider;
-
-            public Logic(EventHubSource source, Attributes inheritedAttributes) : base(source.Shape)
+            private readonly Queue<Holder> _pendingQueue = new ();
+            private Action<(TaskCompletionSource<Task>, ProcessContext)>? _processCallback;
+            
+            public Logic(IEventHubSource<EventProcessorClient, ProcessContext, EventData> source, Attributes inheritedAttributes) 
+                : base(source, inheritedAttributes)
             {
-                _source = source;
-                _decider = inheritedAttributes.GetDeciderOrDefault();
-                SetHandler(source.Out, TryPush);
+            }
+            
+            protected override void InitializeProcessor()
+            {
+                _processCallback = GetAsyncCallback<(TaskCompletionSource<Task>, ProcessContext)>(OnProcessEvents);
+                
+                Processor.PartitionClosingAsync += CloseAsync;
+                Processor.PartitionInitializingAsync += OpenAsync;
+                Processor.ProcessEventAsync += ProcessEventAsync;
+                Processor.ProcessErrorAsync += ErrorAsync;
+                
+                Processor.StartProcessing(CompletionCts.Token);
+            }
+            
+            private async Task ProcessEventAsync(ProcessEventArgs args)
+            {
+                if (args.CancellationToken.IsCancellationRequested || !args.HasEvent)
+                    return;
+                
+                if (_processCallback == null)
+                    throw new ArgumentException("Logic PreStart() has not been called");
+            
+                var completion = new TaskCompletionSource<Task>();
+                _processCallback((completion, new ProcessContext(args)));
+                var processingTask = await completion.Task;
+                
+                // Block current call until event processing is done
+                await processingTask;
             }
 
-            public override void PreStart()
-            {
-                _openCallback = GetAsyncCallback<(TaskCompletionSource<NotUsed>, PartitionContext)>(OnOpen);
-                _closeCallback = GetAsyncCallback<(TaskCompletionSource<NotUsed>, PartitionContext, CloseReason)>(OnClose);
-                _processCallback = GetAsyncCallback<ProcessContext>(OnProcessEvents);
-                _errorCallback = GetAsyncCallback<(TaskCompletionSource<NotUsed>, PartitionContext, Exception)>(OnError);
-                _started.CompareAndSet(false, true);
-            }
-
-            public async Task OpenAsync(PartitionContext context)
-            {
-                // It's possible that PreStart wasn't called before this code executes
-                while (!_started)
-                    await Task.Delay(500);
-
-                var completion = new TaskCompletionSource<NotUsed>();
-                _openCallback((completion, context));
-                await completion.Task;
-            }
-
-            private void OnOpen((TaskCompletionSource<NotUsed>, PartitionContext) args)
+            private void OnProcessEvents((TaskCompletionSource<Task>, ProcessContext) args)
             {
                 var (completion, context) = args;
-                
                 if(Log.IsDebugEnabled)
-                    Log.Debug("Partition initializing. Partition: [{0}]", context.ToString());
-                
-                // We need to count the partitions to close the stage only on the last close call,
-                // otherwise further calls to the _closeCallback wouldn't be handled because they
-                // are moved to DeadLetters and the close task is never completed
-                _partitionCount++;
-                completion.TrySetResult(NotUsed.Instance);
-            }
-
-            public async Task CloseAsync(PartitionContext context, CloseReason reason)
-            {
-                var completion = new TaskCompletionSource<NotUsed>();
-                _closeCallback((completion, context, reason));
-                await completion.Task;
-
-                if (_source._createCheckpointOnClose)
-                    await context.CheckpointAsync();
-            }
-
-            private void OnClose((TaskCompletionSource<NotUsed>, PartitionContext, CloseReason) args)
-            {
-                var (completion, context, reason) = args;
-                if(Log.IsDebugEnabled)
-                    Log.Debug("Partition closing. Partition: [{0}], Reason: [{1}]", context.ToString(), reason);
-                
-                if(--_partitionCount == 0)
-                    CompleteStage();
-                completion.TrySetResult(NotUsed.Instance);
-            }
-
-            public async Task ProcessErrorAsync(PartitionContext context, Exception error)
-            {
-                var completion = new TaskCompletionSource<NotUsed>();
-                _errorCallback((completion, context, error));
-                await completion.Task;
-            }
-
-            private void OnError((TaskCompletionSource<NotUsed>, PartitionContext, Exception) args)
-            {
-                var (completion, context, cause) = args;
-                
-                Log.Error(cause, "Error while processing event. Partition: [{0}]", context.ToString());
-                switch (_decider(cause))
                 {
-                    case Directive.Stop:
-                        // Throw
-                        completion.TrySetException(cause);
-                        FailStage(cause);
-                        break;
-                    case Directive.Resume:
-                    case Directive.Restart:
-                        // Push the next element or complete
-                        PushOrComplete();
-                        break;
-                    default:
-                        throw new ArgumentOutOfRangeException();
+                    Log.Debug(
+                        "Event received. PartitionId: {0}, ConsumerGroup: {1}, EventHubName: {2}, Offset: {3}",
+                        context.Partition.PartitionId,
+                        context.Partition.ConsumerGroup,
+                        context.Partition.EventHubName,
+                        context.Data?.Offset.ToString() ?? "null");
                 }
+
+                var holder = new Holder(context);
+                _pendingQueue.Enqueue(holder);
+                OnPull();
+                completion.SetResult(holder.TaskCompletionSource.Task);
             }
 
-            public async Task ProcessEventsAsync(PartitionContext context, IEnumerable<EventData> messages)
+            public override void OnPull()
             {
-                var completion = new TaskCompletionSource<NotUsed>();
-                _processCallback(new ProcessContext(completion, context, messages));
-                await completion.Task;
-
-                if (!completion.Task.IsCanceled && !completion.Task.IsFaulted && _source._createCheckpointForEveryBatch)
-                    await context.CheckpointAsync();
-            }
-            
-            private void OnProcessEvents(ProcessContext context)
-            {
-                // ProcessEventsAsync is only called when the previous task is completed, 
-                // therefore we can simply replace the previous values
-                _pendingCompletion = context.Completion;
-                _pendingEvents = new Queue<EventData>(context.Events);
-                _currentContext = context.Context;
-
-                TryPush();
-            }
-
-            private void PushOrComplete()
-            {
-                if (IsClosed(_source.Out))
-                {
-                    _pendingEvents.Clear();
-                    _pendingCompletion.TrySetCanceled();
-                    CompleteStage();
-                }
-                else
-                {
-                    TryPush();
-                }
-            }
-            
-            private void TryPush()
-            {
-                // Something happened to the last batch, abort the send
-                if (_pendingEvents.Count > 0 && _pendingCompletion.Task.IsCanceled || _pendingCompletion.Task.IsFaulted)
-                {
-                    _pendingEvents.Clear();
-                    return;
-                }
-                
-                // Wait for new messages
-                if(_pendingEvents == null || _pendingEvents.Count == 0)
-                    return;
-
-                if (!IsAvailable(_source.Out)) 
+                if (!IsAvailable(Source.Out) || _pendingQueue.Count == 0) 
                     return;
                 
-                Push(_source.Out, Tuple.Create(_currentContext, _pendingEvents.Dequeue()));
+                var holder = _pendingQueue.Dequeue();
+                Push(Source.Out, holder.ProcessContext);
+                holder.TaskCompletionSource.SetResult(Done.Instance);
+            }
 
-                // We have processed all messages so we can handle more
-                if (_pendingEvents.Count == 0)
-                    _pendingCompletion.TrySetResult(NotUsed.Instance);
+            protected override void OnStageCompleted()
+            {
+                CompletionCts.Cancel();
+                Processor.StopProcessing();
+                CompletionCts.Dispose();
             }
         }
-
+        
         #endregion
 
         /// <summary>
         /// Creates a <see cref="Source{TOut,TMat}"/> for the Azure EventHub  
         /// </summary>
-        /// <param name="createCheckpointOnClose">Creates a checkpoint when the processor is closed, if set to true</param>
-        /// <param name="createCheckpointForEveryBatch">Creates a checkpoint for every batch of messages that are received from the EventHub, if set to true</param>
+        /// <param name="factory"></param>
         /// <returns>The processor</returns>
-        public static Source<Tuple<PartitionContext, EventData>, IEventProcessor> Create(bool createCheckpointOnClose = true, bool createCheckpointForEveryBatch = false)
+        public static Source<ProcessContext, EventProcessorClient> Create(IProcessorFactory<EventProcessorClient> factory)
         {
-            return Source.FromGraph(new EventHubSource(createCheckpointOnClose, createCheckpointForEveryBatch));
+            return Source.FromGraph(new EventHubSource(factory));
         }
 
-        private readonly bool _createCheckpointOnClose;
-        private readonly bool _createCheckpointForEveryBatch;
+        public IProcessorFactory<EventProcessorClient> Factory { get; }
 
         /// <summary>
         /// Create a new instance of the <see cref="EventHubSource"/> 
         /// </summary>
-        /// <param name="createCheckpointOnClose">Creates a checkpoint when the processor is closed if set to true</param>
-        /// <param name="createCheckpointForEveryBatch">Creates a checkpoint for every batch of messages that are received from the EventHub, if set to true</param>
-        public EventHubSource(bool createCheckpointOnClose = true, bool createCheckpointForEveryBatch = false)
+        /// <param name="factory"></param>
+        private EventHubSource(IProcessorFactory<EventProcessorClient> factory)
         {
-            _createCheckpointOnClose = createCheckpointOnClose;
-            _createCheckpointForEveryBatch = createCheckpointForEveryBatch;
-            Shape = new SourceShape<Tuple<PartitionContext, EventData>>(Out);
+            Factory = factory;
+            Shape = new SourceShape<ProcessContext>(Out);
         }
 
-        public Outlet<Tuple<PartitionContext, EventData>> Out { get; } =
-            new Outlet<Tuple<PartitionContext, EventData>>("EventHubSource.Out");
+        public Outlet<ProcessContext> Out { get; } = new ("EventHubSource.Out");
 
-        public override SourceShape<Tuple<PartitionContext, EventData>> Shape { get; }
-
-        public override ILogicAndMaterializedValue<IEventProcessor> CreateLogicAndMaterializedValue(
-            Attributes inheritedAttributes)
+        public override ILogicAndMaterializedValue<EventProcessorClient> CreateLogicAndMaterializedValue(Attributes inheritedAttributes)
         {
-            var logic = new Logic(this, inheritedAttributes);
-            return new LogicAndMaterializedValue<IEventProcessor>(logic, logic);
+            var logic = new Logic(this, inheritedAttributes); 
+            return new LogicAndMaterializedValue<EventProcessorClient>(logic, logic.Processor);
         }
+
+        public override SourceShape<ProcessContext> Shape { get; }
+    }
+
+    public class BatchedEventHubSource : 
+        GraphStageWithMaterializedValue<SourceShape<BatchProcessContext>, BatchedEventProcessorClient>, 
+        IEventHubSource<BatchedEventProcessorClient, BatchProcessContext, List<EventData>>
+    {
+        private class Holder
+        {
+            public Holder(BatchProcessContext context)
+            {
+                TaskCompletionSource = new TaskCompletionSource<Done>();
+                ProcessContext = context;
+            }
+
+            public BatchProcessContext ProcessContext { get; }
+            public TaskCompletionSource<Done> TaskCompletionSource { get; }
+        }
+        
+        #region Logic
+        private sealed class Logic : LogicBase<BatchedEventProcessorClient, BatchProcessContext, List<EventData>>
+        {
+            private readonly Queue<Holder> _pendingQueue = new ();
+            
+            private Action<(TaskCompletionSource<Task<Done>>, BatchProcessContext)>? _processCallback;
+
+            public Logic(
+                IEventHubSource<BatchedEventProcessorClient, BatchProcessContext, List<EventData>> source, 
+                Attributes inheritedAttributes) 
+                : base(source, inheritedAttributes)
+            {
+            }
+
+            protected override void InitializeProcessor()
+            {
+                _processCallback = GetAsyncCallback<(TaskCompletionSource<Task<Done>>, BatchProcessContext)>(OnProcessEvents);
+                
+                Processor.PartitionClosingAsync += CloseAsync;
+                Processor.PartitionInitializingAsync += OpenAsync;
+                Processor.ProcessEventBatchAsync += ProcessEventAsync;
+                Processor.ProcessErrorAsync += ErrorAsync;
+                
+                Processor.StartProcessing(CompletionCts.Token);
+            }
+            
+            private Task ProcessEventAsync(ProcessEventBatchArgs args)
+            {
+                return Task.Factory.StartNew(async () =>
+                {
+                    if (args.CancellationToken.IsCancellationRequested)
+                        return;
+                
+                    if(!args.HasEvents)
+                        return;
+                
+                    if (_processCallback == null)
+                        throw new ArgumentException("Logic PreStart() has not been called");
+            
+                    var completion = new TaskCompletionSource<Task<Done>>();
+                    _processCallback((completion, new BatchProcessContext(args)));
+                    var processingTask = await completion.Task;
+
+                    // Block current call until current batch is processed
+                    await processingTask;
+                });
+            }
+
+            private void OnProcessEvents((TaskCompletionSource<Task<Done>>, BatchProcessContext) args)
+            {
+                var (completion, context) = args;
+                if(Log.IsDebugEnabled)
+                {
+                    Log.Debug(
+                        "Events received. PartitionId: {0}, ConsumerGroup: {1}, EventHubName: {2}, Event count: {3}",
+                        context.Partition.PartitionId,
+                        context.Partition.ConsumerGroup,
+                        context.Partition.EventHubName,
+                        context.Data?.Count ?? 0);
+                }
+
+                var holder = new Holder(context);
+                _pendingQueue.Enqueue(holder);
+                OnPull();
+                completion.SetResult(holder.TaskCompletionSource.Task);
+            }
+            
+            public override void OnPull()
+            {
+                if (!IsAvailable(Source.Out) || _pendingQueue.Count == 0) 
+                    return;
+                
+                var holder = _pendingQueue.Dequeue();
+                Push(Source.Out, holder.ProcessContext);
+                holder.TaskCompletionSource.TrySetResult(Done.Instance);
+            }
+
+            protected override void OnStageCompleted()
+            {
+                CompletionCts.Cancel();
+                Processor.StopProcessing();
+                CompletionCts.Dispose();
+            }
+        }
+        
+        #endregion
+
+        /// <summary>
+        /// Creates a <see cref="Source{TOut,TMat}"/> for the Azure EventHub  
+        /// </summary>
+        /// <param name="factory"></param>
+        /// <returns>The processor</returns>
+        public static Source<BatchProcessContext, BatchedEventProcessorClient> Create(
+            IProcessorFactory<BatchedEventProcessorClient> factory)
+        {
+            return Source.FromGraph(new BatchedEventHubSource(factory));
+        }
+
+        public IProcessorFactory<BatchedEventProcessorClient> Factory { get; }
+
+        /// <summary>
+        /// Create a new instance of the <see cref="EventHubSource"/> 
+        /// </summary>
+        /// <param name="factory"></param>
+        private BatchedEventHubSource(IProcessorFactory<BatchedEventProcessorClient> factory)
+        {
+            Factory = factory;
+            Shape = new SourceShape<BatchProcessContext>(Out);
+        }
+
+        public Outlet<BatchProcessContext> Out { get; } =
+            new Outlet<BatchProcessContext>("EventHubSource.Out");
+
+        public override ILogicAndMaterializedValue<BatchedEventProcessorClient> CreateLogicAndMaterializedValue(Attributes inheritedAttributes)
+        {
+            var logic = new Logic(this, inheritedAttributes); 
+            return new LogicAndMaterializedValue<BatchedEventProcessorClient>(logic, logic.Processor);
+        }
+
+        public override SourceShape<BatchProcessContext> Shape { get; }
+    }
+    
+    internal interface IEventHubSource<out TClientType, TProcessContext, TData> 
+        where TProcessContext: IProcessContext<TData> 
+        where TData : class
+        where TClientType: EventProcessor<EventProcessorPartition>
+    {
+        public IProcessorFactory<TClientType> Factory { get; }
+        public SourceShape<TProcessContext> Shape { get; }
+        public Outlet<TProcessContext> Out { get; }
+    }
+
+    #region Context classes
+
+    public interface IProcessContext<out TData> where TData: class
+    {
+        public TData? Data { get; }
+        public PartitionContext Partition { get; }
+        public CancellationToken CancellationToken { get; }
+
+        public Task UpdateCheckpointAsync(CancellationToken cancellationToken = default);
+    }
+    
+    public sealed class ProcessContext: IProcessContext<EventData>
+    {
+        private readonly Func<CancellationToken, Task> _updateCheckpointAsync;
+
+        public ProcessContext(ProcessEventArgs eventArg)
+        {
+            _updateCheckpointAsync = eventArg.UpdateCheckpointAsync;
+            Partition = eventArg.Partition;
+            Data = eventArg.Data;
+            HasEvent = eventArg.HasEvent;
+            CancellationToken = eventArg.CancellationToken;
+        }
+
+        public bool HasEvent { get; }
+        
+        public PartitionContext Partition { get; }
+
+        public EventData? Data { get; }
+        
+        public CancellationToken CancellationToken { get; }
+
+        public Task UpdateCheckpointAsync(CancellationToken cancellationToken = default) 
+            => _updateCheckpointAsync(cancellationToken);
+    }
+    
+    public sealed class BatchProcessContext: IProcessContext<List<EventData>>
+    {
+        private readonly Func<CancellationToken, Task> _updateCheckpointAsync;
+
+        public BatchProcessContext(ProcessEventBatchArgs eventArg)
+        {
+            _updateCheckpointAsync = eventArg.UpdateCheckpointAsync;
+            HasEvents = eventArg.HasEvents;
+            Partition = eventArg.Partition;
+            Data = eventArg.Events;
+            CancellationToken = eventArg.CancellationToken;
+        }
+
+        public bool HasEvents { get; }
+        
+        public PartitionContext Partition { get; }
+
+        public List<EventData>? Data { get; }
+        
+        public CancellationToken CancellationToken { get; }
+
+        public Task UpdateCheckpointAsync(CancellationToken cancellationToken = default) 
+            => _updateCheckpointAsync(cancellationToken);
+    }
+
+    #endregion
+    
+    internal abstract class LogicBase<TClientType, TProcessContext, TData> : OutGraphStageLogic 
+        where TProcessContext: IProcessContext<TData> 
+        where TData : class
+        where TClientType: EventProcessor<EventProcessorPartition>
+    {
+        protected readonly IEventHubSource<TClientType, TProcessContext, TData> Source;
+        protected readonly CancellationTokenSource CompletionCts;
+        private readonly Lazy<Decider> _decider;
+        private int _partitionCount;
+        
+        private Action<(TaskCompletionSource<Done>, PartitionInitializingEventArgs)>? _openCallback;
+        private Action<(TaskCompletionSource<Done>, PartitionClosingEventArgs)>? _closeCallback;
+        private Action<(TaskCompletionSource<Done>, ProcessErrorEventArgs)>? _errorCallback;
+
+        public TClientType Processor { get; }
+
+        protected LogicBase(IEventHubSource<TClientType, TProcessContext, TData> source, Attributes inheritedAttributes) 
+            : base(source.Shape)
+        {
+            Source = source;
+            CompletionCts = new CancellationTokenSource();
+            _decider = new Lazy<Decider>(inheritedAttributes.GetDeciderOrDefault);
+            Processor = Source.Factory.CreateProcessor();
+            
+            SetHandler(source.Out, this);
+        }
+
+        public override void PreStart()
+        {
+            _openCallback = GetAsyncCallback<(TaskCompletionSource<Done>, PartitionInitializingEventArgs)>(OnOpen);
+            _closeCallback = GetAsyncCallback<(TaskCompletionSource<Done>, PartitionClosingEventArgs)>(OnClose);
+            _errorCallback = GetAsyncCallback<(TaskCompletionSource<Done>, ProcessErrorEventArgs)>(OnError);
+
+            InitializeProcessor();
+        }
+
+        protected abstract void InitializeProcessor();
+
+        protected async Task ErrorAsync(ProcessErrorEventArgs args)
+        {
+            if (_errorCallback == null)
+                throw new ArgumentException("Logic PreStart() has not been called");
+            
+            var completion = new TaskCompletionSource<Done>();
+            _errorCallback((completion, args));
+            await completion.Task;
+        }
+        
+        private void OnError((TaskCompletionSource<Done>, ProcessErrorEventArgs) args)
+        {
+            var (completion, eventArgs) = args;
+            if(Log.IsWarningEnabled)
+                Log.Warning(
+                    eventArgs.Exception, 
+                    "Error processing event. PartitionId: {0}, Operation: {1}", 
+                    eventArgs.PartitionId, 
+                    eventArgs.Operation);
+            
+            ErrorHandler(eventArgs.Exception);
+            completion.TrySetResult(Done.Instance);
+        }
+        
+        private void ErrorHandler(Exception ex)
+        {
+            switch (_decider.Value(ex))
+            {
+                case Directive.Stop:
+                    FailStage(ex);
+                    break;
+                case Directive.Restart:
+                case Directive.Resume:
+                    ResumeOrComplete();
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
+        }
+
+        private void ResumeOrComplete()
+        {
+            if(IsClosed(Source.Out))
+            {
+                CompleteStage();
+                OnStageCompleted();
+                return;
+            }
+
+            OnPull();
+        }
+
+        protected async Task OpenAsync(PartitionInitializingEventArgs args)
+        {
+            if (_openCallback == null)
+                throw new ArgumentException("Logic PreStart() has not been called");
+            
+            var completion = new TaskCompletionSource<Done>();
+            _openCallback((completion, args));
+            await completion.Task;
+        }
+
+        private void OnOpen((TaskCompletionSource<Done>, PartitionInitializingEventArgs) args)
+        {
+            var (completion, eventArgs) = args;
+            if(Log.IsDebugEnabled)
+                Log.Debug(
+                    "Partition initializing. PartitionId: {0}, EventPosition: {1}", 
+                    eventArgs.PartitionId,
+                    eventArgs.DefaultStartingPosition);
+            
+            // We need to count the partitions to close the stage only on the last close call,
+            // otherwise further calls to the _closeCallback wouldn't be handled because they
+            // are moved to DeadLetters and the close task is never completed
+            _partitionCount++;
+            completion.TrySetResult(Done.Instance);
+        }
+
+        protected async Task CloseAsync(PartitionClosingEventArgs args)
+        {
+            if (_closeCallback == null)
+                throw new ArgumentException("Logic PreStart() has not been called");
+            
+            var completion = new TaskCompletionSource<Done>();
+            _closeCallback((completion, args));
+            await completion.Task;
+        }
+
+        private void OnClose((TaskCompletionSource<Done>, PartitionClosingEventArgs) args)
+        {
+            var (completion, eventArgs) = args;
+            if(Log.IsDebugEnabled)
+                Log.Debug(
+                    "Partition closing. PartitionId: {0}, Reason: {1}",
+                    eventArgs.PartitionId,
+                    eventArgs.Reason);
+            
+            if(--_partitionCount == 0)
+            {
+                if(Log.IsDebugEnabled)
+                    Log.Debug("Source stopped, no partition left to process.");
+                CompleteStage();
+                OnStageCompleted();
+            }
+            completion.TrySetResult(Done.Instance);
+        }
+
+        public override void OnDownstreamFinish(Exception cause)
+        {
+            CompletionCts.Cancel();
+            base.OnDownstreamFinish(cause);
+            OnStageCompleted();
+            CompletionCts.Dispose();
+        }
+
+        protected virtual void OnStageCompleted() { }
     }
 }

@@ -13,7 +13,7 @@
     <AkkaPackageTags>akka;actors;actor model;Akka;concurrency;streams</AkkaPackageTags>
   </PropertyGroup>
   <PropertyGroup>
-    <AkkaVersion>1.5.33</AkkaVersion>
+    <AkkaVersion>1.5.37</AkkaVersion>
     <NetStandardLibVersion>netstandard2.0</NetStandardLibVersion>
     <NetLibVersion>net6.0</NetLibVersion>
     <NetTestVersion>net6.0</NetTestVersion>

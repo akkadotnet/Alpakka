@@ -63,7 +63,7 @@ namespace Akka.Streams.Azure.EventHub
             
             private async Task ProcessEventAsync(ProcessEventArgs args)
             {
-                if (args.CancellationToken.IsCancellationRequested || !args.HasEvent)
+                if (args.CancellationToken.IsCancellationRequested)
                     return;
                 
                 if (_processCallback == null)

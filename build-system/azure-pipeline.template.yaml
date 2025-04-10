@@ -41,6 +41,10 @@ jobs:
         displayName: 'Update Release Notes'
         continueOnError: false
 
+      - script: dotnet build -c Release
+        displayName: 'dotnet build'
+        continueOnError: false
+
       # Linux
       # Install Azurite in linux
       - bash: |

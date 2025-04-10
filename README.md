@@ -1,7 +1,6 @@
 Alpakka: Akka Streams Connectors
 ================================
 
-[![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/akkadotnet/AkkaStreams)
 
 https://alpakka.getakka.net/
 

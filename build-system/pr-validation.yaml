@@ -18,30 +18,8 @@ name: $(Year:yyyy).$(Month).$(DayOfMonth)$(Rev:.r)
 jobs:
   - template: azure-pipeline.template.yaml
     parameters:
-      name: 'netfx_tests_windows'
-      displayName: '.NET Framework Unit Tests (Windows)'
-      vmImage: 'windows-latest'
-      scriptFileName: build.cmd
-      scriptArgs: runTests
-      outputDirectory: 'TestResults'
-      artifactName: 'netfx_tests_windows-$(Build.BuildId)'
-      amqpTestUseDocker: true # Flag for AQMP test to use RabbitMQ docker
-
-  - template: azure-pipeline.template.yaml
-    parameters:
-      name: 'net_tests_windows'
-      displayName: '.NET 6 Unit Tests (Windows)'
-      vmImage: 'windows-latest'
-      scriptFileName: build.cmd
-      scriptArgs: runTestsNet
-      outputDirectory: 'TestResults'
-      artifactName: 'net_tests_windows-$(Build.BuildId)'
-      amqpTestUseDocker: true # Flag for AQMP test to use RabbitMQ docker
-
-  - template: azure-pipeline.template.yaml
-    parameters:
       name: 'net_tests_linux'
-      displayName: '.NET 6 Unit Tests (Linux)'
+      displayName: '.NET Unit Tests (Linux)'
       vmImage: 'ubuntu-latest'
       scriptFileName: './build.sh'
       scriptArgs: runTestsNet

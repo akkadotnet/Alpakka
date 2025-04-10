@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.SignalR.Client;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 using Xunit.Abstractions;
@@ -17,10 +18,9 @@ namespace Akka.Streams.SignalR.Tests
 {
     public class ServerIntegrationSpec : 
         Akka.TestKit.Xunit2.TestKit, 
-        IPublishSinkSource,
-        IClassFixture<TestServerAppFactory>
+        IPublishSinkSource
     {
-        private readonly WebApplicationFactory<Startup> _factory;
+        private readonly TestServer _testServer;
 
         private bool _connected;
         private HubConnection _connection;
@@ -33,33 +33,29 @@ namespace Akka.Streams.SignalR.Tests
         private Action<Source<ISignalREvent, NotUsed>, Sink<ISignalRResult, NotUsed>> _connectCallback;
 
         public ServerIntegrationSpec(
-            ITestOutputHelper output,
-            TestServerAppFactory factory)
+            ITestOutputHelper output)
             : base(system: null, output: output)
         {
-            _factory = factory.WithWebHostBuilder(builder =>
-            {
-                builder
-                    .UseContentRoot("")
-                    .ConfigureServices(services =>
-                    {
-                        services
-                            .AddSingleton<IPublishSinkSource>(this)
-                            .AddSingleton(Sys)
-                            .AddSingleton(this)
-                            .AddSignalRAkkaStream()
-                            .AddSignalR(opt => opt.EnableDetailedErrors = true);
-                    })
-                    .Configure(app =>
-                    {
-                        app
-                            .UseRouting()
-                            .UseEndpoints(config =>
-                            {
-                                config.MapHub<TestStreamHub>("/test");
-                            });
-                    });
-            });
+            _testServer = new TestServer(new WebHostBuilder()
+                .UseSolutionRelativeContentRoot(AppContext.BaseDirectory, "*.slnx")
+                .ConfigureServices(services =>
+                {
+                    services
+                        .AddSingleton<IPublishSinkSource>(this)
+                        .AddSingleton(Sys)
+                        .AddSingleton(this)
+                        .AddSignalRAkkaStream()
+                        .AddSignalR(opt => opt.EnableDetailedErrors = true);
+                })
+                .Configure(app =>
+                {
+                    app
+                        .UseRouting()
+                        .UseEndpoints(config =>
+                        {
+                            config.MapHub<TestStreamHub>("/test");
+                        });
+                }));
         }
 
         [Fact]
@@ -112,7 +108,7 @@ namespace Akka.Streams.SignalR.Tests
             _fromClient.RequestNext().Should().BeOfType<Disconnected>();
 
             // Client reconnects to server
-            var connection = _factory.CreateHubConnection();
+            var connection = _testServer.CreateHubConnection();
             connection.On<string>(nameof(IClientSink.Receive), msg => Log.Info(msg));
             await connection.StartAsync();
 
@@ -158,7 +154,7 @@ namespace Akka.Streams.SignalR.Tests
 
         private async Task ConnectAsync(Action<string> handler)
         {
-            _connection = _factory.CreateHubConnection();
+            _connection = _testServer.CreateHubConnection();
             _connection.On<string>(nameof(IClientSink.Receive), handler);
             await _connection.StartAsync();
 

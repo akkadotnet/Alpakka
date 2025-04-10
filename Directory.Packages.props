@@ -6,6 +6,7 @@
     <AkkaVersion>1.5.37</AkkaVersion>
   </PropertyGroup>
   <ItemGroup>
+    <PackageVersion Include="Microsoft.AspNetCore.SignalR" Version="1.2.0" />
     <PackageVersion Include="xunit" Version="2.9.2" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.0.0" />
     <PackageVersion Include="FluentAssertions" Version="5.10.3" />
@@ -38,4 +39,4 @@
     <PackageVersion Include="AMQPNetLite.Serialization" Version="2.4.11" />
     <PackageVersion Include="RabbitMQ.Client" Version="6.8.1" />
   </ItemGroup>
-</Project> 
+</Project>

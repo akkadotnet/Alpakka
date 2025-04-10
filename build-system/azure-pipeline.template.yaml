@@ -52,7 +52,7 @@ jobs:
       
       # Do build
       - script: dotnet test -c Release --no-build --framework net9.0 --logger:trx --collect:"XPlat Code Coverage" --results-directory TestResults --settings coverlet.runsettings
-        displayName: 'Run Tests (Windows)'
+        displayName: 'Run Tests (Linux)'
         continueOnError: true
         condition: in( variables['Agent.OS'], 'Linux', 'Darwin' )
 
@@ -70,10 +70,6 @@ jobs:
         displayName: 'Run Tests (Windows)'
         continueOnError: true
         condition: eq( variables['Agent.OS'], 'Windows_NT' )
-
-      - script: dotnet test -c Release --no-build --logger:trx --collect:"XPlat Code Coverage" --results-directory TestResults --settings coverlet.runsettings
-        displayName: 'Run tests'
-        continueOnError: true # Allow continuation even if tests fail
 
       - task: PublishTestResults@2
         inputs:

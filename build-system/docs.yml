@@ -1,0 +1,59 @@
+trigger:
+  branches:
+    include:
+    - dev
+  paths:
+    include:
+    - /
+  batch: True
+name: $(date:yyyyMMdd)$(rev:.r)
+
+resources:
+  repositories:
+  - repository: self
+    type: git
+    ref: refs/heads/dev
+
+jobs:
+- job: Phase_1
+  displayName: Agent job 1
+  timeoutInMinutes: 0
+  pool:
+    vmImage: windows-latest
+  steps:
+  - checkout: self
+
+  - checkout: self  # self represents the repo where the initial Pipelines YAML file was found
+    clean: false  # whether to fetch clean each time
+    submodules: recursive  # set to 'true' for a single level of submodules or 'recursive' to get submodules of submodules
+    persistCredentials: true
+
+  - task: UseDotNet@2
+    displayName: 'Use .NET'
+    inputs:
+      packageType: 'sdk'
+      useGlobalJson: true
+      
+  - task: DotNetCoreCLI@2
+    displayName: 'Restore .NET tools'
+    inputs:
+      command: 'custom'
+      custom: 'tool'
+      arguments: 'restore'
+
+  - script: dotnet docfx build .\docs\docfx.json
+    displayName: `docfx build`
+
+  - task: ArchiveFiles@1
+    displayName: Archive files
+    inputs:
+      rootFolder: docs\_site
+      includeRootFolder: false
+      archiveType: zip
+      tarCompression: none
+  - task: PublishBuildArtifacts@1
+    displayName: 'Publish Artifact: drop'
+    inputs:
+      TargetPath: '\\my\share\$(Build.DefinitionName)\$(Build.BuildNumber)'
+      FileCopyOptions: ''
+...

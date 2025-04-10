@@ -7,8 +7,8 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Akka.Streams" Version="$(AkkaVersion)" />
-        <PackageReference Include="AWSSDK.SQS" Version="3.7.301.6" />
+        <PackageReference Include="Akka.Streams" />
+        <PackageReference Include="AWSSDK.SQS" />
     </ItemGroup>
 
 </Project>

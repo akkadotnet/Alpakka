@@ -42,7 +42,7 @@ Merged Akka.Streams.SignalR and Akka.Streams.SignalR.AspNetCore; dropped all non
   </PropertyGroup>
   <!-- SourceLink support for all Akka.NET projects -->
   <ItemGroup>
-    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All" />
+    <PackageReference Include="Microsoft.SourceLink.GitHub" PrivateAssets="All" />
   </ItemGroup>
   <PropertyGroup>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>

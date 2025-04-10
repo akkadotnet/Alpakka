@@ -95,7 +95,7 @@ jobs:
         displayName: 'Publish Coverage Report'
         condition: and(always(), eq(variables['Agent.OS'], 'Windows_NT'))
         continueOnError: true
-        artifact: 'CoverageReports'
+        artifact: 'CoverageReports-$(Build.BuildId)'
           
       - script: dotnet pack -c Release -o $(Build.ArtifactStagingDirectory)/nuget
         displayName: 'Create packages'
@@ -104,7 +104,7 @@ jobs:
         displayName: 'Publish artifacts'
         inputs:
           PathtoPublish: '$(Build.ArtifactStagingDirectory)/nuget'
-          ArtifactName: 'nuget'
+          ArtifactName: 'nuget-$(Build.BuildId)'
           publishLocation: 'Container'
 
       - script: 'echo 1>&2'

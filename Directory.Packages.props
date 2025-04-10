@@ -33,7 +33,7 @@
     <PackageVersion Include="Azure.Storage.Queues" Version="12.18.0" />
     <PackageVersion Include="Azure.Messaging.ServiceBus" Version="7.17.4" />
     <PackageVersion Include="Azure.Messaging.EventHubs.Processor" Version="5.11.3" />
-    <PackageVersion Include="BenchmarkDotNet" Version="0.13.12" />
+    <PackageVersion Include="BenchmarkDotNet" Version="0.14.0" />
     <PackageVersion Include="AMQPNetLite.Core" Version="2.4.11" />
     <PackageVersion Include="AMQPNetLite.Serialization" Version="2.4.11" />
     <PackageVersion Include="RabbitMQ.Client" Version="6.8.1" />

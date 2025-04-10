@@ -36,6 +36,6 @@
     <PackageVersion Include="BenchmarkDotNet" Version="0.13.12" />
     <PackageVersion Include="AMQPNetLite.Core" Version="2.4.11" />
     <PackageVersion Include="AMQPNetLite.Serialization" Version="2.4.11" />
-    <PackageVersion Include="RabbitMQ.Client" Version="6.8.1" />
+    <PackageVersion Include="RabbitMQ.Client" Version="7.1.2" />
   </ItemGroup>
 </Project>

@@ -2,6 +2,9 @@
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
+  <PropertyGroup Label="SharedVersions">
+    <AkkaVersion>1.5.37</AkkaVersion>
+  </PropertyGroup>
   <ItemGroup>
     <PackageVersion Include="xunit" Version="2.9.2" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.0.0" />
@@ -14,10 +17,11 @@
     <PackageVersion Include="Hocon" Version="2.0.3" />
     <PackageVersion Include="ConfigurationManager" Version="4.7.0" />
     <PackageVersion Include="Docker.DotNet" Version="3.125.15" />
-    <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All" />
+    <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="8.0.0" />
     <PackageVersion Include="coverlet.collector" Version="6.0.2" />
-    <PackageVersion Include="Akka.Streams.TestKit" Version="1.5.37" />
-    <PackageVersion Include="Akka.TestKit.Xunit2" Version="1.5.37" />
+    <PackageVersion Include="Akka.Streams" Version="$(AkkaVersion)" />
+    <PackageVersion Include="Akka.Streams.TestKit" Version="$(AkkaVersion)" />
+    <PackageVersion Include="Akka.TestKit.Xunit2" Version="$(AkkaVersion)" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.9.0" />
     <PackageVersion Include="Microsoft.AspNetCore.SignalR.Client" Version="8.0.4" />
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="6.0.30" />
@@ -30,8 +34,8 @@
     <PackageVersion Include="Azure.Messaging.ServiceBus" Version="7.17.4" />
     <PackageVersion Include="Azure.Messaging.EventHubs.Processor" Version="5.11.3" />
     <PackageVersion Include="BenchmarkDotNet" Version="0.13.12" />
-    <PackageVersion Include="AMQPNetLite.Core" Version="2.4.9" />
-    <PackageVersion Include="AMQPNetLite.Serialization" Version="2.4.9" />
-    <PackageVersion Include="RabbitMQ.Client" Version="1.0.0" />
+    <PackageVersion Include="AMQPNetLite.Core" Version="2.4.11" />
+    <PackageVersion Include="AMQPNetLite.Serialization" Version="2.4.11" />
+    <PackageVersion Include="RabbitMQ.Client" Version="6.8.1" />
   </ItemGroup>
 </Project> 

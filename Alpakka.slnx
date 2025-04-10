@@ -1,0 +1,73 @@
+<Solution>
+  <Folder Name="/Amqp/">
+    <Project Path="src/Amqp/Akka.Streams.Amqp.RabbitMq.Tests/Akka.Streams.Amqp.RabbitMq.Tests.csproj" />
+    <Project Path="src/Amqp/Akka.Streams.Amqp.RabbitMq/Akka.Streams.Amqp.RabbitMq.csproj" />
+    <Project Path="src/Amqp/Akka.Streams.Amqp.V1.Tests/Akka.Streams.Amqp.V1.Tests.csproj" />
+    <Project Path="src/Amqp/Akka.Streams.Amqp.V1/Akka.Streams.Amqp.V1.csproj" />
+    <Project Path="src/Amqp/Akka.Streams.RabbitMq.Amqp.Benchmarks/Akka.Streams.RabbitMq.Amqp.Benchmarks.csproj" />
+  </Folder>
+  <Folder Name="/Amqp/Examples/">
+    <Project Path="src/Amqp/Examples/Amqp.V1.Sink/Amqp.V1.Sink.csproj" />
+    <Project Path="src/Amqp/Examples/Amqp.V1.Source/Amqp.V1.Source.csproj" />
+  </Folder>
+  <Folder Name="/AWS/" />
+  <Folder Name="/AWS/Kinesis/">
+    <Project Path="src/AWS/Kinesis/Akka.Streams.Kinesis.Tests/Akka.Streams.Kinesis.Tests.csproj" />
+    <Project Path="src/AWS/Kinesis/Akka.Streams.Kinesis/Akka.Streams.Kinesis.csproj" />
+  </Folder>
+  <Folder Name="/AWS/SNS/">
+    <Project Path="src/AWS/SNS/Akka.Streams.Sns.Tests/Akka.Streams.Sns.Tests.csproj" />
+    <Project Path="src/AWS/SNS/Akka.Streams.Sns/Akka.Streams.Sns.csproj" />
+  </Folder>
+  <Folder Name="/AWS/SQS/">
+    <Project Path="src/AWS/SQS/Akka.Streams.SQS.Tests/Akka.Streams.SQS.Tests.csproj" />
+    <Project Path="src/AWS/SQS/Akka.Streams.SQS/Akka.Streams.SQS.csproj" />
+  </Folder>
+  <Folder Name="/Azure/">
+    <Project Path="src/Azure/Akka.Streams.Azure.EventHub/Akka.Streams.Azure.EventHub.csproj" />
+    <Project Path="src/Azure/Akka.Streams.Azure.ServiceBus/Akka.Streams.Azure.ServiceBus.csproj" />
+    <Project Path="src/Azure/Akka.Streams.Azure.StorageQueue.Tests/Akka.Streams.Azure.StorageQueue.Tests.csproj" />
+    <Project Path="src/Azure/Akka.Streams.Azure.StorageQueue/Akka.Streams.Azure.StorageQueue.csproj" />
+  </Folder>
+  <Folder Name="/Azure/Examples/">
+    <Project Path="src/Azure/Examples/Akka.Streams.Azure.EventHub.Examples/Akka.Streams.Azure.EventHub.Examples.csproj" />
+    <Project Path="src/Azure/Examples/Akka.Streams.Azure.ServiceBus.Examples/Akka.Streams.Azure.ServiceBus.Examples.csproj" />
+  </Folder>
+  <Folder Name="/Csv/">
+    <Project Path="src/Csv/Akka.Streams.Csv.Tests/Akka.Streams.Csv.Tests.csproj" />
+    <Project Path="src/Csv/Akka.Streams.Csv/Akka.Streams.Csv.csproj" />
+  </Folder>
+  <Folder Name="/File/">
+    <Project Path="src/File/Akka.Streams.File.Tests/Akka.Streams.File.Tests.csproj" />
+    <Project Path="src/File/Akka.Streams.File/Akka.Streams.File.csproj" />
+  </Folder>
+  <Folder Name="/SignalR/">
+    <Project Path="src/SignalR/Akka.Streams.SignalR.Tests/Akka.Streams.SignalR.Tests.csproj" />
+    <Project Path="src/SignalR/Akka.Streams.SignalR/Akka.Streams.SignalR.csproj" />
+  </Folder>
+  <Folder Name="/Solution Items/">
+    <File Path="src/../build.fsx" />
+    <File Path="src/../RELEASE_NOTES.md" />
+    <File Path="src/.editorconfig" />
+    <File Path="src/Directory.Build.props" />
+    <File Path="src/xunit.runner.json" />
+  </Folder>
+  <Folder Name="/Solution Items/build-system/">
+    <File Path="src/../build-system/azure-pipeline.template.yaml" />
+    <File Path="src/../build-system/nightly-builds.yaml" />
+    <File Path="src/../build-system/pr-validation.yaml" />
+    <File Path="src/../build-system/README.md" />
+    <File Path="src/../build-system/windows-release.yaml" />
+  </Folder>
+  <Folder Name="/Solution Items/docs/">
+    <File Path="src/../docs/docfx.json" />
+    <File Path="src/../docs/filterConfig.yml" />
+    <File Path="src/../docs/index.md" />
+    <File Path="src/../docs/toc.yml" />
+    <File Path="src/../docs/web.config" />
+  </Folder>
+  <Folder Name="/Xml/">
+    <Project Path="src/Xml/Akka.Streams.Xml.Tests/Akka.Streams.Xml.Tests.csproj" />
+    <Project Path="src/Xml/Akka.Streams.Xml/Akka.Streams.Xml.csproj" />
+  </Folder>
+</Solution>

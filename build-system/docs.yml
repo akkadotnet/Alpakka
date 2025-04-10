@@ -2,17 +2,9 @@ trigger:
   branches:
     include:
     - dev
-  paths:
-    include:
-    - /
   batch: True
 name: $(date:yyyyMMdd)$(rev:.r)
 
-resources:
-  repositories:
-  - repository: self
-    type: git
-    ref: refs/heads/dev
 
 jobs:
 - job: Phase_1
@@ -42,18 +34,16 @@ jobs:
       arguments: 'restore'
 
   - script: dotnet docfx build .\docs\docfx.json
-    displayName: `docfx build`
+    displayName: 'docfx build'
 
   - task: ArchiveFiles@1
     displayName: Archive files
     inputs:
       rootFolder: docs\_site
       includeRootFolder: false
-      archiveType: zip
       tarCompression: none
   - task: PublishBuildArtifacts@1
     displayName: 'Publish Artifact: drop'
     inputs:
-      TargetPath: '\\my\share\$(Build.DefinitionName)\$(Build.BuildNumber)'
-      FileCopyOptions: ''
+      TargetPath: '$(Build.DefinitionName)\$(Build.BuildNumber)'
 ...

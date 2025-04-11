@@ -8,7 +8,7 @@
   <ItemGroup>
     <PackageVersion Include="Microsoft.AspNetCore.SignalR" Version="1.2.0" />
     <PackageVersion Include="xunit" Version="2.9.2" />
-    <PackageVersion Include="xunit.runner.visualstudio" Version="3.0.0" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="3.0.2" />
     <PackageVersion Include="NBench" Version="2.0.1" />
     <PackageVersion Include="Hyperion" Version="0.9.16" />
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.1" />

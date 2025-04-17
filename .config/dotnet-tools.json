@@ -7,7 +7,7 @@
       "commands": [
         "incrementalist"
       ],
-      "rollForward": false
+      "rollForward": true
     },
     "docfx": {
       "version": "2.78.3",

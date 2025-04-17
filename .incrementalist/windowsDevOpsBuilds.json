@@ -1,0 +1,13 @@
+{
+  "gitBranch": "dev",
+  "verbose": false,
+  "timeoutMinutes": 10,
+  "continueOnError": true,
+  "runInParallel": false,
+  "failOnNoProjects": false,
+  "skip": [
+    "**/*.RabbitMq.tests.csproj",
+    "**/*.Amqp.V1.Tests.csproj"
+  ],
+  "target": []
+}

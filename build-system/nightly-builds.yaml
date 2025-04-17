@@ -17,8 +17,6 @@ schedules:
 
 variables:
   - group: nugetKeys #create this group with SECRET variables `nugetKey`
-  - name: packageSuffix
-    value: '-beta$[format(''{0:yyyyMMddHHmmss}'', pipeline.startTime)]'
 
 steps:
 - task: UseDotNet@2
@@ -30,8 +28,10 @@ steps:
   displayName: 'Update Release Notes'
 
   # Pack with version suffix for nightly builds
-- powershell: dotnet pack -c Release -p:VersionSuffix=$(packageSuffix) -o $(Build.ArtifactStagingDirectory)/nuget
+- powershell: |
+    $timestamp = Get-Date -Format "yyyyMMddHHmmss"
+    dotnet pack -c Release -p:VersionSuffix=beta$timestamp -o $(Build.ArtifactStagingDirectory)/nuget
   displayName: 'Create packages'
 
 - script: dotnet nuget push "$(Build.ArtifactStagingDirectory)\nuget\*.nupkg" --api-key $(nightlyKey) --source $(nightlyUrl) --skip-duplicate
-  displayName: 'Publish to NuGet.org'
+  displayName: 'Publish to Nightly Feed'

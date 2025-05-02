@@ -33,7 +33,9 @@ jobs:
       custom: 'tool'
       arguments: 'restore'
 
-  - script: dotnet docfx build .\docs\docfx.json
+  - script: |
+      dotnet docfx metadata ./docs/docfx.json
+      dotnet docfx build .\docs\docfx.json
     displayName: 'docfx build'
 
   - task: ArchiveFiles@1

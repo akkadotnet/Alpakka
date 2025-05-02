@@ -2,7 +2,7 @@
   <PropertyGroup>
     <Copyright>Copyright © 2013-$([System.DateTime]::Now.Year) Akka.NET Team</Copyright>
     <Authors>Akka.NET Team</Authors>
-    <VersionPrefix>1.5.18</VersionPrefix>
+    <VersionPrefix>1.5.40</VersionPrefix>
     <PackageIconUrl>http://getakka.net/images/akkalogo.png</PackageIconUrl>
     <PackageProjectUrl>https://github.com/akkadotnet/Alpakka</PackageProjectUrl>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
@@ -22,10 +22,9 @@
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
   <PropertyGroup>
-    <PackageReleaseNotes>Bumped to [Akka.NET v1.5.18](https://github.com/akkadotnet/akka.net/releases/tag/1.5.18)
-[Akka.Streams.Ampq.RabbitMq: NullReferenceException - when using Akka.Net v1.5.12 and Akka.Streams.Amqp.RabbitMq v1.5.8](https://github.com/akkadotnet/Alpakka/issues/1659)
-[Akka.Streams.Ampq.RabbitMq: added publisher confirms functionality to RabbitMQ](https://github.com/akkadotnet/Alpakka/pull/1906)
-Merged Akka.Streams.SignalR and Akka.Streams.SignalR.AspNetCore; dropped all non-ASP.NET Core functionality. Will issue a package deprecation warning for Akka.Streams.SignalR.AspNetCore.</PackageReleaseNotes>
+    <PackageReleaseNotes>* Bumped to [Akka.NET v1.5.40](https://github.com/akkadotnet/akka.net/releases/tag/1.5.40)
+* Resolved: [Akka.Streams.Azure.EventHubs: Source no longer emits empty event](https://github.com/akkadotnet/Alpakka/issues/1979)
+* Akka.Streams.SignalR: migrated away from [`Microsoft.AspNetCore.App`](https://www.nuget.org/packages/Microsoft.AspNetCore.App/), which was for `netcoreapp3.1` and earlier, to [`Microsoft.AspNetCore.SignalR`](https://www.nuget.org/packages/Microsoft.AspNetCore.SignalR), which supports all newer versions of ASP.NET Core and SignalR.</PackageReleaseNotes>
   </PropertyGroup>
   <!-- SourceLink support for all Akka.NET projects -->
   <ItemGroup>

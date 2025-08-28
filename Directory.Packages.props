@@ -37,5 +37,6 @@
     <PackageVersion Include="AMQPNetLite.Core" Version="2.4.11" />
     <PackageVersion Include="AMQPNetLite.Serialization" Version="2.4.11" />
     <PackageVersion Include="RabbitMQ.Client" Version="6.8.1" />
+    <PackageVersion Include="Testcontainers.ServiceBus" Version="4.6.0" />
   </ItemGroup>
 </Project>

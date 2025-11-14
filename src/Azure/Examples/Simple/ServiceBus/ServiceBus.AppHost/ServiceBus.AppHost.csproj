@@ -15,4 +15,8 @@
     <PackageReference Include="Aspire.Hosting.Azure.ServiceBus" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\ServiceBusProducer\ServiceBusProducer.csproj" />
+  </ItemGroup>
+
 </Project>

@@ -37,6 +37,7 @@
   <Folder Name="/Azure/Examples/Simple/" />
   <Folder Name="/Azure/Examples/Simple/ServiceBus/">
     <Project Path="src/Azure/Examples/Simple/ServiceBus/ServiceBus.AppHost/ServiceBus.AppHost.csproj" Id="20f20773-26df-40e4-8b2c-0c9f8a081e2e" />
+    <Project Path="src/Azure/Examples/Simple/ServiceBus/ServiceBusProducer/ServiceBusProducer.csproj" Id="08fb1a58-18d1-41dd-8eb6-a6e0fbb0751c" />
   </Folder>
   <Folder Name="/Csv/">
     <Project Path="src/Csv/Akka.Streams.Csv.Tests/Akka.Streams.Csv.Tests.csproj" />

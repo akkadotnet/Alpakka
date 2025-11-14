@@ -28,11 +28,15 @@
     <Project Path="src/Azure/Akka.Streams.Azure.ServiceBus/Akka.Streams.Azure.ServiceBus.csproj" />
     <Project Path="src/Azure/Akka.Streams.Azure.StorageQueue.Tests/Akka.Streams.Azure.StorageQueue.Tests.csproj" />
     <Project Path="src/Azure/Akka.Streams.Azure.StorageQueue/Akka.Streams.Azure.StorageQueue.csproj" />
-    <Project Path="src\Azure\Akka.Streams.Azure.ServiceBus.Tests\Akka.Streams.Azure.ServiceBus.Tests.csproj" Type="Classic C#" />
+    <Project Path="src\Azure\Akka.Streams.Azure.ServiceBus.Tests\Akka.Streams.Azure.ServiceBus.Tests.csproj" />
   </Folder>
   <Folder Name="/Azure/Examples/">
     <Project Path="src/Azure/Examples/Akka.Streams.Azure.EventHub.Examples/Akka.Streams.Azure.EventHub.Examples.csproj" />
     <Project Path="src/Azure/Examples/Akka.Streams.Azure.ServiceBus.Examples/Akka.Streams.Azure.ServiceBus.Examples.csproj" />
+  </Folder>
+  <Folder Name="/Azure/Examples/Simple/" />
+  <Folder Name="/Azure/Examples/Simple/ServiceBus/">
+    <Project Path="src/Azure/Examples/Simple/ServiceBus/ServiceBus.AppHost/ServiceBus.AppHost.csproj" Id="20f20773-26df-40e4-8b2c-0c9f8a081e2e" />
   </Folder>
   <Folder Name="/Csv/">
     <Project Path="src/Csv/Akka.Streams.Csv.Tests/Akka.Streams.Csv.Tests.csproj" />
@@ -47,11 +51,11 @@
     <Project Path="src/SignalR/Akka.Streams.SignalR/Akka.Streams.SignalR.csproj" />
   </Folder>
   <Folder Name="/Solution Items/">
-    <File Path="src/../build.fsx" />
-    <File Path="src/../RELEASE_NOTES.md" />
+    <File Path="RELEASE_NOTES.md" />
     <File Path="src/.editorconfig" />
     <File Path="src/Directory.Build.props" />
     <File Path="src/xunit.runner.json" />
+    <File Path="build.fsx" />
     <File Path="Directory.Build.props" />
     <File Path="Directory.Packages.props" />
     <File Path="global.json" />
@@ -59,18 +63,18 @@
     <File Path="xunit.runner.json" />
   </Folder>
   <Folder Name="/Solution Items/build-system/">
-    <File Path="src/../build-system/azure-pipeline.template.yaml" />
-    <File Path="src/../build-system/nightly-builds.yaml" />
-    <File Path="src/../build-system/pr-validation.yaml" />
-    <File Path="src/../build-system/README.md" />
-    <File Path="src/../build-system/windows-release.yaml" />
+    <File Path="build-system/azure-pipeline.template.yaml" />
+    <File Path="build-system/nightly-builds.yaml" />
+    <File Path="build-system/pr-validation.yaml" />
+    <File Path="build-system/README.md" />
+    <File Path="build-system/windows-release.yaml" />
   </Folder>
   <Folder Name="/Solution Items/docs/">
-    <File Path="src/../docs/docfx.json" />
-    <File Path="src/../docs/filterConfig.yml" />
-    <File Path="src/../docs/index.md" />
-    <File Path="src/../docs/toc.yml" />
-    <File Path="src/../docs/web.config" />
+    <File Path="docs/docfx.json" />
+    <File Path="docs/filterConfig.yml" />
+    <File Path="docs/index.md" />
+    <File Path="docs/toc.yml" />
+    <File Path="docs/web.config" />
   </Folder>
   <Folder Name="/Xml/">
     <Project Path="src/Xml/Akka.Streams.Xml.Tests/Akka.Streams.Xml.Tests.csproj" />

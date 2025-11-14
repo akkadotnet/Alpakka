@@ -1,6 +1,7 @@
 <Project>
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <AspireVersion>9.3.0</AspireVersion>
   </PropertyGroup>
   <PropertyGroup Label="SharedVersions">
     <AkkaVersion>1.5.40</AkkaVersion>
@@ -38,5 +39,6 @@
     <PackageVersion Include="AMQPNetLite.Serialization" Version="2.4.11" />
     <PackageVersion Include="RabbitMQ.Client" Version="6.8.1" />
     <PackageVersion Include="Testcontainers.ServiceBus" Version="4.6.0" />
+    <PackageVersion Include="Aspire.Hosting.AppHost" Version="$(AspireVersion)" />
   </ItemGroup>
 </Project>

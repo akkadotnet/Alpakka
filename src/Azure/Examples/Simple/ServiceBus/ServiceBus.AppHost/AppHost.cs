@@ -13,4 +13,8 @@ var producer = builder.AddProject<ServiceBusProducer>("producer")
     .WaitFor(topic)
     .WithReference(topic);
 
+var consumer = builder.AddProject<ServiceBusConsumer>("consumer")
+    .WaitFor(subscription)
+    .WithReference(topic);
+
 builder.Build().Run();

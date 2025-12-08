@@ -35,6 +35,11 @@
     <Project Path="src/Azure/Examples/Akka.Streams.Azure.ServiceBus.Examples/Akka.Streams.Azure.ServiceBus.Examples.csproj" />
   </Folder>
   <Folder Name="/Azure/Examples/Simple/" />
+  <Folder Name="/Azure/Examples/Simple/EventHub/">
+    <Project Path="src/Azure/Examples/Simple/EventHub/EventHub.AppHost/EventHub.AppHost.csproj" Id="4d396410-3bd8-42d8-8520-9797c3237d3f" />
+    <Project Path="src/Azure/Examples/Simple/EventHub/EventHub.Consumer/EventHub.Consumer.csproj" Id="4326e2e4-2bc1-43e0-ac5e-ce88ab4216ec" />
+    <Project Path="src/Azure/Examples/Simple/EventHub/EventHub.Producer/EventHub.Producer.csproj" Id="5fead35c-6f65-44ad-a2a3-952b771286b7" />
+  </Folder>
   <Folder Name="/Azure/Examples/Simple/ServiceBus/">
     <Project Path="src/Azure/Examples/Simple/ServiceBus/ServiceBus.AppHost/ServiceBus.AppHost.csproj" Id="20f20773-26df-40e4-8b2c-0c9f8a081e2e" />
     <Project Path="src/Azure/Examples/Simple/ServiceBus/ServiceBusConsumer/ServiceBusConsumer.csproj" Id="1ea0598c-1fd3-4c71-b8e7-5f69a7835b50" />

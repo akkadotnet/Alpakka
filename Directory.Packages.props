@@ -7,6 +7,8 @@
     <AkkaVersion>1.5.40</AkkaVersion>
   </PropertyGroup>
   <ItemGroup>
+    <PackageVersion Include="Aspire.Azure.Messaging.EventHubs" Version="13.0.2" />
+    <PackageVersion Include="Aspire.Hosting.Azure.EventHubs" Version="13.0.2" />
     <PackageVersion Include="Aspire.Hosting.Azure.ServiceBus" Version="13.0.0" />
     <PackageVersion Include="Microsoft.AspNetCore.SignalR" Version="1.2.0" />
     <PackageVersion Include="xunit" Version="2.9.2" />

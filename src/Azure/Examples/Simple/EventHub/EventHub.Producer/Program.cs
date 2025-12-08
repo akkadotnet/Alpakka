@@ -6,7 +6,7 @@ using Akka.Streams.Dsl;
 using Azure.Messaging.EventHubs;
 using Azure.Messaging.EventHubs.Producer;
 
-Console.WriteLine("Hello, World!");
+Console.WriteLine("Starting event publisher...");
 
 var connectionString = Environment.GetEnvironmentVariable("CONNECTIONSTRINGS__eventhubs");
 if (connectionString is null)

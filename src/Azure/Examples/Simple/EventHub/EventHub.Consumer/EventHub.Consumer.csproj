@@ -7,4 +7,12 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Aspire.Azure.Messaging.EventHubs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\..\Akka.Streams.Azure.EventHub\Akka.Streams.Azure.EventHub.csproj" />
+  </ItemGroup>
+
 </Project>

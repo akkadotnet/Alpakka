@@ -29,12 +29,27 @@ jobs:
           packageType: 'sdk'
           useGlobalJson: true
           
-      - task: DotNetCoreCLI@2
-        displayName: 'Restore .NET tools'
-        inputs:
-          command: 'custom'
-          custom: 'tool'
-          arguments: 'restore'
+      # Set the Incrementalist base branch based on PR target branch
+      - pwsh: |
+          if ('$(Build.Reason)' -eq 'PullRequest') {
+            # Extract branch name from refs/heads/branch format
+            $targetBranch = '$(System.PullRequest.TargetBranch)'.Replace('refs/heads/', '')
+            Write-Host "PR detected - using base branch: $targetBranch"
+            Write-Host "##vso[task.setvariable variable=IncrementalistBaseBranch]$targetBranch"
+          } else {
+            Write-Host "Not a PR - using default base branch: dev"
+            Write-Host "##vso[task.setvariable variable=IncrementalistBaseBranch]dev"
+          }
+        displayName: 'Set Incrementalist base branch'
+        
+      - script: dotnet tool restore
+        displayName: 'Restore dotnet tools'
+
+      - pwsh: |
+          . ./scripts/Create-DirectoryTree.ps1 # Source the script
+          Ensure-DirectoryPath -Path "${{ parameters.outputDirectory }}"
+          Ensure-DirectoryPath -Path "bin/output"
+        displayName: 'Ensure output directories'
 
       - pwsh: |
           .\build.ps1
@@ -55,7 +70,7 @@ jobs:
         condition: in( variables['Agent.OS'], 'Linux', 'Darwin' )
       
       # Do build
-      - script: dotnet test -c Release --no-build --framework net9.0 --logger:trx --collect:"XPlat Code Coverage" --results-directory TestResults --settings coverlet.runsettings
+      - script: dotnet incrementalist run --config .incrementalist/testsOnly.json --branch $(IncrementalistBaseBranch) -- test -c Release --no-build --framework net10.0 --logger:trx --collect:"XPlat Code Coverage" --results-directory TestResults --settings coverlet.runsettings
         displayName: 'Run Tests (Linux)'
         continueOnError: true
         condition: in( variables['Agent.OS'], 'Linux', 'Darwin' )
@@ -70,7 +85,7 @@ jobs:
         condition: eq( variables['Agent.OS'], 'Windows_NT' )
       
       # Do build
-      - script: dotnet test -c Release --no-build --logger:trx --collect:"XPlat Code Coverage" --results-directory TestResults --settings coverlet.runsettings
+      - script: dotnet incrementalist run --config .incrementalist/testsOnly.json --branch $(IncrementalistBaseBranch) -- test -c Release --no-build --logger:trx --collect:"XPlat Code Coverage" --results-directory TestResults --settings coverlet.runsettings
         displayName: 'Run Tests (Windows)'
         continueOnError: true
         condition: eq( variables['Agent.OS'], 'Windows_NT' )

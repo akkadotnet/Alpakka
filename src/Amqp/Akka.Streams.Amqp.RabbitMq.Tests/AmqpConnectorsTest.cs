@@ -439,8 +439,10 @@ namespace Akka.Streams.Amqp.Tests
                     .RunWith(amqpSink, _mat)
             ).Should().CompleteWithinAsync(15.Seconds());
 
-            (await probe.ToStrictAsync(TimeSpan.FromSeconds(3)).ToListAsync())
-                .Select(x => x.Bytes.ToString()).Should().Equal(input);
+            var results = new System.Collections.Generic.List<IncomingMessage>();
+            await foreach (var item in probe.ToStrictAsync(TimeSpan.FromSeconds(3)))
+                results.Add(item);
+            results.Select(x => x.Bytes.ToString()).Should().Equal(input);
         }
 
         [Fact]

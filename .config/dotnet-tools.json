@@ -3,11 +3,11 @@
   "isRoot": true,
   "tools": {
     "incrementalist.cmd": {
-      "version": "1.0.0-rc5",
+      "version": "1.2.0-beta.1",
       "commands": [
         "incrementalist"
       ],
-      "rollForward": false
+      "rollForward": true
     },
     "docfx": {
       "version": "2.78.3",

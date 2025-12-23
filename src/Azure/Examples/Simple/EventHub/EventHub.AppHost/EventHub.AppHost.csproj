@@ -7,6 +7,7 @@
     <TargetFramework>$(NetTestVersion)</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
     <UserSecretsId>1d14029f-a74d-460f-bfe0-80cc7e8c27a9</UserSecretsId>
   </PropertyGroup>
 

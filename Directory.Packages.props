@@ -4,7 +4,7 @@
     <AspireVersion>13.0.0</AspireVersion>
   </PropertyGroup>
   <PropertyGroup Label="SharedVersions">
-    <AkkaVersion>1.5.60</AkkaVersion>
+    <AkkaVersion>1.5.68</AkkaVersion>
   </PropertyGroup>
   <ItemGroup>
     <PackageVersion Include="Aspire.Azure.Messaging.EventHubs" Version="13.0.2" />

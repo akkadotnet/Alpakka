@@ -81,6 +81,12 @@ try {
     $directory = Join-Path $ArtifactRoot 'Resolver'
     New-Item $directory -ItemType Directory | Out-Null
     Copy-Item "$OriginalBinary.config" (Join-Path $directory 'Original.config')
+    # These fixtures have no source App.config; regenerate their automatic redirects.
+    [xml]$inputConfig = Get-Content "$OriginalBinary.config" -Raw
+    $oldBindings = @($inputConfig.SelectNodes("//*[local-name()='runtime']/*[local-name()='assemblyBinding']"))
+    $identity.PreviousBindingSections = @($oldBindings | ForEach-Object OuterXml)
+    foreach ($binding in $oldBindings) { $binding.ParentNode.RemoveChild($binding) | Out-Null }
+    $inputConfig.Save((Join-Path $directory 'ResolverInput.config'))
     $template = @'
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
@@ -88,7 +94,7 @@ try {
     <AssemblyName>FrozenConsumerBindingResolver</AssemblyName>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
-    <AppConfig>Original.config</AppConfig>
+    <AppConfig>ResolverInput.config</AppConfig>
     <RestoreSources>_SOURCES_</RestoreSources><RestorePackagesPath>_CACHE_</RestorePackagesPath>
   </PropertyGroup>
   <ItemGroup>

@@ -1,174 +1,125 @@
-# Akka.Streams.Azure.EventHub.V5
+# Akka.Streams.Azure.EventHub
 
-> __WARNING__
->
-> As of February 2020, the `Microsoft.Azure.EventHubs` package is deprecated in favor of the new `Azure.Messaging.EventHubs` package. Because of this, this package will be an interim NuGet package implementing the new `Azure.Messaging.EventHubs` that uses the same `Akka.Streams.Azure.EventHub` namespace, this is done to preserve our package namespace in the future for easy migration. 
-> 
-> This `Akka.Streams.Azure.EventHub.V5` package will replace the `Akka.Streams.Azure.EventHub` package on October 2022. If you're still using `Akka.Streams.Azure.EventHub`, please migrate to the new `Akka.Streams.Azure.EventHub.V5` package.
+[![NuGet version](https://img.shields.io/nuget/v/Akka.Streams.Azure.EventHub.svg)](https://www.nuget.org/packages/Akka.Streams.Azure.EventHub/)
+[![NuGet downloads](https://img.shields.io/nuget/dt/Akka.Streams.Azure.EventHub.svg)](https://www.nuget.org/packages/Akka.Streams.Azure.EventHub/)
 
-Akka.Streams.Azure.EventHub.V5 is a streams connector for Azure EventHubs.
+Azure Event Hubs sources and a sink for Akka.NET Streams, using `Azure.Messaging.EventHubs.Processor`. The package targets .NET Standard 2.0 and .NET 6. It is the current `Akka.Streams.Azure.EventHub` package; older instructions to install the interim `.V5` package no longer apply.
 
-Library is based on [Azure.Messaging.EventHubs](https://github.com/Azure/azure-sdk-for-net/tree/main/sdk/eventhub/Microsoft.Azure.EventHubs) driver, and implements Source and Sink to handle EventHubs message streams.
-
-All stages are build with Akka.Streams advantages in mind:
-- There is no constant EventHubs topics pooling: messages are consumed on demand, and with back-pressure support
-- There is no internal buffering: consumed messages are passed to the downstream in realtime, and producer stages publish messages to EventHubs as soon as get them from upstream
-- Each stage make use of it's own `EventHubProducerClient` or `EventProcessorClient` instance.
-- All EventHubs failures can be handled with usual stream error handling strategies
-
-## EventHub Producer Client
-
-An `EventHubProducerClient` publishes messages to a single EventHubs name/topic.  You will need to instantiate an `EventHubProducerClient` instance to be used for each sink stage.
-
-To create an `EventHubProducerClient`, please read the corresponding Azure EventHub documentation.
-
-### EventHubSink
-
-`EventHubSink` is used to publish messages into an EventHub name/topic. The sink consumes `IEnumerable<EventData>` elements that are sent in batches to EventHub.
-
-```C#
-var client = new EventHubProducerClient(
-    "{EventHubConnectionString}", 
-    "{EventHubName}");
-
-var task = Source.From(Enumerable.Range(1, 100))
-    .Select(i => new EventData(Encoding.UTF8.GetBytes("Message from EventHubSink : " + i)))
-    .Grouped(10)
-    .RunWith(new EventHubSink(client), materializer);
+```sh
+dotnet add package Akka.Streams.Azure.EventHub
 ```
 
-Or you can use a shortcut convenience method
+You need an Event Hubs namespace, an event hub, send/receive credentials and a consumer group. Sources also need an existing Azure Blob container for partition ownership and checkpoints. Provision these separately. See the [Azure SDK processor documentation](https://learn.microsoft.com/dotnet/api/overview/azure/messaging.eventhubs.processor-readme) for authentication and processor configuration.
 
-```C#
-var client = new EventHubProducerClient(
-    "{EventHubConnectionString}", 
-    "{EventHubName}");
+## Publish grouped events
 
-var task = Source.From(Enumerable.Range(1, 100))
-    .Select(i => new EventData(Encoding.UTF8.GetBytes("Message from EventHubSink : " + i)))
-    .Grouped(10)
-    .ToEventHub(client, materializer);
-```
+`EventHubSink.Create(producer)` accepts `IEnumerable<EventData>` elements and materializes a `Task`. It sends each group in SDK batches and completes the task after upstream completion and the final send. Its `EventHubProducerClient` is borrowed: the caller must keep it alive until the task finishes and dispose it afterwards.
 
-The materialized value of the sink is a `Task` which is completed with result when the stream completes or with exception if an error occurs.
+This complete example reads an Event Hubs connection string from `EVENTHUB_CONNECTION_STRING`. The hub name is `orders`.
 
-## EventHub Sources
+```csharp
+using Akka.Actor;
+using Akka.Streams;
+using Akka.Streams.Azure.EventHub;
+using Akka.Streams.Dsl;
+using Azure.Messaging.EventHubs;
+using Azure.Messaging.EventHubs.Producer;
 
-### EventHubSource
-`EventHubSource` is used to consume messages from an EventHub name/topic. The source emits `ProcessContext` to be consumed by the stream. The materialized value of the source is an `EventProcessorClient` created by the processor factory that can be used to stop the client from processing further events from EventHub.
-
-`ProcessContext` encapsulates the `PartitionContext` and `DataEvent` of the currently processed event. It also contains an `UpdateCheckpointAsync()` method that can be used to update the current EventHub checkpoint to the current event offset.
-
-> __NOTE__
-> 
-> The `DataEvent` property can be null when 'EventProcessorClient' emit an empty event. Trying to call `UpdateCheckpointAsync()` on an empty event will throw an exception.
-
-#### EventProcessorClient Factory
-
-`IProcessorFactory` is a simple interface that contains a single `CreateProcessor()` method that needs to be implemented by the user. Inside this method, the user is responsible of creating a new instance of `EventProcessorClient` that can be used by the source to receive events from EventHub. A single `IProcessorFactory` can be used to configure multiple `EventHubSource` graphs.
-
-`EventProcessorClient` is the default EventHub processor that came built-in inside `Azure.Messaging.EventHubs.Processor` package. Please refer to Azure EventHub documentation on how to create a `EventProcessorClient` specific to your network configuration needs.
-
-```c#
-public class EventProcessorFactory : IProcessorFactory<EventProcessorClient>
+var system = ActorSystem.Create("eventhub-publisher");
+try
 {
-    public EventProcessorClient CreateProcessor()
+    await using var producer = new EventHubProducerClient(
+        Environment.GetEnvironmentVariable("EVENTHUB_CONNECTION_STRING")
+            ?? throw new InvalidOperationException("Set EVENTHUB_CONNECTION_STRING."), "orders");
+    await Source.From(new[] { "first", "second", "third" })
+        .Select(value => new EventData(value))
+        .Grouped(10)
+        .RunWith(EventHubSink.Create(producer), system.Materializer());
+}
+finally { await system.Terminate(); }
+```
+
+The sink uses the producer's default partition routing. It does not offer a partition-selection option or an exactly-once delivery guarantee. Keep each event within the service's maximum event size. SDK batching and retries, stream buffers and the sink's pending-send list still apply.
+
+## Consume and checkpoint
+
+`EventHubSource.Create(factory)` emits `ProcessContext` and materializes the factory's `EventProcessorClient`. Return a **new processor on each factory call**; the stage installs the processor's event handlers and starts it. Do not share that processor between materializations or attach competing SDK handlers.
+
+A context exposes `Data`, `HasEvent`, `Partition`, `CancellationToken` and `UpdateCheckpointAsync()`. Empty SDK receive callbacks can have `HasEvent == false` and `Data == null`; do not checkpoint those. Checkpoint explicitly **after successful application processing**. Emitting a context releases the SDK callback; it does not mean downstream processing or checkpointing has completed. The SDK prefetches, and the stage and stream can buffer contexts. Cross-partition ordering and exactly-once processing are not guaranteed; make effects safe to repeat.
+
+This complete example runs for 30 seconds. Set `EVENTHUB_CONNECTION_STRING` and `BLOB_CONNECTION_STRING`; create an `orders-consumer` group and a `checkpoints` Blob container first. Its kill switch cancels the source; it does not drain in-flight application work. Shutdown can cancel a checkpoint, leaving that event to be repeated after restart.
+
+```csharp
+using Akka;
+using Akka.Actor;
+using Akka.Streams;
+using Akka.Streams.Azure.EventHub;
+using Akka.Streams.Dsl;
+using Azure.Messaging.EventHubs;
+using Azure.Storage.Blobs;
+
+var system = ActorSystem.Create("eventhub-consumer");
+EventProcessorClient? processor = null;
+try
+{
+    var running = EventHubSource.Create(new ProcessorFactory())
+        .ViaMaterialized(KillSwitches.Single<ProcessContext>(), Keep.Both)
+        .SelectAsync(1, async context =>
+        {
+            if (context.HasEvent)
+            {
+                Console.WriteLine(context.Data!.EventBody.ToString());
+                await context.UpdateCheckpointAsync(context.CancellationToken);
+            }
+            return Done.Instance;
+        })
+        .ToMaterialized(Sink.Ignore<Done>(), Keep.Both)
+        .Run(system.Materializer());
+    processor = running.Item1.Item1;
+    await Task.Delay(TimeSpan.FromSeconds(30));
+    running.Item1.Item2.Shutdown();
+    try { await running.Item2; }
+    catch (OperationCanceledException)
     {
-        var storageClient  = new BlobContainerClient(
-            "{StorageConnectionString}", 
-            "{BlobContainerName}");
-        return new EventProcessorClient(
-            storageClient, 
-            "{ConsumerGroupName}",
-            "{EventHubConnectionString}",
-            "{EventHubName}");
+        Console.WriteLine("Shutdown canceled in-flight processing; uncheckpointed events can be replayed.");
     }
+}
+finally
+{
+    try
+    {
+        if (processor is not null)
+            await processor.StopProcessingAsync();
+    }
+    finally { await system.Terminate(); }
+}
+
+sealed class ProcessorFactory : IProcessorFactory<EventProcessorClient>
+{
+    public EventProcessorClient CreateProcessor() => new(
+        new BlobContainerClient(Required("BLOB_CONNECTION_STRING"), "checkpoints"),
+        "orders-consumer", Required("EVENTHUB_CONNECTION_STRING"), "orders");
+
+    private static string Required(string name) => Environment.GetEnvironmentVariable(name)
+        ?? throw new InvalidOperationException($"Set {name}.");
 }
 ```
 
-#### Creating the EventHubSource
+The source starts from the SDK's default position when no checkpoint exists. Checkpoints control subsequent starts for the same namespace, hub, consumer group and storage container. A different group or container creates an independent checkpoint history.
 
-To create the `EventHubSource`, you will need to pass in the `IProcessorFactory` implementation instance.
+`BatchedEventHubSource.Create(IProcessorFactory<BatchedEventProcessorClient>)` instead emits `BatchProcessContext`, with a `List<EventData>` in `Data`, and materializes the custom `BatchedEventProcessorClient`. Supply that processor through its own factory. Empty batches are not emitted. Process the whole batch successfully before calling its `UpdateCheckpointAsync()`: that checkpoints the highest event offset/sequence in the batch, so partially processed batches must not be checkpointed. Batch boundaries come from SDK receives; they are not a fixed application batch size.
 
-```c#
-var processor = Source.FromGraph(new EventHubSource(new EventProcessorFactory()))
-    .SelectAsync(1, async t =>
-    {
-        Console.WriteLine($"Message from Partition: {t.Partition.PartitionId}");
-        await Business(t);
-        return Done.Instance;
-    })
-    .ToMaterialized(Sink.Ignore<Done>(), Keep.Left)
-    .Run(mat);
+Both sources hold a receive callback until downstream accepts its context. Cancellation releases waiting callbacks and initiates asynchronous processor shutdown, including on failure. **Stream termination can precede processor shutdown.** Await the materialized processor's `StopProcessingAsync()` before disposing checkpoint dependencies. Failures during automatic shutdown are logged; they cannot change an already terminated stream. Do not synchronously stop a processor from inside its own event callbacks.
+
+By default, SDK processing errors fail the source and send errors fail the sink's materialized task. Existing stream supervision attributes can change this behavior: the source's Resume/Restart directives resume pulling rather than recreate its processor; the sink's Resume drops the failed send and Restart retries it. Retries may duplicate delivery. Errors in application processing follow the supervision behavior of that downstream stage.
+
+## Local development and tests
+
+The repository's Event Hubs sample AppHost starts the official Event Hubs emulator and Azurite. With Docker running:
+
+```sh
+aspire start --isolated --apphost src/Azure/Examples/Simple/EventHub/EventHub.AppHost/EventHub.AppHost.csproj
+dotnet test src/Azure/Akka.Streams.Azure.EventHub.Tests/Akka.Streams.Azure.EventHub.Tests.csproj -c Release
 ```
 
-You can stop the processor from consuming more events from EventHub by calling `processor.StopProcessingAsync()`. 
-
-> __NOTE__
-> 
-> There are instances where `EventProcessorClient` deadlocks itself when `StopProcessingAsync()` are invoked. Make sure that you guard the await invocation to make sure you don't deadlock your own application.
-
-## BatchedEventHubSource
-
-`BatchedEventHubSource` is a specialized stream source that is used to consume messages from an EventHub name/topic and emits batches of messages. The source emits `BatchProcessContext` to be consumed by the stream. The materialized value of the source is a custom `BatchedEventProcessorClient` created by the processor factory that can be used to stop the client from processing further events from EventHub.
-
-`BatchProcessContext` encapsulates the `PartitionContext` and `List<DataEvent>` of the currently processed event batch. It also contains an `UpdateCheckpointAsync()` method that can be used to update the current EventHub checkpoint to the highest event offset inside the batch.
-
-> __NOTE__
->
-> The `List<DataEvent>` property can be null when `BatchedEventProcessorClient` emit an empty event. Trying to call `UpdateCheckpointAsync()` on an empty event will throw an exception.
-
-#### BatchedEventProcessorClient Factory
-
-Just like using `EventProcessorClient`, you need to implement `IProcessorFactory.CreateProcessor()` that returns an instance of `BatchedEventProcessorClient`. A single processor factory can be used to configure multiple `BatchedEventHubSource` graphs.
-
-`BatchedEventProcessorClient` is a custom EventHub processor that emits events in batches; it has the same exact constructors and can be configured the same way as `EventProcessorClient`. Please refer to Azure EventHub documentation on `EventProcessorClient` creation as it also applies to `BatchedEventProcessorClient`.
-
-```c#
-public class BatchedEventProcessorFactory 
-    : IProcessorFactory<BatchedEventProcessorClient>
-{
-    public BatchedEventProcessorClient CreateProcessor()
-    {
-        var storageClient  = new BlobContainerClient(
-            "{StorageConnectionString}", 
-            "{BlobContainerName}");
-        return new BatchedEventProcessorClient(
-            storageClient, 
-            "{ConsumerGroupName}",
-            "{EventHubConnectionString}",
-            "{EventHubName}");
-    }
-}
-```
-
-#### Creating the BatchedEventHubSource
-
-To create the `BatchedEventHubSource`, you will need to pass in the `IProcessorFactory` implementation instance.
-
-```c#
-var processor = Source.FromGraph(new EventHubSource(new BatchedEventProcessorFactory()))
-    .SelectAsync(1, async t =>
-    {
-        Console.WriteLine($"Message from Partition: {t.Partition.PartitionId}");
-        await Business(t);
-        return Done.Instance;
-    })
-    .ToMaterialized(Sink.Ignore<Done>(), Keep.Left)
-    .Run(mat);
-```
-
-You can stop the processor from consuming more events from EventHub by calling `processor.StopProcessingAsync()`.
-
-> __NOTE__
->
-> There are instances where `EventProcessorClient` deadlocks itself when `StopProcessingAsync()` are invoked. Make sure that you guard the await invocation to make sure you don't deadlock your own application.
-
-## Error handling
-Akka.Streams.Azure.EventHub.V5 stages utilizes stream supervision deciders to dictate what happens when a failure or exception is thrown from inside the stream stage. These deciders are basically delegate functions that returns an `Akka.Streams.Supervision.Directive` enumeration to tell the stage how to behave when a specific exception occured during the stream lifetime.
-
-You can read more about stream supervision strategies in the [Akka documentation](https://getakka.net/articles/streams/error-handling.html#supervision-strategies)
-
-> __NOTE:__
->
-> A decider applied to a stream using `.WithAttributes(ActorAttributes.CreateSupervisionStrategy(decider))` will be used for the whole stream, any exception that happened in any of the stream stages will use the same decider to determine their fault behavior.
+The tests use `Aspire.Hosting.Testing` with the same AppHost in test mode, without sample producers/consumers, discovered connection strings and isolated containers. They cover native-SDK sink interoperability, Blob checkpoint persistence and processor recreation, plus deterministic backpressure, cancellation and failure contracts. Missing Docker or emulator startup failures fail the suite. Emulator tests do not establish Azure service identity/RBAC, production throughput, cloud partition distribution or persistence across an emulator restart.

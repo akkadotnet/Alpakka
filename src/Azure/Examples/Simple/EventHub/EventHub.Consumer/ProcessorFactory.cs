@@ -16,7 +16,8 @@ namespace EventHub.Consumer
             if (blobStorageConnectionString is null)
                 throw new Exception("The environment variable CONNECTIONSTRINGS__checkpoint was not set.");
 
-            var storageClient = new BlobContainerClient(blobStorageConnectionString, "checkpoint");
+            var storageClient = new BlobContainerClient(blobStorageConnectionString, "checkpoint",
+                new BlobClientOptions(BlobClientOptions.ServiceVersion.V2023_01_03));
             storageClient.CreateIfNotExists();
 
             return new EventProcessorClient(storageClient, "orders-consumer", eventHubConnectionString, "orders");

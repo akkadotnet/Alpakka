@@ -128,7 +128,7 @@ namespace Akka.Streams.Xml
             private readonly int _bufferSize;
 
             private XmlReader _parser;
-            private IParseEvent _pendingEvent;
+            private readonly Queue<IParseEvent> _pendingEvents = new Queue<IParseEvent>();
             private bool _hasNext = true;
             private bool _documentStarted;
             private bool _hasBeenPushed;
@@ -186,7 +186,7 @@ namespace Akka.Streams.Xml
                 AdvanceParser();
             }
 
-            private void GetNextStreamBuffer()
+            private void GetNextStreamBuffer(bool allowReadAhead = false)
             {
                 if (!_overflowBuffer.IsEmpty)
                 {
@@ -195,7 +195,7 @@ namespace Akka.Streams.Xml
                     var bytes = _overflowBuffer.Slice(0, sliceLen);
                     _overflowBuffer = _overflowBuffer.Slice(sliceLen);
                     FillStreamBuffer(bytes);
-                    AdvanceParser();
+                    AdvanceParser(allowReadAhead);
                     return;
                 }
 
@@ -223,23 +223,26 @@ namespace Akka.Streams.Xml
             public override void OnUpstreamFinish()
             {
                 if (_hasNext)
-                    AdvanceParser();
+                    AdvanceParser(allowReadAhead: true);
                 else
                     CompleteStage();
             }
 
-            private void AdvanceParser()
+            private void AdvanceParser(bool allowReadAhead = false)
             {
-                if (!_canPush)
+                if (!_canPush && !allowReadAhead)
                     return;
 
                 // Check for pending events
-                if (_pendingEvent != null)
+                if (_pendingEvents.Count > 0)
                 {
-                    Push(_pendingEvent);
-                    if (_pendingEvent is EndDocument)
+                    if (!_canPush) return;
+                    var pendingEvent = _pendingEvents.Dequeue();
+                    Push(pendingEvent);
+                    if (pendingEvent is EndDocument)
                         _documentStarted = false;
-                    _pendingEvent = null;
+                    if (IsClosed(_stage.In) && _pendingEvents.Count == 0)
+                        AdvanceParser(allowReadAhead: true);
                     return;
                 }
 
@@ -249,7 +252,7 @@ namespace Akka.Streams.Xml
                 // which will result in premature EOF in our case.
                 if (_feeder.Length - _feeder.Position < 7 && DataAvailable)
                 {
-                    GetNextStreamBuffer();
+                    GetNextStreamBuffer(allowReadAhead);
                     return;
                 }
 
@@ -308,10 +311,15 @@ namespace Akka.Streams.Xml
                             // START_DOCUMENT
                             _documentStarted = true;
                             Push(StartDocument.Instance);
-                            _pendingEvent = new StartElement(_parser.LocalName, attributes);
+                            _pendingEvents.Enqueue(new StartElement(_parser.LocalName, attributes));
                         }
                         else
                             Push(new StartElement(_parser.LocalName, attributes));
+                        if (_parser.IsEmptyElement)
+                        {
+                            _pendingEvents.Enqueue(new EndElement(_parser.LocalName));
+                            if (_parser.Depth == 0) _pendingEvents.Enqueue(EndDocument.Instance);
+                        }
                         return;
 
                     // END_ELEMENT
@@ -320,7 +328,7 @@ namespace Akka.Streams.Xml
                         if (_parser.Depth == 0)
                         {
                             // END_DOCUMENT
-                            _pendingEvent = EndDocument.Instance;
+                            _pendingEvents.Enqueue(EndDocument.Instance);
                         }
                         return;
 
@@ -336,7 +344,7 @@ namespace Akka.Streams.Xml
                             // START_DOCUMENT
                             _documentStarted = true;
                             Push(StartDocument.Instance);
-                            _pendingEvent = new ProcessingInstruction(_parser.Name, _parser.Value);
+                            _pendingEvents.Enqueue(new ProcessingInstruction(_parser.Name, _parser.Value));
                         }
                         else
                             Push(new ProcessingInstruction(_parser.Name, _parser.Value));
@@ -358,18 +366,33 @@ namespace Akka.Streams.Xml
                     default:
                         if (_feeder.Length - _feeder.Position < 7 && DataAvailable)
                         {
-                            GetNextStreamBuffer();
+                            GetNextStreamBuffer(allowReadAhead);
                             return;
                         }
-                        AdvanceParser();
+                        AdvanceParser(allowReadAhead);
                         return;
+                }
+            }
+
+            public override void PostStop()
+            {
+                try { _parser?.Dispose(); }
+                finally
+                {
+                    _feeder.Dispose();
+                    base.PostStop();
                 }
             }
 
             private void Push<T>(T message) where T: IParseEvent
             {
-                _canPush = false;
-                Push(_stage.Out, message);
+                if (!_canPush)
+                    _pendingEvents.Enqueue(message);
+                else
+                {
+                    _canPush = false;
+                    Push(_stage.Out, message);
+                }
             }
         }
         #endregion

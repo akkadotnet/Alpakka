@@ -178,13 +178,15 @@ namespace Akka.Streams.Csv.Tests
             ExpectInOut("a,\"abc\\\"def\",c\n", new[,] {{"a", "abc\"def", "c"}});
         }
 
-        [Fact(Skip = "Unicode separator was not implemented in original scala class")]
-        public void CsvParser_should_allow_Unicode_L_SEP_0x2028_as_line_separator()
+        [Fact]
+        public void CsvParser_should_preserve_Unicode_L_SEP_0x2028_inside_a_field()
         {
             var parser = new CsvParser(CsvParsing.Comma, CsvParsing.DoubleQuote, CsvParsing.Backslash);
             parser.Offer(ByteString.FromString("abc\u2028"));
+            parser.Poll(true).Should().BeNull();
+            parser.Offer(ByteString.FromString("\n"));
             var res = parser.Poll(true);
-            res[0].ToString().Should().BeEquivalentTo("abc");
+            res[0].ToString().Should().Be("abc\u2028");
         }
 
         [Fact]

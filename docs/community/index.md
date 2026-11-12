@@ -1,4 +1,4 @@
-## Community Resources
+# Contributing and testing
 
-- [Running Alpakka Test Suite](Testing.md)
-- [Building Docker Images for Testing](BuildingDockerImages.md)
+- [Run the current connector suites](Testing.md).
+- [Historical Docker image build instructions](BuildingDockerImages.md).

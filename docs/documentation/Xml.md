@@ -1,9 +1,7 @@
-## Akka.Streams.Xml
+# XML
 
-This project is a port of akka.stream.alpakka.xml java stream to xml connector.
+XML parsing into stream events, subslicing and text coalescing. The README describes supported chunking and parser limits.
 
-There are a few difference between this port and the original Java connector:
-- Due to .Net XmlReader limitation, Coalesce only supports coalescing CDATA character nodes.
-- You should never split text/CDATA character data between two messages or the XmlParser would throw and exception on you. 
-If you must fragment a text data, wrap them in CDATA tags before sending.
-- This connector supports parsing multiple documents in a single stream.
+Install [Akka.Streams.Xml](https://www.nuget.org/packages/Akka.Streams.Xml). The [package README](https://github.com/akkadotnet/Alpakka/blob/dev/src/Xml/Akka.Streams.Xml/README.md) contains the maintained usage examples, materialized values, defaults, ownership rules and known limits. Packages built from current source include that README; older published releases may omit it.
+
+See [local test instructions](https://github.com/akkadotnet/Alpakka/blob/dev/docs/community/Testing.md) for the service boundary and platform coverage.

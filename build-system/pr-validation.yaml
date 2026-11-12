@@ -1914,3 +1914,4 @@ jobs:
           testResultsFiles: XmlResults/*.trx
           failTaskOnFailedTests: true
           failTaskOnMissingResultsFile: true
+  - template: docs-job.template.yaml

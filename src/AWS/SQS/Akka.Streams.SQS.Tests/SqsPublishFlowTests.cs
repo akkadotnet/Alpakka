@@ -9,6 +9,7 @@
 
 #endregion
 
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -73,15 +74,17 @@ namespace Akka.Streams.SQS.Tests
                     Successful = ((SendMessageBatchRequest) req[0]).Entries
                         .Select(e => new SendMessageBatchResultEntry
                         {
-                            Id = e.Id
-                        }).ToList()
+                            Id = e.Id,
+                            MessageId = "id-" + e.MessageBody
+                        }).Reverse().ToList()
                 }));
 
             var publisher = this.CreatePublisherProbe<string>();
             var subscriber = this.CreateSubscriberProbe<SqsPublishResultEntry>();
             Source.FromPublisher(publisher)
                 .Select(msg => new SendMessageRequest(TestQueueUrl, msg))
-                .Via(SqsPublishFlow.Grouped(client, TestQueueUrl))
+                .Via(SqsPublishFlow.Grouped(client, TestQueueUrl, SqsPublishGroupedSettings.Default
+                    .WithMaxBatchSize(2).WithMaxBatchWait(TimeSpan.FromSeconds(5))))
                 .To(Sink.FromSubscriber(subscriber))
                 .Run(materializer);
 
@@ -91,9 +94,11 @@ namespace Akka.Streams.SQS.Tests
             publisher.SendNext("a-2");
 
             subscriber.ExpectNext<SqsPublishResultEntry>(r =>
-                r.Request.MessageBody == "a-1" && r.Request.QueueUrl == TestQueueUrl);
+                r.Request.MessageBody == "a-1" && r.Request.QueueUrl == TestQueueUrl
+                && r.Result.Id == "0" && r.Result.MessageId == "id-a-1");
             subscriber.ExpectNext<SqsPublishResultEntry>(r =>
-                r.Request.MessageBody == "a-2" && r.Request.QueueUrl == TestQueueUrl);
+                r.Request.MessageBody == "a-2" && r.Request.QueueUrl == TestQueueUrl
+                && r.Result.Id == "1" && r.Result.MessageId == "id-a-2");
 
             subscriber.Cancel();
         }
@@ -145,16 +150,16 @@ namespace Akka.Streams.SQS.Tests
                     Successful = ((SendMessageBatchRequest) req[0]).Entries
                         .Select(e => new SendMessageBatchResultEntry
                         {
-                            Id = e.Id
-                        }).ToList()
+                            Id = e.Id,
+                            MessageId = "id-" + e.MessageBody
+                        }).Reverse().ToList()
                 }));
 
             var publisher = this.CreatePublisherProbe<string[]>();
-            var subscriber = this.CreateSubscriberProbe<string[]>();
+            var subscriber = this.CreateSubscriberProbe<IReadOnlyList<SqsPublishResultEntry>>();
             Source.FromPublisher(publisher)
                 .Select(msgs => msgs.Select(msg => new SendMessageRequest(TestQueueUrl, msg)))
                 .Via(SqsPublishFlow.Batch(client, TestQueueUrl))
-                .Select(list => list.Select(x => x.Request.MessageBody).ToArray())
                 .To(Sink.FromSubscriber(subscriber))
                 .Run(materializer);
 
@@ -163,8 +168,13 @@ namespace Akka.Streams.SQS.Tests
             publisher.SendNext(new[] {"a-1", "a-2"});
             publisher.SendNext(new[] {"b-1", "b-2", "b-3"});
 
-            subscriber.ExpectNext<string[]>(x => x.SequenceEqual(new[] {"a-1", "a-2"}));
-            subscriber.ExpectNext<string[]>(x => x.SequenceEqual(new[] {"b-1", "b-2", "b-3"}));
+            foreach (var expected in new[] { new[] { "a-1", "a-2" }, new[] { "b-1", "b-2", "b-3" } })
+            {
+                var batch = subscriber.ExpectNext();
+                batch.Select(result => result.Request.MessageBody).Should().Equal(expected);
+                batch.Select(result => result.Result.Id).Should().Equal(Enumerable.Range(0, expected.Length).Select(index => index.ToString()));
+                batch.Should().OnlyContain(result => result.Result.MessageId == "id-" + result.Request.MessageBody);
+            }
 
             subscriber.Cancel();
         }

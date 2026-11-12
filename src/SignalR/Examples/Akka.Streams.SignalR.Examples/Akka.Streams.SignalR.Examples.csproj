@@ -1,12 +1,12 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Web">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFrameworks>$(NetTestVersion);$(NetTestVersion)</TargetFrameworks>
+    <TargetFramework>$(NetTestVersion)</TargetFramework>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Akka.Streams.SignalR.AspNetCore\Akka.Streams.SignalR.AspNetCore.csproj" />
+    <ProjectReference Include="..\..\Akka.Streams.SignalR\Akka.Streams.SignalR.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -21,7 +21,7 @@ jobs:
     inputs:
       packageType: 'sdk'
       useGlobalJson: true
-      
+
   - task: DotNetCoreCLI@2
     displayName: 'Restore .NET tools'
     inputs:

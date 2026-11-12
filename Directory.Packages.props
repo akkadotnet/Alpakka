@@ -5,6 +5,7 @@
   </PropertyGroup>
   <PropertyGroup Label="SharedVersions">
     <AkkaVersion>1.5.60</AkkaVersion>
+    <AmqpNetLiteVersion>2.5.1</AmqpNetLiteVersion>
     <RabbitMqConsumerPackageVersion Condition="'$(RabbitMqConsumerPackageVersion)' == ''">1.5.59</RabbitMqConsumerPackageVersion>
     <StorageQueueConsumerPackageVersion Condition="'$(StorageQueueConsumerPackageVersion)' == ''">1.5.59</StorageQueueConsumerPackageVersion>
     <XmlConsumerPackageVersion Condition="'$(XmlConsumerPackageVersion)' == ''">1.5.59</XmlConsumerPackageVersion>
@@ -54,8 +55,8 @@
     <PackageVersion Include="Azure.Messaging.ServiceBus" Version="7.17.4" />
     <PackageVersion Include="Azure.Messaging.EventHubs.Processor" Version="5.11.3" />
     <PackageVersion Include="BenchmarkDotNet" Version="0.14.0" />
-    <PackageVersion Include="AMQPNetLite.Core" Version="2.4.11" />
-    <PackageVersion Include="AMQPNetLite.Serialization" Version="2.4.11" />
+    <PackageVersion Include="AMQPNetLite.Core" Version="$(AmqpNetLiteVersion)" />
+    <PackageVersion Include="AMQPNetLite.Serialization" Version="$(AmqpNetLiteVersion)" />
     <PackageVersion Include="RabbitMQ.Client" Version="6.8.1" />
     <PackageVersion Include="Testcontainers.ServiceBus" Version="4.16.0" />
     <PackageVersion Include="Aspire.Hosting.AppHost" Version="$(AspireVersion)" />

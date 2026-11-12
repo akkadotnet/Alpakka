@@ -29,6 +29,24 @@ function Get-DllHashes([string]$Directory) {
     return $result
 }
 
+function Assert-HostSettings([string]$Original, [string]$Candidate) {
+    [xml]$before = Get-Content $Original -Raw
+    [xml]$after = Get-Content $Candidate -Raw
+    foreach ($section in $before.DocumentElement.ChildNodes | Where-Object NodeType -eq Element | Where-Object Name -ne 'runtime') {
+        if ($after.DocumentElement.SelectSingleNode($section.Name).OuterXml -ne $section.OuterXml) { throw "Host section changed: $($section.Name)." }
+    }
+    $runtime = $before.DocumentElement.SelectSingleNode('runtime')
+    if ($runtime) {
+        $newRuntime = $after.DocumentElement.SelectSingleNode('runtime')
+        foreach ($attribute in $runtime.Attributes) {
+            if ($newRuntime.GetAttribute($attribute.Name) -ne $attribute.Value) { throw "Runtime attribute changed: $($attribute.Name)." }
+        }
+        foreach ($setting in $runtime.ChildNodes | Where-Object NodeType -eq Element | Where-Object LocalName -ne 'assemblyBinding') {
+            if ($newRuntime.SelectSingleNode($setting.Name).OuterXml -ne $setting.OuterXml) { throw "Runtime setting changed: $($setting.Name)." }
+        }
+    }
+}
+
 function Invoke-Frozen([string]$Name, [bool]$ExpectBindingFailure) {
     $process = [Diagnostics.Process]::new()
     $started = $false
@@ -81,6 +99,11 @@ try {
     $directory = Join-Path $ArtifactRoot 'Resolver'
     New-Item $directory -ItemType Directory | Out-Null
     Copy-Item "$OriginalBinary.config" (Join-Path $directory 'Original.config')
+    # Seed standard resolution with policy from the successful candidate source build.
+    if (!$hadConfig) { throw 'Candidate source-build configuration is missing.' }
+    Assert-HostSettings "$OriginalBinary.config" $savedConfig
+    Copy-Item $savedConfig (Join-Path $directory 'ResolverInput.config')
+    $identity.ResolverSeedConfigurationHash = (Get-FileHash $savedConfig).Hash
     $template = @'
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
@@ -88,7 +111,7 @@ try {
     <AssemblyName>FrozenConsumerBindingResolver</AssemblyName>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
-    <AppConfig>Original.config</AppConfig>
+    <AppConfig>ResolverInput.config</AppConfig>
     <RestoreSources>_SOURCES_</RestoreSources><RestorePackagesPath>_CACHE_</RestorePackagesPath>
   </PropertyGroup>
   <ItemGroup>
@@ -118,21 +141,7 @@ try {
     $generated = Join-Path $directory 'bin/Release/net48/FrozenConsumerBindingResolver.exe.config'
     if (!(Test-Path $generated)) { throw 'MSBuild did not generate host binding policy.' }
     Copy-Item $generated (Join-Path $directory 'Generated.config')
-    [xml]$before = Get-Content "$OriginalBinary.config" -Raw
-    [xml]$after = Get-Content $generated -Raw
-    foreach ($section in $before.DocumentElement.ChildNodes | Where-Object NodeType -eq Element | Where-Object Name -ne 'runtime') {
-        if ($after.DocumentElement.SelectSingleNode($section.Name).OuterXml -ne $section.OuterXml) { throw "Host section changed: $($section.Name)." }
-    }
-    $runtime = $before.DocumentElement.SelectSingleNode('runtime')
-    if ($runtime) {
-        $newRuntime = $after.DocumentElement.SelectSingleNode('runtime')
-        foreach ($attribute in $runtime.Attributes) {
-            if ($newRuntime.GetAttribute($attribute.Name) -ne $attribute.Value) { throw "Runtime attribute changed: $($attribute.Name)." }
-        }
-        foreach ($setting in $runtime.ChildNodes | Where-Object NodeType -eq Element | Where-Object LocalName -ne 'assemblyBinding') {
-            if ($newRuntime.SelectSingleNode($setting.Name).OuterXml -ne $setting.OuterXml) { throw "Runtime setting changed: $($setting.Name)." }
-        }
-    }
+    Assert-HostSettings "$OriginalBinary.config" $generated
     $identity.OriginalConfigurationHash = (Get-FileHash "$OriginalBinary.config").Hash
     $identity.GeneratedConfigurationHash = (Get-FileHash $generated).Hash
     if (!$BuildOnly) {

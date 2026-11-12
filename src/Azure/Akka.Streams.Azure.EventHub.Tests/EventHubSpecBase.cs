@@ -8,6 +8,7 @@ namespace Akka.Streams.Azure.EventHub.Tests;
 
 public abstract class EventHubSpecBase(ITestOutputHelper output) : Akka.TestKit.Xunit2.TestKit(output: output), IAsyncLifetime
 {
+    private IDistributedApplicationTestingBuilder? _builder;
     private DistributedApplication? _app;
     public string ConnectionString { get; private set; } = null!;
     public BlobContainerClient CheckpointStore { get; private set; } = null!;
@@ -17,9 +18,10 @@ public abstract class EventHubSpecBase(ITestOutputHelper output) : Akka.TestKit.
         try
         {
             using var startup = new CancellationTokenSource(TimeSpan.FromMinutes(5));
-            var builder = await DistributedApplicationTestingBuilder.CreateAsync<Projects.EventHub_AppHost>(
+            _builder = await DistributedApplicationTestingBuilder.CreateAsync<Projects.EventHub_AppHost>(
                 ["--Testing=true"], startup.Token);
-            _app = await builder.BuildAsync(startup.Token);
+            _app = await _builder.BuildAsync(startup.Token);
+            _builder = null;
             await _app.StartAsync(startup.Token);
             await _app.ResourceNotifications.WaitForResourceHealthyAsync("eventhubs", startup.Token);
             await _app.ResourceNotifications.WaitForResourceHealthyAsync("storage", startup.Token);
@@ -45,15 +47,22 @@ public abstract class EventHubSpecBase(ITestOutputHelper output) : Akka.TestKit.
     public async Task DisposeAsync()
     {
         var app = _app;
+        var builder = _builder;
         _app = null;
-        try
+        _builder = null;
+        List<Exception> errors = [];
+        await CleanupAsync(() => Sys.Terminate(), TimeSpan.FromSeconds(15));
+        if (builder is not null)
+            await CleanupAsync(() => builder.DisposeAsync().AsTask(), TimeSpan.FromSeconds(30));
+        if (app is not null)
+            await CleanupAsync(() => app.DisposeAsync().AsTask(), TimeSpan.FromSeconds(30));
+        if (errors.Count > 0)
+            throw new AggregateException("Event Hubs cleanup failed", errors);
+
+        async Task CleanupAsync(Func<Task> cleanup, TimeSpan timeout)
         {
-            await Sys.Terminate().WaitAsync(TimeSpan.FromSeconds(15));
-        }
-        finally
-        {
-            if (app is not null)
-                await app.DisposeAsync();
+            try { await cleanup().WaitAsync(timeout); }
+            catch (Exception error) { errors.Add(error); }
         }
     }
 }

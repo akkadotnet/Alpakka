@@ -14,12 +14,12 @@ using Xunit.Abstractions;
 
 namespace Akka.Streams.Xml.Tests.Dsl
 {
-    public class XmlCoalesceTest : Akka.TestKit.Xunit2.TestKit
+    public class XmlCoalesceTest : XmlSpec
     {
         private readonly ActorMaterializer _materializer;
         private readonly Sink<string, Task<IImmutableList<IParseEvent>>> _parser;
 
-        public XmlCoalesceTest(ITestOutputHelper output) : base(output:output)
+        public XmlCoalesceTest(ITestOutputHelper output) : base(output)
         {
             _materializer = Sys.Materializer();
 
@@ -30,17 +30,17 @@ namespace Akka.Streams.Xml.Tests.Dsl
                 .ToMaterialized(Sink.Seq<IParseEvent>(), Keep.Right);
         }
 
-        [Fact(Skip = ".Net XmlReader could not handle chunked text xml node, this behavior could not be ported")]
-        public void XmlCoalesce_support_must_properly_unify_a_chain_of_character_chunks()
+        [Fact]
+        public async Task XmlCoalesce_support_must_properly_unify_a_chain_of_character_chunks()
         {
-            var fut = Source.Single("<doc>")
-                .Concat(Source.FromEnumerator(Enumerable.Range(0, 10).Select(i => i.ToString()).GetEnumerator))
-                .Concat(Source.Single("</doc>"))
-                .RunWith(_parser, _materializer);
+            var events = new IParseEvent[] { StartDocument.Instance, new StartElement("doc", new Dictionary<string, string>()) }
+                .Concat(Enumerable.Range(0, 10).Select(i => (IParseEvent)new Characters(i.ToString())))
+                .Concat(new IParseEvent[] { new EndElement("doc"), EndDocument.Instance });
+            var fut = Source.From(events).Via(XmlParsing.Coalesce(10))
+                .RunWith(Sink.Seq<IParseEvent>(), _materializer);
 
-            fut.Wait(TimeSpan.FromSeconds(3));
 
-            var result = fut.Result;
+            var result = (await CompletedWithin(fut));
             result[0].Should().BeOfType<StartDocument>();
             (result[1] as StartElement).Should().BeEquivalentTo(new StartElement("doc", new Dictionary<string, string>()));
             (result[2] as Characters).Should().BeEquivalentTo(new Characters("0123456789"));
@@ -49,34 +49,15 @@ namespace Akka.Streams.Xml.Tests.Dsl
         }
 
         [Fact]
-        public void XmlCoalesce_support_must_properly_unify_a_chain_of_CDATA_chunks()
+        public async Task XmlCoalesce_support_must_properly_unify_a_chain_of_CDATA_chunks()
         {
             var fut = Source.Single("<doc>")
                 .Concat(Source.FromEnumerator(Enumerable.Range(0, 10).Select(i => $"<![CDATA[{i}]]>").GetEnumerator))
                 .Concat(Source.Single("</doc>"))
                 .RunWith(_parser, _materializer);
 
-            fut.Wait(TimeSpan.FromSeconds(3));
 
-            var result = fut.Result;
-            result[0].Should().BeOfType<StartDocument>();
-            (result[1] as StartElement).Should().BeEquivalentTo(new StartElement("doc", new Dictionary<string, string>()));
-            (result[2] as Characters).Should().BeEquivalentTo(new Characters("0123456789"));
-            (result[3] as EndElement).Should().BeEquivalentTo(new EndElement("doc"));
-            result[4].Should().BeOfType<EndDocument>();
-        }
-
-        [Fact(Skip = ".Net XmlReader could not handle chunked text xml node, this behavior could not be ported")]
-        public void XmlCoalesce_support_must_properly_unify_a_chain_of_CDATA_and_character_chunks()
-        {
-            var fut = Source.Single("<doc>")
-                .Concat(Source.FromEnumerator(Enumerable.Range(0, 10).Select(i => i % 2 == 0 ? $"<![CDATA[{i}]]>" : i.ToString()).GetEnumerator))
-                .Concat(Source.Single("</doc>"))
-                .RunWith(_parser, _materializer);
-
-            fut.Wait(TimeSpan.FromSeconds(3));
-
-            var result = fut.Result;
+            var result = (await CompletedWithin(fut));
             result[0].Should().BeOfType<StartDocument>();
             (result[1] as StartElement).Should().BeEquivalentTo(new StartElement("doc", new Dictionary<string, string>()));
             (result[2] as Characters).Should().BeEquivalentTo(new Characters("0123456789"));
@@ -85,14 +66,32 @@ namespace Akka.Streams.Xml.Tests.Dsl
         }
 
         [Fact]
-        public void XmlCoalesce_support_must_properly_report_an_error_if_text_limit_is_exceeded()
+        public async Task XmlCoalesce_support_must_properly_unify_a_chain_of_CDATA_and_character_chunks()
+        {
+            var events = new IParseEvent[] { StartDocument.Instance, new StartElement("doc", new Dictionary<string, string>()) }
+                .Concat(Enumerable.Range(0, 10).Select(i => i % 2 == 0 ? (IParseEvent)new CData(i.ToString()) : new Characters(i.ToString())))
+                .Concat(new IParseEvent[] { new EndElement("doc"), EndDocument.Instance });
+            var fut = Source.From(events).Via(XmlParsing.Coalesce(10))
+                .RunWith(Sink.Seq<IParseEvent>(), _materializer);
+
+
+            var result = (await CompletedWithin(fut));
+            result[0].Should().BeOfType<StartDocument>();
+            (result[1] as StartElement).Should().BeEquivalentTo(new StartElement("doc", new Dictionary<string, string>()));
+            (result[2] as Characters).Should().BeEquivalentTo(new Characters("0123456789"));
+            (result[3] as EndElement).Should().BeEquivalentTo(new EndElement("doc"));
+            result[4].Should().BeOfType<EndDocument>();
+        }
+
+        [Fact]
+        public async Task XmlCoalesce_support_must_properly_report_an_error_if_text_limit_is_exceeded()
         {
             var fut = Source.Single("<doc>")
                 .Concat(Source.FromEnumerator(Enumerable.Range(0, 11).Select(i => $"<![CDATA[{i}]]>").GetEnumerator))
                 .Concat(Source.Single("</doc>"))
                 .RunWith(_parser, _materializer);
 
-            fut.Invoking(f => f.Wait(TimeSpan.FromSeconds(3))).Should().Throw<IllegalStateException>();
+            await Assert.ThrowsAsync<IllegalStateException>(async () => await CompletedWithin(fut));
         }
     }
 }

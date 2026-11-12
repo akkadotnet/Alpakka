@@ -111,19 +111,20 @@ jobs:
           if ((Get-FileHash "$output/Akka.Streams.Amqp.V1.dll").Hash -ne (Get-FileHash "$candidate/Akka.Streams.Amqp.V1.dll").Hash) {
             throw 'Consumer did not receive the candidate library.'
           }
-          if ($IsWindows) { & $binary } else { dotnet $binary }
-          if ($LASTEXITCODE -ne 0) { throw 'Previously compiled consumer failed with the candidate.' }
-        displayName: 'Validate API/TFMs and run unchanged released-package consumer with candidate'
-      - pwsh: |
-          Write-Host '##vso[task.setvariable variable=BindingDiagnosticAttempted]true'
-          New-Item '$(Agent.TempDirectory)/amqp-binding-diagnostic/report' -ItemType Directory -Force | Out-Null
-          ./build-system/diagnostics/Invoke-AmqpBindingDiagnostic.ps1 `
-            -OriginalBinary '$(Agent.TempDirectory)/AmqpV1CompatibilityConsumer.exe' `
-            -CandidateOutput 'compatibility/AmqpV1Consumer/bin/Release/net48' `
-            -Feed 'AmqpV1Packages' `
-            -ArtifactRoot '$(Agent.TempDirectory)/amqp-binding-diagnostic'
-        displayName: 'Diagnose standard host binding without waiving the failed compatibility gate'
-        condition: and(failed(), eq(variables['Agent.OS'], 'Windows_NT'))
+          if ($IsWindows) {
+            # Include frozen IL when MSBuild generates standard output binding policy.
+            Write-Host '##vso[task.setvariable variable=BindingDiagnosticAttempted]true'
+            New-Item '$(Agent.TempDirectory)/amqp-binding-diagnostic/report' -ItemType Directory -Force | Out-Null
+            ./build-system/diagnostics/Invoke-AmqpBindingDiagnostic.ps1 `
+              -OriginalBinary '$(Agent.TempDirectory)/AmqpV1CompatibilityConsumer.exe' `
+              -CandidateOutput 'compatibility/AmqpV1Consumer/bin/Release/net48' `
+              -Feed 'AmqpV1Packages' `
+              -ArtifactRoot '$(Agent.TempDirectory)/amqp-binding-diagnostic'
+          } else {
+            dotnet $binary
+            if ($LASTEXITCODE -ne 0) { throw 'Previously compiled consumer failed with the candidate.' }
+          }
+        displayName: 'Validate API/TFMs and frozen consumer through standard NuGet upgrade resolution'
       - task: PublishBuildArtifacts@1
         displayName: 'Publish bounded binding diagnostic evidence'
         condition: and(always(), eq(variables['Agent.OS'], 'Windows_NT'), eq(variables['BindingDiagnosticAttempted'], 'true'))

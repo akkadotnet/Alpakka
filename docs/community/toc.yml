@@ -1,4 +1,6 @@
 - name: Running Alpakka Test Suite
   href: Testing.md
+- name: Code Standards and Build Checks
+  href: CodeStandards.md
 - name: Building Docker Images for Testing
   href: BuildingDockerImages.md

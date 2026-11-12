@@ -115,15 +115,16 @@ jobs:
           if ((Get-FileHash "$output/Akka.Streams.Azure.ServiceBus.dll").Hash -ne (Get-FileHash "$candidate/Akka.Streams.Azure.ServiceBus.dll").Hash) {
             throw 'Consumer did not receive the candidate library.'
           }
-          if ($IsWindows) { & $binary } else { dotnet $binary }
-          if ($LASTEXITCODE -ne 0) { throw 'Previously compiled consumer failed with the candidate.' }
-        displayName: 'Validate API/TFMs and run unchanged released-package consumer with candidate'
-      - pwsh: |
-          Write-Host '##vso[task.setvariable variable=AzureBindingDiagnosticAttempted]true'
-          & ./build-system/diagnostics/Invoke-AzureBindingDiagnostic.ps1 -OriginalBinary '$(Agent.TempDirectory)/ServiceBusCompatibilityConsumer.exe' -CandidateOutput 'compatibility/ServiceBusConsumer/bin/Release/net48' -Feed 'ServiceBusPackages' -PackageId 'Akka.Streams.Azure.ServiceBus' -PackageVersion '1.5.59-servicebus-validation' -BindingAssembly 'Azure.Messaging.ServiceBus' -ArtifactRoot '$(Agent.TempDirectory)/servicebus-binding-diagnostic'
-          if ($LASTEXITCODE -ne 0) { throw 'Generated-policy diagnostic failed.' }
-        displayName: 'Diagnose frozen consumer with standard generated binding policy'
-        condition: and(failed(), eq(variables['Agent.OS'], 'Windows_NT'))
+          if ($IsWindows) {
+            # Resolve standard output binding policy with the frozen executable as an MSBuild input.
+            Write-Host '##vso[task.setvariable variable=AzureBindingDiagnosticAttempted]true'
+            & ./build-system/diagnostics/Invoke-AzureBindingDiagnostic.ps1 -OriginalBinary '$(Agent.TempDirectory)/ServiceBusCompatibilityConsumer.exe' -CandidateOutput 'compatibility/ServiceBusConsumer/bin/Release/net48' -Feed 'ServiceBusPackages' -PackageId 'Akka.Streams.Azure.ServiceBus' -PackageVersion '1.5.59-servicebus-validation' -BindingAssembly 'Azure.Messaging.ServiceBus' -ArtifactRoot '$(Agent.TempDirectory)/servicebus-binding-diagnostic'
+            if ($LASTEXITCODE -ne 0) { throw 'Frozen consumer binding-policy verification failed.' }
+          } else {
+            dotnet $binary
+            if ($LASTEXITCODE -ne 0) { throw 'Previously compiled consumer failed with the candidate.' }
+          }
+        displayName: 'Validate API/TFMs and frozen consumer through standard NuGet upgrade resolution'
       - task: PublishBuildArtifacts@1
         displayName: 'Publish bounded binding diagnostic evidence'
         condition: and(always(), eq(variables['Agent.OS'], 'Windows_NT'), eq(variables['AzureBindingDiagnosticAttempted'], 'true'))

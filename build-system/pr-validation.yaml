@@ -26,3 +26,4 @@ jobs:
       outputDirectory: 'TestResults'
       artifactName: 'net_tests_linux-$(Build.BuildId)'
       amqpTestUseDocker: true # Flag for AQMP test to use RabbitMQ docker
+  - template: standards-job.template.yaml

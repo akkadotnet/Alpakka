@@ -1,18 +1,9 @@
-# Akka Streams Plug-ins For Azure
+# Akka Streams connectors for Azure
 
-## Akka Streams For Azure EventHubs
+- [Azure Queue Storage](Akka.Streams.Azure.StorageQueue/README.md): caller-owned QueueClient, string publishing and explicit deletion after processing.
+- [Azure Event Hubs](Akka.Streams.Azure.EventHub/README.md): the current Azure.Messaging.EventHubs adapter, including standard/batched processing and checkpoints.
+- [Azure Service Bus](Akka.Streams.Azure.ServiceBus/README.md): queue/topic sources, sinks and settlement semantics.
 
-> __WARNING__
->
-> As of February 2020, the `Microsoft.Azure.EventHubs` package is deprecated in favor of the new `Azure.Messaging.EventHubs` package. Because of this, we are phasing out `Microsoft.Azure.EventHubs` support in favor of the new `Azure.Messaging.EventHubs` SDK NuGet package.
->
-> We will release an interim NuGet package named `Akka.Streams.Azure.EventHub.V5` that uses the same `Akka.Streams.Azure.EventHub` namespace, this is done to preserve our package namespace in the future for easy migration. The new `Akka.Streams.Azure.EventHub.V5` package will replace the `Akka.Streams.Azure.EventHub` package on October 2022. Please migrate your package to the new `Akka.Streams.Azure.EventHub.V5` package.
+Use the current `Akka.Streams.Azure.EventHub` package for the Azure.Messaging.EventHubs SDK. `Akka.Streams.Azure.EventHub.V5` was an interim package name. Its public namespace was already `Akka.Streams.Azure.EventHub`; migrating to the current package requires replacing the package reference and rebuilding because the assembly identity changes. This is distinct from migrating an application that still uses the older Microsoft.Azure.EventHubs SDK.
 
-There are currently two packages that you can use to connect Akka.Streams to Azure EventHubs.
-
-1. If you are starting a new project or upgrading to the new (V5) EventHubs SDK driver, you can use the new Akka streams package that uses the `Azure.Messaging.EventHubs` NuGet package [here](./Akka.Streams.Azure.EventHub.V5).
-2. If you are using the legacy (V4) EventHubs SDK driver, you can use the old Akka streams package that uses the `Microsoft.Azure.EventHubs` NuGet package [here](./Akka.Streams.Azure.EventHub).
-
-## Akka Streams For Azure ServiceBus
-
-## Akka Streams For Azure StorageQueue
+See [legacy package migrations](../../docs/documentation/LegacyPackages.md) for the package/namespace/target requirements. Published legacy artifacts remain available.

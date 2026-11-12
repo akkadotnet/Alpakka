@@ -5,6 +5,8 @@ title: Building Docker Images for Testing
 
 # Building docker container images for testing purposes
 
+These instructions describe historical images retained for older checkouts. Current connector fixtures start their own pinned broker/emulator containers; use the [current test guide](Testing.md).
+
 - Dockerfile for each image are located in `support\dockerfiles`
 - Each folder should contain a simple script to build, run, and push images.
 - Run `./build.ps1` to build the docker image.

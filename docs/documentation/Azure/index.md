@@ -1,7 +1,7 @@
-# Akka.Streams.Azure
-Akka.Streams adapter for Azure Storage Queue, EventHub and ServiceBus
+# Azure connectors
 
-# Documentation
-- [Storage Queue](Azure/StorageQueue.md)
-- [EventHub](Azure/EventHub.md)
-- [ServiceBus](Azure/ServiceBus.md)
+- [Azure Queue Storage](StorageQueue.md)
+- [Azure Event Hubs](EventHub.md)
+- [Azure Service Bus](ServiceBus.md)
+
+The current Event Hubs package uses Azure.Messaging.EventHubs. See [legacy migrations](../LegacyPackages.md) before replacing EventHub.V5 or an older Microsoft.Azure.EventHubs application.

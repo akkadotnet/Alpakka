@@ -3,69 +3,55 @@ uid: Testing.md
 title: Running Alpakka Test Suite
 ---
 
-# How to run the Alpakka unit test suite
+# Running the Alpakka test suites
 
-Since Alpakka is a collection of adapters for Akka.Streams, the Alpakka test suite relies on 3rd party software for it to pass. To run all the tests successfully, developer would need to either install these 3rd party softwares, or use a prepared docker image with the relevant software installed.
-Currently, the AMQP and Azure test suite requires 3rd party softwares to run.
+Use the SDK selected by the repository's global.json. Build from the repository root:
 
-# AMQP
+```shell
+dotnet restore Alpakka.slnx
+dotnet build Alpakka.slnx -c Release
+```
 
-Right now, we rely on RabbitMQ as our AMQP test platform. To test the AMQP suite, you would need to install RabbitMQ locally, use the pre-made docker image, or build the docker image yourself. 
-The test suite expects a working AMQP broker with these default settings:
-- user: guest
-- password: guest
-- vhost: /
-- user tag: administrator
-- permission: .*, .*, .*
-- loopback user: []
-- strict ssl protocol mode: false
+The connector suites own their test resources. Messaging/cloud fixtures use discovered endpoints and pinned images; they do not require a separately installed broker, Azure Storage Emulator, fixed localhost ports or a cloud account. Docker must be running Linux containers for the container suites. Service Bus and Event Hubs use their emulator license-acceptance configuration in the test AppHost.
 
-## Installing AMQP
+## Select a suite
 
-- Install RabbitMQ either using Chocolatey or the binary installer by following the instructions [here](https://www.rabbitmq.com/install-windows.html).
-- Copy `support\dockerfiles\AMQP\Windows\rabbitmq.conf` file to the `%APPDATA%\RabbitMQ\` folder
-- Copy `support\dockerfiles\AMQP\Windows\enabled_plugins` file to the `%APPDATA%\RabbitMQ\` folder
-- Restart RabbitMQ server service or start the RabbitMQ server
-- Edit the `environment.json` file inside the `Akka.Streams.Amqp.Tests` project. Set `ALPAKKA_AMQP_TEST_USEDOCKER` to false.
+Run the command for the connector being changed from the repository root. These are the modern test-host targets; they do not change the library's shipped targets.
 
-## Using a pre-built Docker container
+| Connector | Command | Boundary |
+| --- | --- | --- |
+| AMQP 1.0 | `dotnet test src/Amqp/Akka.Streams.Amqp.V1.Tests/Akka.Streams.Amqp.V1.Tests.csproj -c Release --framework net10.0` | Testcontainers ActiveMQ Artemis |
+| RabbitMQ | `dotnet test src/Amqp/Akka.Streams.Amqp.RabbitMq.Tests/Akka.Streams.Amqp.RabbitMq.Tests.csproj -c Release --framework net10.0` | Testcontainers RabbitMQ |
+| Azure Service Bus | `dotnet test src/Azure/Akka.Streams.Azure.ServiceBus.Tests/Akka.Streams.Azure.ServiceBus.Tests.csproj -c Release --framework net10.0` | Aspire.Hosting.Testing, Service Bus emulator and SQL companion |
+| Azure Event Hubs | `dotnet test src/Azure/Akka.Streams.Azure.EventHub.Tests/Akka.Streams.Azure.EventHub.Tests.csproj -c Release --framework net10.0` | Aspire.Hosting.Testing, Event Hubs emulator and Blob checkpoints |
+| Azure Queue Storage | `dotnet test src/Azure/Akka.Streams.Azure.StorageQueue.Tests/Akka.Streams.Azure.StorageQueue.Tests.csproj -c Release --framework net10.0` | Testcontainers Azurite |
+| SQS | `dotnet test src/AWS/SQS/Akka.Streams.SQS.Tests/Akka.Streams.SQS.Tests.csproj -c Release --framework net10.0` | Controlled clients plus Testcontainers Floci |
+| SNS contracts | `dotnet test src/AWS/SNS/Akka.Streams.Sns.Tests/Akka.Streams.Sns.Tests.csproj -c Release --framework net10.0` | Controlled publication/completion contracts |
+| SNS subscriptions | `dotnet test src/AWS/SNS/Akka.Streams.Sns.IntegrationTests/Akka.Streams.Sns.IntegrationTests.csproj -c Release --framework net10.0` | Native Floci SNS→SQS, isolated SDK graph |
+| Kinesis | `dotnet test src/AWS/Kinesis/Akka.Streams.Kinesis.Tests/Akka.Streams.Kinesis.Tests.csproj -c Release --framework net10.0` | Controlled clients plus native Floci put/get/iterators |
+| SignalR | `dotnet test src/SignalR/Akka.Streams.SignalR.Tests/Akka.Streams.SignalR.Tests.csproj -c Release --framework net10.0` | TestServer WebSockets and Aspire-owned Kestrel; no Docker |
+| CSV | `dotnet test src/Csv/Akka.Streams.Csv.Tests/Akka.Streams.Csv.Tests.csproj -c Release --framework net10.0` | Actual parser/formatter stages |
+| XML | `dotnet test src/Xml/Akka.Streams.Xml.Tests/Akka.Streams.Xml.Tests.csproj -c Release --framework net10.0` | Actual parser/event stages |
+| File | `dotnet test src/File/Akka.Streams.File.Tests/Akka.Streams.File.Tests.csproj -c Release --framework net10.0` | Temporary files and OS notifications; native inotify release on Linux |
 
-- Edit the `environment.json` file inside the `Akka.Streams.Amqp.Tests` project. Set `ALPAKKA_AMQP_TEST_USEDOCKER` to true.
-- A pre-built docker container image can be obtained by running:
-  `docker pull akkadotnet/rabbitmq:latest`
-- The docker image will be automatically pulled the first time you run the AMQP test suite, if you do not have a local copy.
+The SQS adapter uses SDK v3. SNS/Kinesis use v4, and the SNS integration observer has a separate v4 graph. Keep those project/process boundaries when adding tests; combining the adapters in one process is not a substitute for verifying their dependency ranges.
 
-## Using the pre-built Docker container as an application
+Azure emulator fixtures select protocol versions supported by the pinned images where needed. Keep API-version checks enabled. An emulator can establish payload, settlement/checkpoint or lifecycle behavior only for the exercised operations; it does not establish cloud identity, scale, quotas or durability after emulator restart.
 
-You can run the pre-built docker container as a background application so that it does not have to be loaded/unloaded every time tests are run:
-- Edit the `environment.json` file inside the `Akka.Streams.Amqp.Tests` project. Set `ALPAKKA_AMQP_TEST_USEDOCKER` to false.
-- Pull and run the image by running:
-  `docker pull akkadotnet/rabbitmq:latest`
-  `docker run -d -p 4369:4369 -p 5672:5672 -p 5671:5671 -p 15672:15672 akkadotnet/rabbitmq:latest`
-- Wait until the application started and you can start testing.
+## Required CI and package checks
 
-# Azure
+[The PR pipeline](https://github.com/akkadotnet/Alpakka/blob/dev/build-system/pr-validation.yaml) owns twelve explicit connector jobs. The SNS job runs two test projects. Their TRX guards require named cases and reject missing, empty, duplicated, failed or skipped results. The corresponding projects are excluded from the general incremental lane because those explicit jobs own them; an empty general selection is not additional integration coverage.
 
-## Installing Azure Storage Emulator
-- The Azure test suite depends on Azure Storage Emulator to work on Windows, and Azurite to work on Linux.
-- To run the test suite against a Docker container, Edit the `environment.json` file inside the `Akka.Streams.Azure.StorageQueue.Tests` project. Set `ALPAKKA_AZURE_TEST_USEDOCKER` to false.
-- **Azure Storage Emulator**: 
-  - If you're using Visual Studio and have the Azure SDK installed, chances are, you already have Azure Storage Emulator installed. You can download the standalone installer [here](https://go.microsoft.com/fwlink/?linkid=717179&clcid=0x409)
-  - Start the emulator before you run the tests.
-- **Azurite**: 
-  - You can install Azurite using npm by usiing this command: `npm install -g azurite`
-  - Start the emulator before you run the tests.
+Each job also packs the actual connector with API validation against released 1.5.59, checks the README and retained TFM assets, recompiles a consumer from the package, and executes its preserved original binary with candidate dependencies. Packaged C# examples are compiled against the exact archive using isolated caches. CSV, XML and SignalR jobs also execute the relevant packaged examples against real files or WebSockets. The File job separately executes its unchanged compatibility consumer against the real filesystem. Inspect a connector's actual inline pipeline steps when reproducing all its gates locally; `dotnet test` alone does not establish those packaging/compatibility claims.
 
-## Using a pre-built Docker container
-- The test suite can also be run against docker containers. 
-- To run the test suite against a Docker container, Edit the `environment.json` file inside the `Akka.Streams.Azure.StorageQueue.Tests` project. Set `ALPAKKA_AZURE_TEST_USEDOCKER` to true.
-- The containers used are `akkadotnet/azure-storage-emulator:latest` for windows and `mcr.microsoft.com/azure-storage/azurite` for linux.
+Windows jobs retain the appropriate .NET Framework compile/runtime checks for the .NET Standard libraries and run pure contracts where applicable. SignalR's library asset is net6.0 and its test hosts run net10.0; there is no net48 SignalR claim. Container integration runs on Linux in CI. The File suite runs actual filesystem cases on both Windows and Linux.
 
-## Using the pre-built Docker container as an application
+## Changes to dependencies or fixtures
 
-You can run the pre-built docker container as a background application so that it does not have to be loaded/unloaded every time tests are run:
-- Edit the `environment.json` file inside the `Akka.Streams.Azure.StorageQueue.Tests` project. Set `ALPAKKA_AZURE_TEST_USEDOCKER` to false.
-- Pull and run the image by running:
-  `docker pull akkadotnet/azure-storage-emulator:latest`
-  `docker run -d -p 10000:10000 -p 10001:10001 -p 10002:10002 akkadotnet/azure-storage-emulator:latest`
-- Wait until the application started and you can start testing.
+Retain useful existing cases and assertions. Use a service-boundary assertion for a service guarantee: materialized completion alone does not prove broker delivery, deletion, acknowledgment or checkpoint persistence. Hold native state or use a positive control before testing its absence.
+
+Fixtures must own only their resources, use bounded startup and cleanup, and surface setup/cleanup errors. An unavailable endpoint or image must fail the job rather than silently skip it. Do not hide warnings, disable API checks or accept a no-tests run to obtain a green result.
+
+For a driver update, inspect source/binary compatibility and the resolved/runtime dependency graph, then run the connector's native and package gates. Preserve the old consumer binary while resolving dependencies for its own target. Retaining a net6.0 asset does not by itself prove execution on the .NET 6 runtime; collect actual runtime evidence when that support is affected. Keep SDK support/audit warnings visible and distinguish them from passed behavioral checks.
+
+The [historical Docker build guide](BuildingDockerImages.md) remains available for old checkouts. Its custom images and environment.json switches are not the setup procedure for these current fixtures.

@@ -1,33 +1,7 @@
-# Akka Streams SNS Connector
+# Amazon SNS
 
-The AWS SNS connector provides an Akka Stream Flow and Sink for push notifications through [Amazon Simple Notification Service (SNS)](https://aws.amazon.com/sns).
+Amazon SNS topic publishing stages. Subscription delivery is configured through AWS or an emulator.
 
-## Producer
+Install [Akka.Streams.Sns](https://www.nuget.org/packages/Akka.Streams.Sns). The [package README](https://github.com/akkadotnet/Alpakka/blob/dev/src/AWS/SNS/Akka.Streams.Sns/README.md) contains the maintained usage examples, materialized values, defaults, ownership rules and known limits. Packages built from current source include that README; older published releases may omit it.
 
-Sources provided by this connector need a prepared `IAmazonSimpleNotificationService` to publish messages to a topic.
-
-```C#
-var credentials = new BasicAWSCredentials("x", "y");
-var snsService = new AmazonSimpleNotificationServiceClient(credentials);
-```
-
-### Publish messages to a SNS topic
-Now we can publish a String message to any SNS topic where we have access to by providing the topic ARN to the `SnsPublisher` Flow or Sink factory method.
-
-### Using a Flow
-
-```C#
-Task flow = Source
-    .Single("message")
-    .Via(SnsPublisher.PlainFlow("topic-arn", snsService))
-    .RunWith(Sink.Ignore<PublishResponse>(), _materializer);
-```
-
-As you can see, this would publish the messages from the source to the specified AWS SNS topic. After a message has been successfully published, a `PublishResponse` will be pushed downstream.
-
-```C#
-Task sink = Source
-    .Single("message")
-    .RunWith(SnsPublisher.PlainSink("topic-arn", snsService), _materializer);
-```
-As you can see, this would publish the messages from the source to the specified AWS SNS topic.
+See [local test instructions](https://github.com/akkadotnet/Alpakka/blob/dev/docs/community/Testing.md) for the service boundary and platform coverage.

@@ -48,5 +48,6 @@
     <PackageVersion Include="RabbitMQ.Client" Version="6.8.1" />
     <PackageVersion Include="Testcontainers.ServiceBus" Version="4.6.0" />
     <PackageVersion Include="Aspire.Hosting.AppHost" Version="$(AspireVersion)" />
+    <PackageVersion Include="Testcontainers.Azurite" Version="4.16.0" />
   </ItemGroup>
 </Project>

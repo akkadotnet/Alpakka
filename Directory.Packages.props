@@ -6,8 +6,10 @@
   <PropertyGroup Label="SharedVersions">
     <AkkaVersion>1.5.60</AkkaVersion>
     <RabbitMqConsumerPackageVersion Condition="'$(RabbitMqConsumerPackageVersion)' == ''">1.5.59</RabbitMqConsumerPackageVersion>
+    <StorageQueueConsumerPackageVersion Condition="'$(StorageQueueConsumerPackageVersion)' == ''">1.5.59</StorageQueueConsumerPackageVersion>
   </PropertyGroup>
   <ItemGroup>
+    <PackageVersion Include="Akka.Streams.Azure.StorageQueue" Version="$(StorageQueueConsumerPackageVersion)" />
     <PackageVersion Include="Akka.Streams.Amqp.RabbitMq" Version="$(RabbitMqConsumerPackageVersion)" />
     <PackageVersion Include="Aspire.Azure.Messaging.EventHubs" Version="13.0.2" />
     <PackageVersion Include="Aspire.Hosting.Azure.EventHubs" Version="13.0.2" />

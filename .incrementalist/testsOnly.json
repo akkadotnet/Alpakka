@@ -9,7 +9,8 @@
   "skip": [
     "**/.Tests.MultiNode.csproj",
     "**/Akka.Streams.Amqp.RabbitMq.Tests.csproj",
-    "**/examples/**"
+    "**/examples/**",
+    "**/Akka.Streams.Azure.StorageQueue.Tests.csproj"
   ],
   "target": [
     "**/*.Tests.csproj"

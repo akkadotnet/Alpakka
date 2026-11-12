@@ -8,8 +8,10 @@
   "failOnNoProjects": false,
   "skip": [
     "**/.Tests.MultiNode.csproj",
-    "**/Akka.Streams.SignalR.Tests.csproj",
-    "**/examples/**"
+    "**/Akka.Streams.Amqp.RabbitMq.Tests.csproj",
+    "**/examples/**",
+    "**/Akka.Streams.Azure.StorageQueue.Tests.csproj",
+    "**/Akka.Streams.SignalR.Tests.csproj"
   ],
   "target": [
     "**/*.Tests.csproj"

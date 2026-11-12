@@ -16,6 +16,7 @@
     <Project Path="src/AWS/Kinesis/Akka.Streams.Kinesis/Akka.Streams.Kinesis.csproj" />
   </Folder>
   <Folder Name="/AWS/SNS/">
+    <Project Path="src/AWS/SNS/Akka.Streams.Sns.IntegrationTests/Akka.Streams.Sns.IntegrationTests.csproj" />
     <Project Path="src/AWS/SNS/Akka.Streams.Sns.Tests/Akka.Streams.Sns.Tests.csproj" />
     <Project Path="src/AWS/SNS/Akka.Streams.Sns/Akka.Streams.Sns.csproj" />
   </Folder>

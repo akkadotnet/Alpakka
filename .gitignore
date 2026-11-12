@@ -213,3 +213,8 @@ build/
 /RabbitMqPackages/
 SignalRResults/
 SignalRPackages/
+/SnsResults/
+/SnsIntegrationResults/
+/SnsPackages/
+/SqsResults/
+/SqsPackages/

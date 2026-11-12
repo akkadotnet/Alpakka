@@ -36,6 +36,7 @@
     <Project Path="src\Azure\Akka.Streams.Azure.ServiceBus.Tests\Akka.Streams.Azure.ServiceBus.Tests.csproj" />
   </Folder>
   <Folder Name="/Azure/Compatibility/">
+    <Project Path="compatibility/ServiceBusConsumer/ServiceBusCompatibilityConsumer.csproj" />
     <Project Path="compatibility/StorageQueueConsumer/StorageQueueCompatibilityConsumer.csproj" />
   </Folder>
   <Folder Name="/Azure/Examples/">

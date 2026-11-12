@@ -80,3 +80,8 @@ csharp_new_line_before_catch = true
 csharp_new_line_before_finally = true
 csharp_new_line_before_members_in_object_initializers = true
 csharp_new_line_before_members_in_anonymous_types = true
+
+# Reliability checks run during normal builds.
+dotnet_diagnostic.CA2012.severity = error
+dotnet_diagnostic.CA2014.severity = error
+dotnet_diagnostic.CA2200.severity = error

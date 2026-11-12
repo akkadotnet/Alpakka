@@ -8,10 +8,10 @@ Console.WriteLine("Starting event consumer");
 
 var connectionString = Environment.GetEnvironmentVariable("CONNECTIONSTRINGS__eventhubs");
 if (connectionString is null)
-    throw new Exception("The environment variable CONNECTIONSTRINGS__orders was not set.");
+    throw new Exception("The environment variable CONNECTIONSTRINGS__eventhubs was not set.");
 
 
-var system = ActorSystem.Create("ServiceBusProducer");
+var system = ActorSystem.Create("EventHubConsumer");
 var materializer = system.Materializer();
 
 var factory = new EventHub.Consumer.ProcessorFactory();

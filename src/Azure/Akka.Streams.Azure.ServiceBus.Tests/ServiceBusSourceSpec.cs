@@ -21,6 +21,75 @@ public class ServiceBusSourceSpec: ServiceBusSpecBase
     public ServiceBusSourceSpec(ITestOutputHelper output) : base(Config.Empty, nameof(ServiceBusSourceSpec), output)
     {
     }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Peek_distinguishes_locked_messages_from_completed_messages(bool topic)
+    {
+        await using var sender = Client.CreateSender(topic ? "orders" : "queue.1");
+        await using var receiver = topic
+            ? Client.CreateReceiver("orders", "shipping-subscriber")
+            : Client.CreateReceiver("queue.1");
+        await using var observer = topic
+            ? Client.CreateReceiver("orders", "shipping-subscriber")
+            : Client.CreateReceiver("queue.1");
+
+        await sender.SendMessageAsync(new ServiceBusMessage("settlement-control"));
+        var held = await receiver.ReceiveMessageAsync(TimeSpan.FromSeconds(5));
+        Assert.NotNull(held);
+        var locked = Assert.Single(await observer.PeekMessagesAsync(1, fromSequenceNumber: 0));
+        Assert.Equal(held.SequenceNumber, locked.SequenceNumber);
+        Assert.Equal("settlement-control", locked.Body.ToString());
+
+        await receiver.CompleteMessageAsync(held);
+        Assert.Empty(await observer.PeekMessagesAsync(1, fromSequenceNumber: 0));
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task Queue_and_topic_roundtrips_preserve_payloads_and_settle_messages(bool topic, bool automaticSettlement)
+    {
+        await using var sender = Client.CreateSender(topic ? "orders" : "queue.1");
+        await using var receiver = topic
+            ? Client.CreateReceiver("orders", "shipping-subscriber")
+            : Client.CreateReceiver("queue.1");
+        var expected = new[] { "first", "second" };
+
+        await Source.From(expected)
+            .Select(value => new ServiceBusMessage(BinaryData.FromObjectAsJson(value)))
+            .Grouped(2)
+            .RunWith(ServiceBusSink.Create(sender), Materializer)
+            .WaitAsync(TimeSpan.FromSeconds(30));
+
+        await AwaitAssertAsync(async () =>
+        {
+            var stored = await receiver.PeekMessagesAsync(2, fromSequenceNumber: 0);
+            Assert.Equal(expected, stored.Select(message => message.Body.ToObjectFromJson<string>()));
+        }, TimeSpan.FromSeconds(10), TimeSpan.FromMilliseconds(200));
+
+        var source = automaticSettlement
+            ? ServiceBusSource.Create<string>(receiver, maxMessageCount: 2)
+            : ServiceBusSource.Create(receiver, maxMessageCount: 2).SelectAsync(1, async message =>
+            {
+                var value = message.Body.ToObjectFromJson<string>()!;
+                await receiver.CompleteMessageAsync(message);
+                return value;
+            });
+        var received = await source.Take(2).RunWith(Sink.Seq<string>(), Materializer)
+            .WaitAsync(TimeSpan.FromSeconds(30));
+
+        Assert.Equal(expected, received);
+        Assert.False(receiver.IsClosed);
+        await using var observer = topic
+            ? Client.CreateReceiver("orders", "shipping-subscriber")
+            : Client.CreateReceiver("queue.1");
+        Assert.Empty(await observer.PeekMessagesAsync(2, fromSequenceNumber: 0));
+        Assert.Null(await observer.ReceiveMessageAsync(TimeSpan.FromSeconds(1)));
+    }
     
     [Fact]
     public async Task A_QueueSource_should_push_available_messages()
@@ -66,8 +135,8 @@ public class ServiceBusSourceSpec: ServiceBusSpecBase
         probe.Request(1).ExpectNext("Test3").ExpectComplete();
     }
 
-    [Fact(Skip = "Peek does not work, check to see if this is a bug or emulator limitation")]
-    public async Task A_QueueSource_should_only_poll_if_demand_is_available()
+    [Fact]
+    public async Task A_QueueSource_should_leave_the_next_message_visible_to_peek()
     {
         var sender = Client.CreateSender("queue.1");
         var receiver = Client.CreateReceiver("queue.1");
@@ -75,23 +144,23 @@ public class ServiceBusSourceSpec: ServiceBusSpecBase
         await sender.SendMessageAsync(new ServiceBusMessage("Test1"));
 
         var probe = ServiceBusSource.Create(receiver, pollInterval: TimeSpan.FromSeconds(1))
-            .SelectAsync(1, async x =>
-            {
-                await receiver.CompleteMessageAsync(x);
-                return Encoding.UTF8.GetString(x.Body);
-            })
-            .RunWith(this.SinkProbe<string>(), Materializer);
+            .RunWith(this.SinkProbe<ServiceBusReceivedMessage>(), Materializer);
 
-        probe.Request(1).ExpectNext("Test1");
+        probe.Request(1);
+        var first = probe.ExpectNext();
+        Assert.Equal("Test1", first.Body.ToString());
+        await receiver.CompleteMessageAsync(first);
 
         await sender.SendMessageAsync(new ServiceBusMessage("Test2"));
 
         probe.ExpectNoMsg(TimeSpan.FromSeconds(3));
-        //Message wouldn't be visible if the source has called GetMessages even if the message wasn't pushed to the stream
-        var queued = await receiver.PeekMessagesAsync(2);
+        // Receive-call demand is checked independently by ServiceBusSourceContractSpec.
+        var queued = await receiver.PeekMessagesAsync(2, fromSequenceNumber: 0);
         Assert.True(queued.Count > 0);
         Assert.Equal("Test2", Encoding.UTF8.GetString(queued[0].Body));
 
-        probe.Request(1).ExpectNext("Test2");
+        probe.Request(1);
+        Assert.Equal("Test2", probe.ExpectNext().Body.ToString());
+        probe.Cancel();
     }
 }

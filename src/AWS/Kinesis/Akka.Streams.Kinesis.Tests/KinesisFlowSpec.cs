@@ -16,6 +16,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text;
+using System.Threading.Tasks;
 using Akka.Event;
 using Amazon;
 using Amazon.Runtime;
@@ -92,10 +93,12 @@ namespace Akka.Streams.Kinesis.Tests
         }
 
         [Fact]
-        public void KinesisFlow_must_publish_records_with_retries()
+        public async Task KinesisFlow_must_publish_records_with_retries()
         {
             var input = "apple";
-            WithPutRecordsInitialErrorsSuccessfulRetry();
+            var retryStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var releaseRetry = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            WithPutRecordsInitialErrorsSuccessfulRetry(retryStarted, releaseRetry);
 
             var source = _sourceProbe.ExpectSubscription();
             var sink = _sinkProbe.ExpectSubscription();
@@ -103,14 +106,21 @@ namespace Akka.Streams.Kinesis.Tests
 
             source.SendNext(input);
 
-            var retry = KinesisFlowSettings.Default.RetryInitialTimeout; 
-            _sinkProbe.ExpectNext(retry + retry, input);
-
-            source.SendComplete();
-            _sinkProbe.ExpectComplete();
+            try
+            {
+                await AwaitAssertAsync(() => Assert.True(retryStarted.Task.IsCompleted));
+                Assert.Equal(2, _kinesisClient.ReceivedCalls().Count(call => call.GetMethodInfo().Name == "PutRecordsAsync"));
+                _sinkProbe.ExpectNoMsg(TimeSpan.FromMilliseconds(100));
+                releaseRetry.SetResult(true);
+                var retry = KinesisFlowSettings.Default.RetryInitialTimeout;
+                _sinkProbe.ExpectNext(retry + retry, input);
+                source.SendComplete();
+                _sinkProbe.ExpectComplete();
+            }
+            finally { releaseRetry.TrySetResult(true); }
         }
 
-        private void WithPutRecordsInitialErrorsSuccessfulRetry()
+        private void WithPutRecordsInitialErrorsSuccessfulRetry(TaskCompletionSource<bool> retryStarted, TaskCompletionSource<bool> releaseRetry)
         {
             _kinesisClient.PutRecordsAsync(Arg.Any<PutRecordsRequest>())
                 .Returns(async info =>
@@ -126,15 +136,20 @@ namespace Akka.Streams.Kinesis.Tests
                             SequenceNumber = Encoding.UTF8.GetString(r.Data.ToArray())
                         }).ToList()
                     };
-                }, async info => new PutRecordsResponse
+                }, async info =>
                 {
-                    EncryptionType = EncryptionType.NONE,
-                    HttpStatusCode = HttpStatusCode.OK,
-                    FailedRecordCount = 0,
-                    Records = ((PutRecordsRequest)info[0]).Records.Select(r => new PutRecordsResultEntry
+                    retryStarted.TrySetResult(true);
+                    await releaseRetry.Task;
+                    return new PutRecordsResponse
                     {
-                        SequenceNumber = Encoding.UTF8.GetString(r.Data.ToArray())
-                    }).ToList()
+                        EncryptionType = EncryptionType.NONE,
+                        HttpStatusCode = HttpStatusCode.OK,
+                        FailedRecordCount = 0,
+                        Records = ((PutRecordsRequest)info[0]).Records.Select(r => new PutRecordsResultEntry
+                        {
+                            SequenceNumber = Encoding.UTF8.GetString(r.Data.ToArray())
+                        }).ToList()
+                    };
                 });
         }
         

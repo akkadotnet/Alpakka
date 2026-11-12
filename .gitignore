@@ -213,3 +213,16 @@ build/
 /RabbitMqPackages/
 CsvResults/
 CsvPackages/
+FileResults/
+FilePackages/
+/KinesisResults/
+/KinesisPackages/
+/EventHubResults/
+/EventHubPackages/
+SignalRResults/
+SignalRPackages/
+/SnsResults/
+/SnsIntegrationResults/
+/SnsPackages/
+/SqsResults/
+/SqsPackages/

@@ -114,8 +114,8 @@ public class ServiceBusSourceSpec: ServiceBusSpecBase
     [Fact]
     public async Task A_QueueSource_should_poll_for_messages_if_the_queue_is_empty()
     {
-        var sender = Client.CreateSender("queue.1");
-        var receiver = Client.CreateReceiver("queue.1");
+        await using var sender = Client.CreateSender("queue.1");
+        await using var receiver = Client.CreateReceiver("queue.1");
 
         await sender.SendMessageAsync(new ServiceBusMessage("Test1"));
         
@@ -124,15 +124,21 @@ public class ServiceBusSourceSpec: ServiceBusSpecBase
             .Select(x => Encoding.UTF8.GetString(x.Body))
             .RunWith(this.SinkProbe<string>(), Materializer);
 
-        probe.Request(2)
-            .ExpectNext("Test1")
-            .ExpectNoMsg(TimeSpan.FromSeconds(3));
+        try
+        {
+            probe.Request(2)
+                .ExpectNext("Test1")
+                .ExpectNoMsg(TimeSpan.FromSeconds(3));
 
-        await sender.SendMessageAsync(new ServiceBusMessage("Test2"));
-        await sender.SendMessageAsync(new ServiceBusMessage("Test3"));
-
-        probe.ExpectNext("Test2", TimeSpan.FromSeconds(2));
-        probe.Request(1).ExpectNext("Test3").ExpectComplete();
+            await sender.SendMessageAsync(new ServiceBusMessage("Test2"));
+            Assert.Equal("Test2", await probe.ExpectNextAsync(TimeSpan.FromSeconds(2), CancellationToken.None));
+            await sender.SendMessageAsync(new ServiceBusMessage("Test3"));
+            probe.Request(1).ExpectNext("Test3").ExpectComplete();
+        }
+        finally
+        {
+            probe.Cancel();
+        }
     }
 
     [Fact]

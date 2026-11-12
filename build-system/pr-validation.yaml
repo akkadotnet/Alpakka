@@ -1141,6 +1141,7 @@ jobs:
           $results = @($trx.TestRun.Results.UnitTestResult)
           $required = @{
             Raw_source_only_receives_on_demand_and_leaves_settlement_to_the_caller = 1
+            Empty_receive_schedules_retry_and_preserves_ordered_batch_demand = 1
             Canceling_during_settlement_stops_the_stage_without_disposing_the_receiver = 1
             Typed_source_observes_settlement_before_emitting = 3
             Typed_source_keeps_deserialization_errors_observable = 3

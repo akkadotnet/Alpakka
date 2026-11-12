@@ -46,7 +46,7 @@
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.15" />
     <PackageVersion Include="NSubstitute" Version="5.1.0" />
     <PackageVersion Include="Testcontainers.RabbitMq" Version="4.16.0" />
-    <PackageVersion Include="AWSSDK.SQS" Version="3.7.400.136" />
+    <PackageVersion Include="AWSSDK.SQS" Version="3.7.501.2" />
     <PackageVersion Include="AWSSDK.SimpleNotificationService" Version="4.0.0" />
     <PackageVersion Include="AWSSDK.Kinesis" Version="4.0.1.1" />
     <PackageVersion Include="Azure.Storage.Queues" Version="12.18.0" />

@@ -3,12 +3,18 @@
         <AssemblyTitle>Akka.Streams.SQS</AssemblyTitle>
         <Description>Amazon SQS adapter for Akka.NET Streams</Description>
         <TargetFrameworks>$(NetStandardLibVersion);$(NetLibVersion)</TargetFrameworks>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <EnablePackageValidation>true</EnablePackageValidation>
+        <PackageValidationBaselineVersion>1.5.59</PackageValidationBaselineVersion>
         <PackageTags>$(AkkaPackageTags);Amazon;AWS;SQS</PackageTags>
     </PropertyGroup>
 
     <ItemGroup>
         <PackageReference Include="Akka.Streams" />
         <PackageReference Include="AWSSDK.SQS" />
+    </ItemGroup>
+    <ItemGroup>
+        <None Include="README.md" Pack="true" PackagePath="" />
     </ItemGroup>
 
 </Project>

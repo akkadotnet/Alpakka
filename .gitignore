@@ -222,3 +222,5 @@ build/
 /KinesisPackages/
 FileResults/
 FilePackages/
+CsvResults/
+CsvPackages/

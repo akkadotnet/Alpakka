@@ -18,7 +18,8 @@
     "**/Akka.Streams.Sns.Tests.csproj",
     "**/Akka.Streams.Sns.IntegrationTests.csproj",
     "**/Akka.Streams.Kinesis.Tests.csproj",
-    "**/Akka.Streams.File.Tests.csproj"
+    "**/Akka.Streams.File.Tests.csproj",
+    "**/Akka.Streams.Csv.Tests.csproj"
   ],
   "target": [
     "**/*.Tests.csproj"

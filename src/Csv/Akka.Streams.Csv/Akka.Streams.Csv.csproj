@@ -1,13 +1,19 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <AssemblyTitle>Akka.Streams.Csv</AssemblyTitle>
-        <Description>XML Parser and Formatter for Akka.NET Streams</Description>
+        <Description>CSV Parser and Formatter for Akka.NET Streams</Description>
         <TargetFrameworks>$(NetStandardLibVersion);$(NetLibVersion)</TargetFrameworks>
         <PackageTags>$(AkkaPackageTags);csv</PackageTags>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <EnablePackageValidation>true</EnablePackageValidation>
+        <PackageValidationBaselineVersion>1.5.59</PackageValidationBaselineVersion>
     </PropertyGroup>
 
     <ItemGroup>
         <PackageReference Include="Akka.Streams" />
     </ItemGroup>
 
+    <ItemGroup>
+        <None Include="README.md" Pack="true" PackagePath="" />
+    </ItemGroup>
 </Project>

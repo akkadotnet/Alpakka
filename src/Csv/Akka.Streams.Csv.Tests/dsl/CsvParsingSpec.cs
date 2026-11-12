@@ -24,48 +24,45 @@ namespace Akka.Streams.Csv.Tests.dsl
         }
 
         [Fact]
-        public void CsvParsing_should_parse_one_line()
+        public async Task CsvParsing_should_parse_one_line()
         {
             var fut = Source
                 .Single(ByteString.FromString("eins,zwei,drei\n"))
                 .Via(CsvParsing.LineScanner())
                 .RunWith(Sink.First<ImmutableList<ByteString>>(), Materializer);
 
-            fut.Wait(TimeSpan.FromSeconds(3));
-            fut.Result.Should().BeEquivalentTo(new[] { ByteString.FromString("eins"), ByteString.FromString("zwei"), ByteString.FromString("drei") }, opt => opt.WithStrictOrdering());
+            (await CompletedWithin(fut)).Should().BeEquivalentTo(new[] { ByteString.FromString("eins"), ByteString.FromString("zwei"), ByteString.FromString("drei") }, opt => opt.WithStrictOrdering());
         }
 
         [Fact]
-        public void CsvParsing_should_parse_two_line()
+        public async Task CsvParsing_should_parse_two_line()
         {
             var fut = Source
                 .Single(ByteString.FromString("eins,zwei,drei\nuno,dos,tres\n"))
                 .Via(CsvParsing.LineScanner())
                 .RunWith(Sink.Seq<ImmutableList<ByteString>>(), Materializer);
 
-            fut.Wait(TimeSpan.FromSeconds(3));
-            var res = fut.Result;
+            var res = (await CompletedWithin(fut));
 
             res[0].Should().BeEquivalentTo(new[] { ByteString.FromString("eins"), ByteString.FromString("zwei"), ByteString.FromString("drei") }, opt => opt.WithStrictOrdering());
             res[1].Should().BeEquivalentTo(new[] { ByteString.FromString("uno"), ByteString.FromString("dos"), ByteString.FromString("tres") }, opt => opt.WithStrictOrdering());
         }
 
         [Fact]
-        public void CsvParsing_should_parse_two_line_even_without_line_end()
+        public async Task CsvParsing_should_parse_two_line_even_without_line_end()
         {
             var fut = Source
                 .Single(ByteString.FromString("eins,zwei,drei\nuno,dos,tres"))
                 .Via(CsvParsing.LineScanner())
                 .RunWith(Sink.Seq<ImmutableList<ByteString>>(), Materializer);
 
-            fut.Wait(TimeSpan.FromSeconds(3));
-            var res = fut.Result;
+            var res = (await CompletedWithin(fut));
             res[0].Should().BeEquivalentTo(new[] { ByteString.FromString("eins"), ByteString.FromString("zwei"), ByteString.FromString("drei") }, opt => opt.WithStrictOrdering());
             res[1].Should().BeEquivalentTo(new[] { ByteString.FromString("uno"), ByteString.FromString("dos"), ByteString.FromString("tres") }, opt => opt.WithStrictOrdering());
         }
 
         [Fact]
-        public void CsvParsing_should_parse_semicolon_lines()
+        public async Task CsvParsing_should_parse_semicolon_lines()
         {
             var fut = Source
                 .Single(ByteString.FromString("eins;zwei;drei\nein”s;zw ei;dr\\ei\nun’o;dos;tres\n"))
@@ -73,14 +70,13 @@ namespace Akka.Streams.Csv.Tests.dsl
                 .Select(list => list.Select(bs => bs.ToString()).ToArray())
                 .RunWith(Sink.Seq<string[]>(), Materializer);
 
-            fut.Wait(TimeSpan.FromSeconds(3));
-            var res = fut.Result;
+            var res = (await CompletedWithin(fut));
             res[0].Should().BeEquivalentTo(new[] { "eins", "zwei", "drei" }, opt => opt.WithStrictOrdering());
             res[1].Should().BeEquivalentTo(new[] { "ein”s", "zw ei", "dr\\ei" }, opt => opt.WithStrictOrdering());
         }
 
         [Fact]
-        public void CsvParsing_should_parse_chunks_successfully()
+        public async Task CsvParsing_should_parse_chunks_successfully()
         {
             var input = new[]
             {
@@ -93,8 +89,7 @@ namespace Akka.Streams.Csv.Tests.dsl
                 .Via(CsvParsing.LineScanner())
                 .Select(list => list.Select(bs => bs.ToString()).ToArray())
                 .RunWith(Sink.Seq<string[]>(), Materializer);
-            fut.Wait(TimeSpan.FromSeconds(3));
-            var res = fut.Result;
+            var res = (await CompletedWithin(fut));
             res[0].Should().BeEquivalentTo(new[] { "eins", "zwei", "drei" }, opt => opt.WithStrictOrdering());
             res[1].Should().BeEquivalentTo(new[] { "uno", "dos", "tres" }, opt => opt.WithStrictOrdering());
         }
@@ -121,34 +116,34 @@ namespace Akka.Streams.Csv.Tests.dsl
         }
 
         [Fact]
-        public void CsvParsing_should_parse_Apple_Numbers_exported_file()
+        public async Task CsvParsing_should_parse_Apple_Numbers_exported_file()
         {
             var fut = FileIO.FromFile(new FileInfo("resources/numbers-utf-8.csv"))
                 .Via(CsvParsing.LineScanner(delimiter: CsvParsing.SemiColon, escapeChar: 0x01))
                 .Select(list => list.Select(bs => bs.ToString(Encoding.UTF8)).ToArray())
                 .RunWith(Sink.Seq<string[]>(), Materializer);
 
-            var res = fut.Result;
+            var res = (await CompletedWithin(fut));
             res[0].Should().BeEquivalentTo(new[] { "abc", "def", "ghi", "", "", "", "" }, opt => opt.WithStrictOrdering());
             res[1].Should().BeEquivalentTo(new[] { "\"", "\\\\;", "a\"\nb\"\"c", "", "", "", "" }, opt => opt.WithStrictOrdering());
         }
 
         [Fact]
-        public void CsvParsing_should_parse_Google_Docs_exported_file()
+        public async Task CsvParsing_should_parse_Google_Docs_exported_file()
         {
             var fut = FileIO.FromFile(new FileInfo("resources/google-docs.csv"))
             .Via(CsvParsing.LineScanner(escapeChar: 0x01))
             .Select(list => list.Select(bs => bs.ToString(Encoding.UTF8)).ToArray())
             .RunWith(Sink.Seq<string[]>(), Materializer);
 
-            var res = fut.Result;
+            var res = (await CompletedWithin(fut));
             res[0].Should().BeEquivalentTo(new[] { "abc", "def", "ghi" }, opt => opt.WithStrictOrdering());
             res[1].Should().BeEquivalentTo(new[] { "\"", "\\\\,", "a\"\nb\"\"c" }, opt => opt.WithStrictOrdering());
         }
 
         [Fact]
         // see https://github.com/uniVocity/csv-parsers-comparison
-        public void CsvParsing_should_parse_uniVocity_correctness_test()
+        public async Task CsvParsing_should_parse_uniVocity_correctness_test()
         {
             var fut = FileIO.FromFile(new FileInfo("resources/correctness.csv"))
                 .Via(CsvParsing.LineScanner(escapeChar: 0x01))
@@ -164,7 +159,7 @@ namespace Akka.Streams.Csv.Tests.dsl
                 })
                 .RunWith(Sink.Seq<Dictionary<string, string>>(), Materializer);
 
-            var res = fut.Result;
+            var res = (await CompletedWithin(fut));
             res[0].Should().BeEquivalentTo(new Dictionary<string, string>()
             {
                 { "Year", "1997" },

@@ -21,7 +21,7 @@ namespace Akka.Streams.Csv
             {
                 _stage = stage;
 
-                _buffer = new CsvParser(delimiter, quoteChar, escapeChar);
+                _buffer = new CsvParser(delimiter, quoteChar, escapeChar, allowIncompleteEscapes: true);
                 SetHandler(stage.In, this);
                 SetHandler(stage.Out, this);
             }

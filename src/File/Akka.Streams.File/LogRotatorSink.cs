@@ -88,6 +88,7 @@ namespace Akka.Streams.File
             private SubSourceOutlet<T> _sourceOut;
             private ImmutableList<Task<TR>> _sinkCompletions = ImmutableList<Task<TR>>.Empty;
             private bool _isFinishing;
+            private bool _completionStarted;
 
             private Try<TR> NotYetThere { get; } = new Try<TR>(new Exception());
 
@@ -102,6 +103,7 @@ namespace Akka.Streams.File
                     {
                         var data = Grab(sink.In);
                         var trigger = CheckTrigger(data);
+                        if (_promise.Task.IsCompleted) return;
                         if (trigger.HasValue)
                             Rotate(trigger.Value, data);
                         else
@@ -109,6 +111,7 @@ namespace Akka.Streams.File
                     },
                     onUpstreamFinish: () =>
                     {
+                        _isFinishing = true;
                         promise.TrySetResult(Done.Instance);
                         CompleteStage();
                     },
@@ -120,15 +123,30 @@ namespace Akka.Streams.File
                 if (_promise.Task.IsCompleted)
                     return;
 
+                _promise.TrySetException(ex);
                 _sourceOut?.Fail(ex);
-                Cancel(_sink.In);
-                _promise.SetException(ex);
+                FailStage(ex);
             }
 
             private void CompleteThisStage()
             {
+                if (_completionStarted) return;
+                _completionStarted = true;
+                _isFinishing = true;
+                SetKeepGoing(true);
                 _sourceOut?.Complete();
-                Task.WhenAll(_sinkCompletions).ContinueWith(t => _promise.SetResult(Done.Instance));
+                var completed = GetAsyncCallback<Task>(t =>
+                {
+                    if (t.IsCanceled) _promise.TrySetException(new TaskCanceledException(t));
+                    else if (t.IsFaulted)
+                    {
+                        var errors = t.Exception.InnerExceptions;
+                        _promise.TrySetException(errors.Count == 1 ? errors[0] : t.Exception);
+                    }
+                    else _promise.TrySetResult(Done.Instance);
+                    CompleteStage();
+                });
+                Task.WhenAll(_sinkCompletions).ContinueWith(t => completed(t));
             }
 
             private Option<TC> CheckTrigger(T data)
@@ -148,12 +166,8 @@ namespace Akka.Streams.File
             {
                 switch (h.Element)
                 {
-                    case var r when r.IsSuccess && _sinkCompletions.Count == 1 && _sinkCompletions.Head() == future:
-                        _promise.TrySetResult(Done.Instance);
-                        CompleteStage();
-                        break;
                     case var r when r.IsSuccess:
-                        _sinkCompletions = _sinkCompletions.RemoveAll(t => t != future);
+                        _sinkCompletions = _sinkCompletions.Remove(future);
                         break;
                     case var r:
                         FailThisStage(r.Failure.Value);
@@ -171,7 +185,7 @@ namespace Akka.Streams.File
             public override void PostStop()
             {
                 base.PostStop();
-                Task.WhenAll(_sinkCompletions).ContinueWith(t => _promise.TrySetResult(Done.Instance));
+                _promise.TrySetException(new AbruptStageTerminationException(this));
             }
 
             private Action<Holder<TR>> FutureCb(Task<TR> newFuture) =>
@@ -185,11 +199,12 @@ namespace Akka.Streams.File
                 var prevOut = Option<SubSourceOutlet<T>>.Create(_sourceOut);
 
                 _sourceOut = new SubSourceOutlet<T>(this, "LogRotatorSink.Sub-Out");
-                _sourceOut.SetHandler(new LambdaOutHandler(onPull: () =>
+                var sourceOut = _sourceOut;
+                sourceOut.SetHandler(new LambdaOutHandler(onPull: () =>
                 {
-                    _sourceOut.Push(data);
+                    sourceOut.Push(data);
                     SwitchToNormalMode();
-                }));
+                }, onDownstreamFinish: _ => SubstreamCanceled(sourceOut)));
 
                 SetHandler(_sink.In,
                     onPush: () => Log.Info("No push should happen while we are waiting for the sub-stream to grab the dangling data!"),
@@ -200,8 +215,18 @@ namespace Akka.Streams.File
                     },
                     onUpstreamFailure: FailThisStage);
 
-                var newFuture = Source.FromGraph(_sourceOut.Source)
-                    .RunWith(_sink._sinkFactory(triggerValue), Materializer);
+                Task<TR> newFuture;
+                try
+                {
+                    newFuture = Source.FromGraph(_sourceOut.Source)
+                        .RunWith(_sink._sinkFactory(triggerValue), Materializer);
+                }
+                catch (Exception ex)
+                {
+                    prevOut.Value?.Fail(ex);
+                    FailThisStage(ex);
+                    return;
+                }
 
                 _sinkCompletions = _sinkCompletions.Add(newFuture);
 
@@ -209,7 +234,11 @@ namespace Akka.Streams.File
 
                 newFuture.ContinueWith(t =>
                 {
-                    if (t.IsFaulted)
+                    if (t.IsCanceled)
+                    {
+                        holder.Invoke(new Try<TR>(new TaskCanceledException(t)));
+                    }
+                    else if (t.IsFaulted)
                     {
                         var exception = t.Exception?.InnerExceptions != null && t.Exception.InnerExceptions.Count == 1
                             ? t.Exception.InnerExceptions[0]
@@ -221,7 +250,7 @@ namespace Akka.Streams.File
                     {
                         holder.Invoke(new Try<TR>(t.Result));
                     }
-                }, TaskContinuationOptions.NotOnCanceled);
+                });
 
                 prevOut.Value?.Complete();
             }
@@ -242,6 +271,7 @@ namespace Akka.Streams.File
                     {
                         var data = Grab(_sink.In);
                         var trigger = CheckTrigger(data);
+                        if (_promise.Task.IsCompleted) return;
                         if (trigger.HasValue)
                             Rotate(trigger.Value, data);
                         else
@@ -250,7 +280,16 @@ namespace Akka.Streams.File
                     onUpstreamFinish: CompleteThisStage,
                     onUpstreamFailure: FailThisStage);
 
-                _sourceOut.SetHandler(new LambdaOutHandler(() => Pull(_sink.In)));
+                var sourceOut = _sourceOut;
+                sourceOut.SetHandler(new LambdaOutHandler(() => Pull(_sink.In),
+                    onDownstreamFinish: _ => SubstreamCanceled(sourceOut)));
+            }
+
+            private void SubstreamCanceled(SubSourceOutlet<T> sourceOut)
+            {
+                if (sourceOut != _sourceOut || _completionStarted) return;
+                if (!IsClosed(_sink.In)) Cancel(_sink.In);
+                CompleteThisStage();
             }
 
             private sealed class Holder<TIn>

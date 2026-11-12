@@ -222,6 +222,7 @@ namespace Akka.Streams.File.Tests
 
             var ex = new Exception("my-exception");
             probe.SendNext(ByteString.FromString("test"));
+            await AwaitAssertAsync(() => Directory.GetFiles(_directory, "*.log").Should().ContainSingle(), 3.Seconds());
             probe.SendError(ex);
 
             var exception = await ShouldThrowWithin<Exception>(completion, 3.Seconds());

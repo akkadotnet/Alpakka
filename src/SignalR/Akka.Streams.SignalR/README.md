@@ -119,7 +119,9 @@ SignalR cannot apply stream backpressure to incoming client events. `ConnectionS
 
 `ConnectionSourceSettings.Default` is 128 with `DropHead`. The default dispatcher's fallback when no settings service is registered is separately 100 with `DropTail`. Registering settings as in the example makes the intended behavior explicit. `WithBufferSize` and `WithOverflowStrategy` return copied settings. `ConnectionSourceSettings.Create(config)` reads `buffer-capacity`/`overflow-strategy`; `Create(system)` reads `akka.streams.signalr.source` from that system's configuration.
 
-The default dispatcher caches by stream connector type. Use distinct connector types for different hubs; its cache does not distinguish hub types using the same connector. Concurrent first access can also run the construction factory more than once. Authentication, authorization, durable delivery, replay, cross-server groups/backplanes and exactly-once processing are application/deployment concerns, not established by these tests. The retained dependency on `Microsoft.AspNetCore.SignalR` 1.2.0 is not a recommendation for new application dependencies; compatible packaging modernization is a separate step after these behavioral gates.
+The default dispatcher caches by stream connector type. Use distinct connector types for different hubs; its cache does not distinguish hub types using the same connector. Concurrent first access can also run the construction factory more than once. Authentication, authorization, durable delivery, replay, cross-server groups/backplanes and exactly-once processing are application/deployment concerns, not established by these tests.
+
+The package retains standalone ASP.NET Core dependencies so existing plain SDK consumers can still restore it: SignalR 1.2.14, HTTP Connections 1.2.14 and WebUtilities 2.3.14 are the minimum selected patches. Applications using the ASP.NET Core shared framework must patch their installed runtime separately. The retained .NET 6 library target preserves compatibility; .NET 6 is out of support, so use a currently supported application runtime.
 
 ## Tests and sample
 

@@ -40,8 +40,8 @@
     <PackageVersion Include="Akka.Streams.TestKit" Version="$(AkkaVersion)" />
     <PackageVersion Include="Akka.TestKit.Xunit2" Version="$(AkkaVersion)" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.13.0" />
-    <PackageVersion Include="Microsoft.AspNetCore.SignalR.Client" Version="9.0.4" />
-    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="9.0.4" />
+    <PackageVersion Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.15" />
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.15" />
     <PackageVersion Include="NSubstitute" Version="5.1.0" />
     <PackageVersion Include="Testcontainers.RabbitMq" Version="4.16.0" />
     <PackageVersion Include="AWSSDK.SQS" Version="3.7.400.136" />

@@ -1,8 +1,35 @@
 # Alpakka: Akka Streams connectors
 
-Alpakka connects [Akka.NET Streams](https://getakka.net/articles/streams/introduction.html) to messaging systems, cloud services and local data formats. Each package README explains its actual APIs, defaults, client ownership, limits and local tests. Packages built from current source include that README; older published releases may omit it.
+Alpakka connects [Akka.NET Streams](https://getakka.net/articles/streams/introduction.html) to messaging systems, cloud services and local data formats. Its connectors provide sources, flows and sinks that you compose with the rest of your stream: consume messages, transform records, publish results, process files or exchange SignalR messages.
+
+Choose the packages your application needs. Each package README explains its APIs, configuration, defaults, client ownership, delivery semantics and limitations, with examples and commands for its tests. Packages built from current source include that README; older published releases may omit it.
 
 [Documentation](https://alpakka.getakka.net/) · [Running tests](docs/community/Testing.md) · [Legacy package migrations](docs/documentation/LegacyPackages.md)
+
+## Contents
+
+- [Getting started](#getting-started)
+- [Maintained packages](#maintained-packages)
+- [Examples](#examples)
+- [Build and test](#build-and-test)
+- [Compatibility and upgrades](#compatibility-and-upgrades)
+- [Repository layout](#repository-layout)
+- [Contributing](#contributing)
+- [Documentation and support](#documentation-and-support)
+- [License](#license)
+
+## Getting started
+
+1. Find your service or data format in the [package catalog](#maintained-packages).
+2. Install that connector in your application directory. For example, to parse or format CSV:
+
+   ```shell
+   dotnet add package Akka.Streams.Csv
+   ```
+
+3. Follow the [CSV package examples](src/Csv/Akka.Streams.Csv/README.md), or your chosen connector's README, to create and materialize a stream. Messaging connectors also explain how to configure the broker or SDK client they use.
+
+If you are new to streams, start with the [Akka.NET Streams introduction](https://getakka.net/articles/streams/introduction.html). Connector-specific acknowledgments, retries and buffering still matter: completing a stream does not universally mean that a remote peer has received or persisted every message.
 
 ## Maintained packages
 
@@ -23,7 +50,42 @@ Alpakka connects [Akka.NET Streams](https://getakka.net/articles/streams/introdu
 
 The libraries retain their .NET Standard 2.0 and .NET 6.0 assets, except SignalR, which targets .NET 6.0. Test and sample hosts may use newer frameworks independently of the shipped libraries. Check a package README before combining SDKs: the SQS adapter uses AWS SDK v3, while SNS and Kinesis use v4.
 
-## Compatibility
+## Examples
+
+Package READMEs contain focused usage examples. The repository also includes runnable distributed samples:
+
+| Sample | Entry point | Resources |
+| --- | --- | --- |
+| Azure Service Bus | [ServiceBus.AppHost](src/Azure/Examples/Simple/ServiceBus/ServiceBus.AppHost) | Producer, consumer, Service Bus emulator and SQL companion |
+| Azure Event Hubs | [EventHub.AppHost](src/Azure/Examples/Simple/EventHub/EventHub.AppHost) | Producer, consumer, Event Hubs emulator and Blob checkpoint storage |
+| SignalR | [SignalR.AppHost](src/SignalR/Examples/SignalR.AppHost) | ASP.NET Core application |
+
+Use the repository SDK to run an AppHost, for example:
+
+```shell
+dotnet run --project src/Azure/Examples/Simple/ServiceBus/ServiceBus.AppHost/ServiceBus.AppHost.csproj
+```
+
+The Azure emulator samples require Docker with Linux containers. Check the relevant package README and sample configuration before using an external service or supplying credentials.
+
+## Build and test
+
+To work on Alpakka itself, install the SDK selected by [global.json](global.json), then run these commands from the repository root:
+
+```shell
+dotnet restore Alpakka.slnx
+dotnet build Alpakka.slnx -c Release
+```
+
+Run the suite for the connector you are changing. A local CSV example is:
+
+```shell
+dotnet test src/Csv/Akka.Streams.Csv.Tests/Akka.Streams.Csv.Tests.csproj -c Release --framework net10.0
+```
+
+The [test guide](docs/community/Testing.md) lists every suite, Docker requirements, Windows coverage and the required package/consumer checks. Service fixtures own their containers or Aspire resources and discover their endpoints; those tests do not need a cloud account or separately installed broker. CSV, XML and filesystem suites exercise their local operations directly. SignalR tests use TestServer and Aspire-owned Kestrel without Docker.
+
+## Compatibility and upgrades
 
 Changes follow extend-only design: preserve public signatures, shipped targets, wire formats, documented defaults and client ownership. Add overloads or new types for new behavior. A dependency upgrade also needs source, binary and behavior checks; a compatible-looking NuGet framework badge is not sufficient evidence.
 
@@ -31,17 +93,34 @@ Required checks compare against a released package, execute an unchanged consume
 
 Deprecation guidance must identify a verified replacement and migration requirements. Keep published artifacts available; do not remove working APIs, add error-level obsolete attributes or silently change targets. See the [package migration guide](docs/documentation/LegacyPackages.md).
 
-## Build and test
+For an existing application, read [release notes](RELEASE_NOTES.md), the package README and the [legacy migration guide](docs/documentation/LegacyPackages.md) before changing package IDs or SDK major versions. Retaining a library target does not extend an upstream SDK's support lifecycle. Dependency support and vulnerability limitations must remain visible even when behavioral checks pass.
 
-Use the SDK selected by [global.json](global.json), then run:
+## Repository layout
 
-```shell
-dotnet restore Alpakka.slnx
-dotnet build Alpakka.slnx -c Release
-```
+| Path | Purpose |
+| --- | --- |
+| [src](src) | Connector libraries, their tests and samples |
+| [compatibility](compatibility) | Released-package consumer probes used by compatibility checks |
+| [docs](docs) | DocFX documentation, contributor guidance and migration guides |
+| [build-system](build-system) | CI, package validation, code standards and documentation builds |
+| [Directory.Packages.props](Directory.Packages.props) | Central NuGet package versions |
+| [global.json](global.json) | Repository SDK version |
 
-See [the test guide](docs/community/Testing.md) for individual suites, Docker requirements, Windows coverage and the required package/consumer gates. Containers and cloud emulators are started by their fixtures; no cloud account or separately installed broker is needed for those suites.
+## Contributing
 
-## Contributions
+Follow the [Akka.NET contribution guide](https://github.com/akkadotnet/akka.net/blob/dev/CONTRIBUTING.md) and Alpakka's [code standards](docs/community/CodeStandards.md). Keep changes focused, preserve useful existing assertions and add regression evidence for behavior changes. New service integration tests should use Aspire.Hosting.Testing or Testcontainers with owned resources and observable delivery or state assertions.
 
-Contributions are welcome. Follow the [Akka.NET contribution guide](https://github.com/akkadotnet/akka.net/blob/dev/CONTRIBUTING.md), retain useful existing assertions, and provide regression evidence for behavior changes.
+Use central package management for dependency changes and run the relevant connector's tests. Public APIs, library targets, defaults and ownership contracts require compatibility review; broader implementation redesign should be proposed separately.
+
+## Documentation and support
+
+- [Published documentation](https://alpakka.getakka.net/) and [documentation sources](docs/documentation/index.md)
+- [Package migration guide](docs/documentation/LegacyPackages.md) for Channels, EventHub.V5 and SignalR.AspNetCore
+- [Release notes](RELEASE_NOTES.md)
+- [Report a bug or request a feature](https://github.com/akkadotnet/Alpakka/issues)
+
+For a bug report, include the connector and SDK versions, target framework, a small reproduction and the observed stream behavior. Remove connection strings, keys and other credentials from logs and examples.
+
+## License
+
+Alpakka is licensed under [Apache License 2.0](LICENSE.md).

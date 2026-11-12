@@ -11,7 +11,7 @@ namespace Akka.Streams.Amqp.V1
         public IAmqpObject Sender { get; }
         public Error Error { get; }
 
-        public DisconnectedException(IAmqpObject sender, Error error) : base(error.Description)
+        public DisconnectedException(IAmqpObject sender, Error error) : base(error?.Description)
         {
             Sender = sender;
             Error = error;

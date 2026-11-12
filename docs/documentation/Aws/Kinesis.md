@@ -1,47 +1,7 @@
-# Akka.NET Streams connectors for AWS services
+# Amazon Kinesis
 
-## Amazon Kinesis streams
+Amazon Kinesis record sources and publishing stages. Firehose is not implemented by this connector.
 
-`Akka.Streams.Kinesis` can be used to either put data directly to [AWS Kinesis](https://aws.amazon.com/kinesis/) streams (using `KinesisFlow` or `KinesisSink`) or reading from it (using `KinesisSource`).
+Install [Akka.Streams.Kinesis](https://www.nuget.org/packages/Akka.Streams.Kinesis). The [package README](https://github.com/akkadotnet/Alpakka/blob/dev/src/AWS/Kinesis/Akka.Streams.Kinesis/README.md) contains the maintained usage examples, materialized values, defaults, ownership rules and known limits. Packages built from current source include that README; older published releases may omit it.
 
-Example of sending the data:
-
-```csharp
-using Akka.Streams.Kinesis;
-
-const string streamName = "test-stream";
-const string partitionKey = "partition-key";
-
-/// Any client passed to KinesisFlow will then be managed by that flow, and disposed on graph stop.
-Func<IAmazonKinesis> clientFactory = () =>
-    new AmazonKinesisClient(new BasicAWSCredentials(accessKey, secretKey), RegionEndpoint.USWest1);
-
-Source.From(new [] { "hello", "world" })
-    .Select(data => new PutRecordsRequestEntry {
-        PartitionKey = partitionKey,
-        Data = new MemoryStream(Encoding.UTF8.GetBytes(data))
-    })
-    .Via(KinesisFlow.Create(streamName, KinesisFlowSettings.Default, clientFactory))
-    .RunForeach(response => Console.WriteLine(response.SequenceNumber), materializer);
-```
-
-Example of receiving data:
-
-```csharp
-using Akka.Streams.Kinesis;
-
-const string streamName = "test-stream";
-const string shardId = "shard-id";
-string startFrom = null;
-
-/// Any client passed to KinesisSource will then be managed by that source, and disposed on graph stop.
-Func<IAmazonKinesis> clientFactory = () =>
-    new AmazonKinesisClient(new BasicAWSCredentials(accessKey, secretKey), RegionEndpoint.USWest1);
-
-var settings = ShardSettings.Create(streamName, shardId)
-    .WithStartingSequenceNumber(startFrom);
-
-KinesisSource.Basic(settings, clientFactory)
-    .Select(x => Encoding.UTF8.GetString(x.Data.ToArray()))
-    .RunForeach(Console.WriteLine, materializer);
-```
+See [local test instructions](https://github.com/akkadotnet/Alpakka/blob/dev/docs/community/Testing.md) for the service boundary and platform coverage.

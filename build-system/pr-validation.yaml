@@ -26,7 +26,7 @@ jobs:
       outputDirectory: 'TestResults'
       artifactName: 'net_tests_linux-$(Build.BuildId)'
       amqpTestUseDocker: true # Flag for AQMP test to use RabbitMQ docker
-  - job: servicebus_validation
+job: servicebus_validation
     displayName: 'Service Bus integration and compatibility'
     timeoutInMinutes: 30
     strategy:
@@ -1835,3 +1835,4 @@ jobs:
           testResultsFiles: SignalRResults/*.trx
           failTaskOnFailedTests: true
           failTaskOnMissingResultsFile: true
+  - template: docs-job.template.yaml

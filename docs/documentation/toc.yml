@@ -22,15 +22,18 @@
     href: Azure/ServiceBus.md
   - name: Azure Queue Storage
     href: Azure/StorageQueue.md
-- name: System.Threading.Channels
+- name: System.Threading.Channels (in Akka.Streams)
   href: Channels.md
 - name: Comma Separated Values (CSV)
   href: Csv.md
 - name: File
   href: File.md  
-- name: SignalR
+- name: SignalR (ASP.NET Core)
   href: SignalR.md
-- name: SignalR on Asp.NET Core
-  href: SignalR.AspNetCore.md
+- name: Legacy package migrations
+  href: LegacyPackages.md
+  items:
+  - name: SignalR.AspNetCore
+    href: SignalR.AspNetCore.md
 - name: Extensible Markup Language (XML)
   href: Xml.md

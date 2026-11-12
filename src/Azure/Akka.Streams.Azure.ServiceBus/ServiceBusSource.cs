@@ -49,12 +49,12 @@ namespace Akka.Streams.Azure.ServiceBus
         /// <param name="pollInterval">The interval in witch the queue should be polled if it is empty. Default = 10 seconds</param>
         public static Source<T, NotUsed> Create<T>(ServiceBusReceiver client, int maxMessageCount = 100, TimeSpan? serverWaitTime = null, TimeSpan? pollInterval = null)
         {
-            return Create(client, msg =>
+            return Source.FromGraph(new ServiceBusSource<T>(client, maxMessageCount, serverWaitTime, pollInterval, async msg =>
             {
                 var result = msg.Body.ToObjectFromJson<T>();
-                client.CompleteMessageAsync(msg);
+                await client.CompleteMessageAsync(msg).ConfigureAwait(false);
                 return result;
-            }, maxMessageCount, serverWaitTime, pollInterval);
+            }));
         }
     }
 
@@ -71,18 +71,44 @@ namespace Akka.Streams.Azure.ServiceBus
             private const string TimerKey = "PollTimer";
             private readonly ServiceBusSource<T> _source;
             private readonly Decider _decider;
+            private readonly Queue<ServiceBusReceivedMessage> _pending = new Queue<ServiceBusReceivedMessage>();
             private Action<Task<IReadOnlyList<ServiceBusReceivedMessage>>> _messagesReceived;
+            private Action<Task<T>> _messageCompleted;
 
             public Logic(ServiceBusSource<T> source, Attributes attributes) :  base(source.Shape)
             {
                 _source = source;
                 _decider = attributes.GetDeciderOrDefault();
 
-                SetHandler(source.Out, PullQueue);
+                SetHandler(source.Out, () =>
+                {
+                    if (_pending.Count > 0)
+                        ExtractNext();
+                    else
+                        PullQueue();
+                });
             }
 
             public override void PreStart()
-                => _messagesReceived = GetAsyncCallback<Task<IReadOnlyList<ServiceBusReceivedMessage>>>(OnMessagesReceived);
+            {
+                _messagesReceived = GetAsyncCallback<Task<IReadOnlyList<ServiceBusReceivedMessage>>>(OnMessagesReceived);
+                _messageCompleted = GetAsyncCallback<Task<T>>(OnMessageCompleted);
+            }
+
+            public override void PostStop() => _pending.Clear();
+
+            private void ExtractNext() =>
+                _source._asyncExtractor(_pending.Dequeue()).ContinueWith(_messageCompleted, TaskScheduler.Default);
+
+            private void OnMessageCompleted(Task<T> task)
+            {
+                if (task.IsCanceled)
+                    FailStage(new TaskCanceledException(task));
+                else if (task.IsFaulted)
+                    FailStage(task.Exception.InnerException ?? task.Exception);
+                else
+                    Push(_source.Out, task.Result);
+            }
             
             private void PullQueue() =>
                 _source._client.ReceiveMessagesAsync(_source._maxMessageCount, _source._serverWaitTime)
@@ -103,9 +129,15 @@ namespace Akka.Streams.Azure.ServiceBus
                 // Try again if the queue is empty
                 if (task.Result == null || !task.Result.Any())
                     ScheduleOnce(TimerKey, _source._pollInterval);
-                else
+                else if (_source._asyncExtractor is null)
                 {
                     EmitMultiple(_source.Out, task.Result.Select(_source._extractor));
+                }
+                else
+                {
+                    foreach (var message in task.Result)
+                        _pending.Enqueue(message);
+                    ExtractNext();
                 }
             }
 
@@ -119,6 +151,18 @@ namespace Akka.Streams.Azure.ServiceBus
         private readonly TimeSpan _serverWaitTime;
         private readonly TimeSpan _pollInterval;
         private readonly Func<ServiceBusReceivedMessage, T> _extractor;
+        private readonly Func<ServiceBusReceivedMessage, Task<T>> _asyncExtractor;
+
+        internal ServiceBusSource(
+            ServiceBusReceiver client,
+            int maxMessageCount,
+            TimeSpan? serverWaitTime,
+            TimeSpan? pollInterval,
+            Func<ServiceBusReceivedMessage, Task<T>> extractor)
+            : this(client, maxMessageCount, serverWaitTime, pollInterval, (Func<ServiceBusReceivedMessage, T>)null)
+        {
+            _asyncExtractor = extractor;
+        }
 
         internal ServiceBusSource(
             ServiceBusReceiver client, 

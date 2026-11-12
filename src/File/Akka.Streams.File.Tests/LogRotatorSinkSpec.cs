@@ -27,10 +27,11 @@ namespace Akka.Streams.File.Tests
     public class LogRotatorSinkSpec : Akka.TestKit.Xunit2.TestKit
     {
         private readonly ActorMaterializer _materializer;
+        private readonly string _directory = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "alpakka-rotator-" + Guid.NewGuid().ToString("N"))).FullName;
         private readonly List<string> _testLines = new List<string>();
         private readonly List<ByteString> _testByteStrings;
 
-        private static (Func<ByteString, Option<string>>, Func<List<string>>) FileLengthTriggerCreator()
+        private (Func<ByteString, Option<string>>, Func<List<string>>) FileLengthTriggerCreator()
         {
             var files = new List<string>();
             const int max = 2002;
@@ -40,7 +41,7 @@ namespace Akka.Streams.File.Tests
             {
                 if (size + element.Count > max)
                 {
-                    var path = Path.GetTempFileName();
+                    var path = Path.Combine(_directory, Guid.NewGuid().ToString("N") + ".log");
                     files.Add(path);
                     size = element.Count;
                     return path;
@@ -82,7 +83,7 @@ namespace Akka.Streams.File.Tests
 
             var completion = Source.Empty<ByteString>().RunWith(rotatorSink, _materializer);
             await ShouldCompleteWithin(completion, 3.Seconds());
-            completion.Result.Should().Be(Done.Instance);
+            (await completion).Should().Be(Done.Instance);
         }
 
         [Fact]
@@ -95,7 +96,7 @@ namespace Akka.Streams.File.Tests
             {
                 if (size + element.Count > max)
                 {
-                    var path = Path.Combine(Path.GetTempPath(), "out-" + DateTime.UtcNow.Ticks + ".log");
+                    var path = Path.Combine(_directory, "out-" + DateTime.UtcNow.Ticks + ".log");
                     size = element.Count;
                     return path;
                 }
@@ -110,13 +111,13 @@ namespace Akka.Streams.File.Tests
                 .RunWith(sizeRotatorSink, _materializer);
 
             await ShouldCompleteWithin(fileSizeCompletion, 3.Seconds());
-            fileSizeCompletion.Result.Should().Be(Done.Instance);
+            (await fileSizeCompletion).Should().Be(Done.Instance);
         }
 
         [Fact]
         public async Task LogRotatorSink_must_work_for_time_based_rotation()
         {
-            var destinationDir = Path.GetTempPath();
+            var destinationDir = _directory;
             var currentFilename = Option<string>.None;
 
             Option<string> TimeBasedTriggerCreator(ByteString element)
@@ -137,7 +138,7 @@ namespace Akka.Streams.File.Tests
                 .RunWith(timeBasedRotatorSink, _materializer);
 
             await ShouldCompleteWithin(timeBaseCompletion, 3.Seconds());
-            timeBaseCompletion.Result.Should().Be(Done.Instance);
+            (await timeBaseCompletion).Should().Be(Done.Instance);
         }
 
         [Fact]
@@ -151,7 +152,7 @@ namespace Akka.Streams.File.Tests
                 if (!string.IsNullOrEmpty(fileName))
                     return Option<string>.None;
                 
-                var path = Path.Combine(Path.GetTempPath(), "test.log");
+                var path = Path.Combine(_directory, "test.log");
                 files.Add(path);
                 fileName = path;
                 return path;
@@ -221,6 +222,7 @@ namespace Akka.Streams.File.Tests
 
             var ex = new Exception("my-exception");
             probe.SendNext(ByteString.FromString("test"));
+            await AwaitAssertAsync(() => Directory.GetFiles(_directory, "*.log").Should().ContainSingle(), 3.Seconds());
             probe.SendError(ex);
 
             var exception = await ShouldThrowWithin<Exception>(completion, 3.Seconds());
@@ -248,7 +250,7 @@ namespace Akka.Streams.File.Tests
         [Fact]
         public async Task LogRotatorSink_must_downstream_fail_on_file_write()
         {
-            var path = Path.Combine(Path.GetTempPath(), "out-" + DateTime.UtcNow.Ticks + ".log");
+            var path = Path.Combine(_directory, "out-" + DateTime.UtcNow.Ticks + ".log");
             Option<string> TriggerFunctionCreator(ByteString element) => Option<string>.Create(path);
 
             var (probe, completion) = this.SourceProbe<ByteString>()
@@ -260,6 +262,12 @@ namespace Akka.Streams.File.Tests
             probe.ExpectCancellation();
 
             await ShouldThrowWithin<FileNotFoundException>(completion, 3.Seconds());
+        }
+
+        protected override void AfterAll()
+        {
+            try { base.AfterAll(); }
+            finally { Directory.Delete(_directory, true); }
         }
 
         private static async Task<(List<string>, List<long>)> ReadUpFilesAndSizesThenClean(IEnumerable<string> files)

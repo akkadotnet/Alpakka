@@ -169,6 +169,7 @@ namespace Akka.Streams.Kinesis
                     _inFlight--;
                     TryToExecute();
                     if (!HasBeenPulled(_in)) TryPull(_in);
+                    if (_completionState != null) CheckForCompletion();
                 }
                 else if (result.Attempt > _maxRetries)
                 {
@@ -181,7 +182,8 @@ namespace Akka.Streams.Kinesis
                 else
                 {
                     _inFlight--;
-                    _waitingRetries[_retryToken] = new Job(result.Attempt+1, result.RecordsToRetry.Select(t => t.Item1));
+                    var retryToken = _retryToken++;
+                    _waitingRetries[retryToken] = new Job(result.Attempt+1, result.RecordsToRetry.Select(t => t.Item1));
                     TimeSpan delay;
                     switch (_backoffStrategy)
                     {
@@ -201,7 +203,7 @@ namespace Akka.Streams.Kinesis
                             delay.TotalSeconds, 
                             result.Attempt + 1);
 
-                    ScheduleOnce(_retryToken, delay);
+                    ScheduleOnce(retryToken, delay);
                 }
             }
 

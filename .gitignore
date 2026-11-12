@@ -213,3 +213,5 @@ build/
 /EventHubPackages/
 /RabbitMqResults/
 /RabbitMqPackages/
+/SqsResults/
+/SqsPackages/

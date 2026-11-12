@@ -13,7 +13,8 @@
     "**/Akka.Streams.Azure.StorageQueue.Tests.csproj",
     "**/Akka.Streams.Amqp.V1.Tests.csproj",
     "**/Akka.Streams.Azure.EventHub.Tests.csproj",
-    "**/Akka.Streams.Amqp.RabbitMq.Tests.csproj"
+    "**/Akka.Streams.Amqp.RabbitMq.Tests.csproj",
+    "**/Akka.Streams.SQS.Tests.csproj"
   ],
   "target": [
     "**/*.Tests.csproj"

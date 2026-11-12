@@ -90,6 +90,7 @@ jobs:
           $before = (Get-FileHash $binary).Hash
           $originalBinary = Join-Path '$(Agent.TempDirectory)' ([IO.Path]::GetFileName($binary))
           Copy-Item $binary $originalBinary -Force
+          if ($IsWindows -and (Test-Path "$binary.config")) { Copy-Item "$binary.config" "$originalBinary.config" -Force }
           if ($IsWindows) { & $binary } else { dotnet $binary }
           if ($LASTEXITCODE -ne 0) { throw 'Released-package consumer execution failed.' }
 
@@ -103,6 +104,10 @@ jobs:
           $resolvedPackage = Join-Path $candidateCache 'akka.streams.azure.servicebus/1.5.59-servicebus-validation/akka.streams.azure.servicebus.1.5.59-servicebus-validation.nupkg'
           $builtPackage = Join-Path $feed 'Akka.Streams.Azure.ServiceBus.1.5.59-servicebus-validation.nupkg'
           if ((Get-FileHash $resolvedPackage).Hash -ne (Get-FileHash $builtPackage).Hash) { throw 'Consumer resolved a different candidate package.' }
+          if ($IsWindows) {
+            & $binary
+            if ($LASTEXITCODE -ne 0) { throw 'Recompiled Windows consumer failed with the candidate graph.' }
+          }
           $libraryFramework = if ($IsWindows) { 'netstandard2.0' } else { 'net6.0' }
           $candidate = "src/Azure/Akka.Streams.Azure.ServiceBus/bin/Release/$libraryFramework"
           Copy-Item $originalBinary $binary -Force
@@ -113,6 +118,18 @@ jobs:
           if ($IsWindows) { & $binary } else { dotnet $binary }
           if ($LASTEXITCODE -ne 0) { throw 'Previously compiled consumer failed with the candidate.' }
         displayName: 'Validate API/TFMs and run unchanged released-package consumer with candidate'
+      - pwsh: |
+          Write-Host '##vso[task.setvariable variable=AzureBindingDiagnosticAttempted]true'
+          & ./build-system/diagnostics/Invoke-AzureBindingDiagnostic.ps1 -OriginalBinary '$(Agent.TempDirectory)/ServiceBusCompatibilityConsumer.exe' -CandidateOutput 'compatibility/ServiceBusConsumer/bin/Release/net48' -Feed 'ServiceBusPackages' -PackageId 'Akka.Streams.Azure.ServiceBus' -PackageVersion '1.5.59-servicebus-validation' -BindingAssembly 'Azure.Messaging.ServiceBus' -ArtifactRoot '$(Agent.TempDirectory)/servicebus-binding-diagnostic'
+          if ($LASTEXITCODE -ne 0) { throw 'Generated-policy diagnostic failed.' }
+        displayName: 'Diagnose frozen consumer with standard generated binding policy'
+        condition: and(failed(), eq(variables['Agent.OS'], 'Windows_NT'))
+      - task: PublishBuildArtifacts@1
+        displayName: 'Publish bounded binding diagnostic evidence'
+        condition: and(always(), eq(variables['Agent.OS'], 'Windows_NT'), eq(variables['AzureBindingDiagnosticAttempted'], 'true'))
+        inputs:
+          PathtoPublish: '$(Agent.TempDirectory)/servicebus-binding-diagnostic/report'
+          ArtifactName: 'servicebus-binding-diagnostic'
       - pwsh: |
           Add-Type -AssemblyName System.IO.Compression.FileSystem
           $packages = @(Get-ChildItem ServiceBusPackages/*.nupkg)

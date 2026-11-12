@@ -7,6 +7,7 @@
     <AkkaVersion>1.5.60</AkkaVersion>
     <RabbitMqConsumerPackageVersion Condition="'$(RabbitMqConsumerPackageVersion)' == ''">1.5.59</RabbitMqConsumerPackageVersion>
     <StorageQueueConsumerPackageVersion Condition="'$(StorageQueueConsumerPackageVersion)' == ''">1.5.59</StorageQueueConsumerPackageVersion>
+    <KinesisConsumerPackageVersion Condition="'$(KinesisConsumerPackageVersion)' == ''">1.5.59</KinesisConsumerPackageVersion>
     <ServiceBusConsumerPackageVersion Condition="'$(ServiceBusConsumerPackageVersion)' == ''">1.5.59</ServiceBusConsumerPackageVersion>
     <EventHubConsumerPackageVersion Condition="'$(EventHubConsumerPackageVersion)' == ''">1.5.59</EventHubConsumerPackageVersion>
     <AmqpV1ConsumerPackageVersion Condition="'$(AmqpV1ConsumerPackageVersion)' == ''">1.5.59</AmqpV1ConsumerPackageVersion>
@@ -56,6 +57,7 @@
     <PackageVersion Include="Testcontainers.ServiceBus" Version="4.16.0" />
     <PackageVersion Include="Aspire.Hosting.AppHost" Version="$(AspireVersion)" />
     <PackageVersion Include="Testcontainers.Azurite" Version="4.16.0" />
+    <PackageVersion Include="Akka.Streams.Kinesis" Version="$(KinesisConsumerPackageVersion)" />
     <PackageVersion Include="Akka.Streams.Azure.ServiceBus" Version="$(ServiceBusConsumerPackageVersion)" />
     <PackageVersion Include="Akka.Streams.Azure.EventHub" Version="$(EventHubConsumerPackageVersion)" />
     <PackageVersion Include="Akka.Streams.Amqp.V1" Version="$(AmqpV1ConsumerPackageVersion)" />

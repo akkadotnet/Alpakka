@@ -26,3 +26,136 @@ jobs:
       outputDirectory: 'TestResults'
       artifactName: 'net_tests_linux-$(Build.BuildId)'
       amqpTestUseDocker: true # Flag for AQMP test to use RabbitMQ docker
+  - job: storagequeue_validation
+    displayName: 'Storage Queue integration and compatibility'
+    timeoutInMinutes: 30
+    strategy:
+      matrix:
+        linux:
+          image: ubuntu-latest
+        windows:
+          image: windows-latest
+    pool:
+      vmImage: $(image)
+    steps:
+      - checkout: self
+      - task: UseDotNet@2
+        inputs:
+          packageType: sdk
+          useGlobalJson: true
+      - pwsh: |
+          dotnet build src/Azure/Akka.Streams.Azure.StorageQueue.Tests/Akka.Streams.Azure.StorageQueue.Tests.csproj -c Release --framework net48
+          if ($LASTEXITCODE -ne 0) { throw '.NET Framework test compilation failed.' }
+        displayName: 'Compile retained .NET Framework test target'
+        condition: eq(variables['Agent.OS'], 'Windows_NT')
+      - pwsh: |
+          dotnet test src/Azure/Akka.Streams.Azure.StorageQueue.Tests/Akka.Streams.Azure.StorageQueue.Tests.csproj -c Release --framework net10.0 --filter FullyQualifiedName~Akka.Streams.Azure.StorageQueue.Tests --logger "trx;LogFileName=storagequeue.trx" --results-directory StorageQueueResults
+          if ($LASTEXITCODE -ne 0) { throw 'Storage Queue tests failed.' }
+        displayName: 'Run Storage Queue integration tests'
+        condition: eq(variables['Agent.OS'], 'Linux')
+      - pwsh: |
+          [xml]$trx = Get-Content StorageQueueResults/storagequeue.trx -Raw
+          $results = @($trx.TestRun.Results.UnitTestResult)
+          $required = @{
+            A_QueueSource_should_push_available_messages = 1
+            A_QueueSource_should_poll_for_messages_if_the_queue_is_empty = 1
+            A_QueueSource_should_only_poll_if_demand_is_available = 1
+            A_QueueSource_should_fail_when_an_error_occurs = 1
+            A_QueueSource_should_not_fail_if_the_supervision_strategy_is_not_stop_when_an_error_occurs = 1
+            Source_leaves_settlement_to_the_caller_and_unsettled_messages_are_redelivered = 1
+            A_QueueSink_should_add_elements_to_the_queue = 1
+            A_QueueSink_should_set_the_exception_of_the_task_when_an_error_occurs = 1
+            A_QueueSink_should_retry_failing_messages_if_supervision_strategy_is_resume = 1
+            A_QueueSink_should_skip_failing_messages_if_supervision_strategy_is_restart = 1
+          }
+          if ($results.Count -eq 0 -or @($results | Where-Object outcome -ne Passed).Count -gt 0) {
+            throw 'Every discovered test must execute and pass; empty or skipped runs are invalid.'
+          }
+          if (@($results.testName | Select-Object -Unique).Count -ne $results.Count) {
+            throw 'Duplicate test cases cannot replace required coverage.'
+          }
+          foreach ($case in $required.GetEnumerator()) {
+            $matching = @($results | Where-Object testName -match "\.$($case.Key)(\(|$)")
+            if ($matching.Count -ne $case.Value) { throw "Missing or duplicate cases for $($case.Key)." }
+          }
+        displayName: 'Require named cases and reject empty or skipped TRX runs'
+        condition: eq(variables['Agent.OS'], 'Linux')
+      - pwsh: |
+          $consumer = 'compatibility/StorageQueueConsumer/StorageQueueCompatibilityConsumer.csproj'
+          $framework = if ($IsWindows) { 'net48' } else { 'net10.0' }
+          dotnet build $consumer -c Release --framework $framework
+          if ($LASTEXITCODE -ne 0) { throw 'Old consumer compilation failed.' }
+          $output = "compatibility/StorageQueueConsumer/bin/Release/$framework"
+          $binary = if ($IsWindows) { "$output/StorageQueueCompatibilityConsumer.exe" } else { "$output/StorageQueueCompatibilityConsumer.dll" }
+          $before = (Get-FileHash $binary).Hash
+          $originalBinary = Join-Path '$(Agent.TempDirectory)' ([IO.Path]::GetFileName($binary))
+          Copy-Item $binary $originalBinary -Force
+          if ($IsWindows) { & $binary } else { dotnet $binary }
+          if ($LASTEXITCODE -ne 0) { throw 'Released-package consumer execution failed.' }
+
+          dotnet pack src/Azure/Akka.Streams.Azure.StorageQueue/Akka.Streams.Azure.StorageQueue.csproj -c Release -p:PackageVersion=1.5.59-storagequeue-validation -o StorageQueuePackages
+          if ($LASTEXITCODE -ne 0) { throw 'Package creation or API/TFM validation failed.' }
+          $feed = (Resolve-Path StorageQueuePackages).Path
+          $candidateCache = Join-Path '$(Agent.TempDirectory)' "storagequeue-consumer-$framework-packages"
+          # Resolve dependencies and binding configuration for the consumer's own TFM.
+          dotnet build $consumer -c Release --framework $framework --force --no-incremental -p:StorageQueueConsumerPackageVersion=1.5.59-storagequeue-validation "-p:RestoreAdditionalProjectSources=$feed" "-p:RestorePackagesPath=$candidateCache"
+          if ($LASTEXITCODE -ne 0) { throw 'Consumer source is incompatible with the candidate package.' }
+          $resolvedPackage = Join-Path $candidateCache 'akka.streams.azure.storagequeue/1.5.59-storagequeue-validation/akka.streams.azure.storagequeue.1.5.59-storagequeue-validation.nupkg'
+          $builtPackage = Join-Path $feed 'Akka.Streams.Azure.StorageQueue.1.5.59-storagequeue-validation.nupkg'
+          if ((Get-FileHash $resolvedPackage).Hash -ne (Get-FileHash $builtPackage).Hash) { throw 'Consumer resolved a different candidate package.' }
+          $libraryFramework = if ($IsWindows) { 'netstandard2.0' } else { 'net6.0' }
+          $candidate = "src/Azure/Akka.Streams.Azure.StorageQueue/bin/Release/$libraryFramework"
+          Copy-Item $originalBinary $binary -Force
+          if ((Get-FileHash $binary).Hash -ne $before) { throw 'Consumer was changed after compilation.' }
+          if ((Get-FileHash "$output/Akka.Streams.Azure.StorageQueue.dll").Hash -ne (Get-FileHash "$candidate/Akka.Streams.Azure.StorageQueue.dll").Hash) {
+            throw 'Consumer did not receive the candidate library.'
+          }
+          if ($IsWindows) { & $binary } else { dotnet $binary }
+          if ($LASTEXITCODE -ne 0) { throw 'Previously compiled consumer failed with the candidate.' }
+        displayName: 'Validate API/TFMs and run unchanged released-package consumer with candidate'
+      - pwsh: |
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $packages = @(Get-ChildItem StorageQueuePackages/*.nupkg)
+          if ($packages.Count -ne 1) { throw 'Expected exactly one Storage Queue package.' }
+          $package = $packages[0]
+          $archive = [IO.Compression.ZipFile]::OpenRead($package.FullName)
+          try {
+            $nuspecEntry = @($archive.Entries | Where-Object FullName -like '*.nuspec')
+            if ($nuspecEntry.Count -ne 1) { throw 'Expected exactly one package manifest.' }
+            $reader = [IO.StreamReader]::new($nuspecEntry[0].Open())
+            try { [xml]$nuspec = $reader.ReadToEnd() } finally { $reader.Dispose() }
+            if ($nuspec.package.metadata.id -ne 'Akka.Streams.Azure.StorageQueue') { throw 'Unexpected package identity.' }
+            $version = $nuspec.package.metadata.version
+            $readmePath = [string]$nuspec.package.metadata.readme
+            if (!$readmePath) { throw 'NuGet manifest does not declare a README.' }
+            $entry = $archive.GetEntry($readmePath)
+            if (!$entry) { throw 'README is absent from NuGet archive.' }
+            $reader = [IO.StreamReader]::new($entry.Open())
+            try { $readme = $reader.ReadToEnd() } finally { $reader.Dispose() }
+            $sourceReadme = Get-Content src/Azure/Akka.Streams.Azure.StorageQueue/README.md -Raw
+            if ($readme -cne $sourceReadme) { throw 'Packaged README differs from the source.' }
+            foreach ($tfm in @('net6.0', 'netstandard2.0')) {
+              if (!$archive.GetEntry("lib/$tfm/Akka.Streams.Azure.StorageQueue.dll")) { throw "Missing retained TFM $tfm." }
+            }
+          } finally { $archive.Dispose() }
+
+          $examples = [regex]::Matches($readme, '(?s)```csharp\r?\n(.*?)```')
+          if ($examples.Count -ne 2) { throw 'Expected two complete README examples.' }
+          $feed = [Security.SecurityElement]::Escape((Resolve-Path StorageQueuePackages).Path)
+          $cache = [Security.SecurityElement]::Escape((Join-Path '$(Agent.TempDirectory)' 'storagequeue-readme-packages'))
+          for ($i = 0; $i -lt $examples.Count; $i++) {
+            $directory = Join-Path '$(Agent.TempDirectory)' "storagequeue-readme-$i"
+            New-Item $directory -ItemType Directory -Force | Out-Null
+            Set-Content "$directory/Program.cs" $examples[$i].Groups[1].Value
+            Set-Content "$directory/Example.csproj" "<Project Sdk='Microsoft.NET.Sdk'><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><RestoreSources>$feed;https://api.nuget.org/v3/index.json</RestoreSources><RestorePackagesPath>$cache</RestorePackagesPath></PropertyGroup><ItemGroup><PackageReference Include='Akka.Streams.Azure.StorageQueue' Version='$version' /></ItemGroup></Project>"
+            dotnet build "$directory/Example.csproj" -c Release
+            if ($LASTEXITCODE -ne 0) { throw "README example $i did not compile." }
+          }
+        displayName: 'Inspect NuGet README/TFMs and compile the shipped examples'
+      - task: PublishTestResults@2
+        condition: and(always(), eq(variables['Agent.OS'], 'Linux'))
+        inputs:
+          testResultsFormat: VSTest
+          testResultsFiles: StorageQueueResults/*.trx
+          failTaskOnFailedTests: true
+          failTaskOnMissingResultsFile: true

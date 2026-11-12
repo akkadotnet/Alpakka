@@ -8,6 +8,7 @@
   "failOnNoProjects": false,
   "skip": [
     "**/.Tests.MultiNode.csproj",
+    "**/Akka.Streams.SignalR.Tests.csproj",
     "**/examples/**"
   ],
   "target": [

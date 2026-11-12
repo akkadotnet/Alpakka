@@ -3,6 +3,7 @@ using Akka.Streams.Stage;
 using Amazon.SimpleNotificationService;
 using Amazon.SimpleNotificationService.Model;
 using System;
+using System.Threading.Tasks;
 
 namespace Akka.Streams.Sns
 {
@@ -57,6 +58,8 @@ namespace Akka.Streams.Sns
                 {
                     Push(_stage.Out, result);
                 }
+                if (IsClosed(_stage.In))
+                    CompleteStage();
             }
 
             public override void OnPush()
@@ -67,7 +70,9 @@ namespace Akka.Streams.Sns
                     .ContinueWith(
                         task =>
                             {
-                                if (task.IsFaulted || task.IsCanceled)
+                                if (task.IsCanceled)
+                                    _onFailure(new TaskCanceledException(task));
+                                else if (task.IsFaulted)
                                     _onFailure(task.Exception);
                                 else
                                     _onSuccess(task.Result);

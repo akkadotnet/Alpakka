@@ -17,6 +17,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using FluentAssertions;
 using Xunit;
 using Xunit.Abstractions;
@@ -181,7 +182,17 @@ namespace Akka.Streams.Kinesis.Tests
         public void KinesisSource_must_complete_stage_when_shard_iterator_is_null()
         {
             WithGetShardIteratorSuccess();
-            WithGetRecordsSuccess("a");
+            _kinesisClient.GetRecordsAsync(Arg.Any<GetRecordsRequest>()).Returns(
+                Task.FromResult(new GetRecordsResponse
+                {
+                    Records = new System.Collections.Generic.List<Record> { new() { Data = new MemoryStream(Encoding.UTF8.GetBytes("first")) } },
+                    NextShardIterator = "last-iterator"
+                }),
+                Task.FromResult(new GetRecordsResponse
+                {
+                    Records = new System.Collections.Generic.List<Record> { new() { Data = new MemoryStream(Encoding.UTF8.GetBytes("last")) } },
+                    NextShardIterator = null
+                }));
 
             var probe = this.CreateManualSubscriberProbe<string>();
             KinesisSource.Basic(_settings, () => _kinesisClient)
@@ -192,11 +203,9 @@ namespace Akka.Streams.Kinesis.Tests
             var subscription = probe.ExpectSubscription();
 
             subscription.Request(1);
-            probe.ExpectNext("a");
-
-            _nextShardIterator = -10;
+            probe.ExpectNext("first");
             subscription.Request(1);
-            probe.ExpectNext();
+            probe.ExpectNext("last");
             probe.ExpectComplete();
         }
 

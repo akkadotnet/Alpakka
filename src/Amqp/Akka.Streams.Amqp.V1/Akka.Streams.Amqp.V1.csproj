@@ -1,15 +1,21 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
       <AssemblyTitle>Akka.Streams.Amqp.V1</AssemblyTitle>
-      <Description>AMQP V1 adapter for Akka.NET Streams</Description>
+      <Description>AMQP 1.0 sources and sinks for Akka.NET Streams using AMQPNetLite</Description>
       <TargetFrameworks>$(NetStandardLibVersion);$(NetLibVersion)</TargetFrameworks>
       <PackageTags>$(AkkaPackageTags);AMQP;RabbitMQ</PackageTags>
+      <PackageReadmeFile>README.md</PackageReadmeFile>
+      <EnablePackageValidation>true</EnablePackageValidation>
+      <PackageValidationBaselineVersion>1.5.59</PackageValidationBaselineVersion>
   </PropertyGroup>
 
     <ItemGroup>
         <PackageReference Include="Akka.Streams" />
         <PackageReference Include="AMQPNetLite.Core" />
         <PackageReference Include="AMQPNetLite.Serialization" />
+    </ItemGroup>
+    <ItemGroup>
+        <None Include="README.md" Pack="true" PackagePath="" />
     </ItemGroup>
 
 </Project>

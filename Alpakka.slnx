@@ -6,6 +6,9 @@
     <Project Path="src/Amqp/Akka.Streams.Amqp.V1/Akka.Streams.Amqp.V1.csproj" />
     <Project Path="src/Amqp/Akka.Streams.RabbitMq.Amqp.Benchmarks/Akka.Streams.RabbitMq.Amqp.Benchmarks.csproj" />
   </Folder>
+  <Folder Name="/Amqp/Compatibility/">
+    <Project Path="compatibility/AmqpV1Consumer/AmqpV1CompatibilityConsumer.csproj" />
+  </Folder>
   <Folder Name="/Amqp/Examples/">
     <Project Path="src/Amqp/Examples/Amqp.V1.Sink/Amqp.V1.Sink.csproj" />
     <Project Path="src/Amqp/Examples/Amqp.V1.Source/Amqp.V1.Source.csproj" />

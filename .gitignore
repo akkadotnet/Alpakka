@@ -209,5 +209,7 @@ build/
 .dotnet/
 .idea
 /src/Amqp/Akka.Streams.RabbitMq.Amqp.Benchmarks/BenchmarkDotNet.Artifacts
+/RabbitMqResults/
+/RabbitMqPackages/
 /SqsResults/
 /SqsPackages/

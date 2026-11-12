@@ -4,15 +4,23 @@
         <Description>SignalR ASP.Net Core connector for Akka.NET Streams</Description>
         <TargetFramework>$(NetLibVersion)</TargetFramework>
         <PackageTags>$(AkkaPackageTags);signalr</PackageTags>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <EnablePackageValidation>true</EnablePackageValidation>
+        <PackageValidationBaselineVersion>1.5.59</PackageValidationBaselineVersion>
     </PropertyGroup>
 
     <ItemGroup>
         <PackageReference Include="Akka.Streams" />
+        <PackageReference Include="Microsoft.AspNetCore.Http.Connections" />
         <PackageReference Include="Microsoft.AspNetCore.SignalR" />
+        <PackageReference Include="Microsoft.AspNetCore.WebUtilities" />
     </ItemGroup>
 
     <ItemGroup>
         <EmbeddedResource Include="reference.conf" />
     </ItemGroup>
 
+    <ItemGroup>
+        <None Include="README.md" Pack="true" PackagePath="" />
+    </ItemGroup>
 </Project>

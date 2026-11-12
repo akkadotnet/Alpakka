@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using Akka.IO;
@@ -17,19 +18,18 @@ namespace Akka.Streams.Csv.Tests.dsl
         }
 
         [Fact]
-        public void CsvFormatting_should_format_simple_value()
+        public async Task CsvFormatting_should_format_simple_value()
         {
             var fut = Source
                 .Single(new[] {"eins", "zwei", "drei"}.ToImmutableList())
                 .Via(CsvFormatting.Format())
                 .RunWith(Sink.First<ByteString>(), Materializer);
 
-            fut.Wait(TimeSpan.FromSeconds(3));
-            fut.Result.Should().BeEquivalentTo(ByteString.FromString("eins,zwei,drei\r\n"), opt => opt.WithStrictOrdering());
+            (await CompletedWithin(fut)).Should().BeEquivalentTo(ByteString.FromString("eins,zwei,drei\r\n"), opt => opt.WithStrictOrdering());
         }
 
         [Fact]
-        public void CsvFormatting_should_include_Byte_Order_Mark()
+        public async Task CsvFormatting_should_include_Byte_Order_Mark()
         {
             var fut = Source
                 .From(new List<ImmutableList<string>>
@@ -40,8 +40,7 @@ namespace Akka.Streams.Csv.Tests.dsl
                 .Via(CsvFormatting.Format(byteOrderMark: ByteOrderMark.UTF8))
                 .RunWith(Sink.Seq<ByteString>(), Materializer);
 
-            fut.Wait(TimeSpan.FromSeconds(3));
-            var res = fut.Result;
+            var res = (await CompletedWithin(fut));
             res.Should().NotBeNull();
             res.Count.Should().Be(3);
             res[0].Should().BeEquivalentTo(ByteOrderMark.UTF8, opt => opt.WithStrictOrdering());

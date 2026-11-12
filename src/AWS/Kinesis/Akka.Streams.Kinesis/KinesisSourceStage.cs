@@ -154,23 +154,19 @@ namespace Akka.Streams.Kinesis
                 {
                     case GetRecordsSuccess s:
                         var records = s.Response.Records;
-                        if (string.IsNullOrEmpty(s.Response.NextShardIterator))
-                        {
-                            Log.Info("Shard {0} returned a null iterator and will now complete.", _settings.ShardId);
-                            CompleteStage();
-                        }
-                        else
-                        {
-                            _iterator = s.Response.NextShardIterator;
-                        }
+                        _iterator = s.Response.NextShardIterator;
 
-                        if (records.Count > 0)
+                        if (records?.Count > 0)
                         {
                             foreach (var record in records)
                                 _buffer.Enqueue(record);
 
                             _actor.Become(Ready);
                             _self.Tell(Pump.Instance);
+                        }
+                        else if (string.IsNullOrEmpty(_iterator))
+                        {
+                            CompleteStage();
                         }
                         else
                         {
@@ -196,8 +192,13 @@ namespace Akka.Streams.Kinesis
 
                     if (_buffer.Count == 0)
                     {
-                        _actor.Become(AwaitingRecords);
-                        RequestRecords(_self);
+                        if (string.IsNullOrEmpty(_iterator))
+                            CompleteStage();
+                        else
+                        {
+                            _actor.Become(AwaitingRecords);
+                            RequestRecords(_self);
+                        }
                     }
                 }
             }
@@ -206,6 +207,12 @@ namespace Akka.Streams.Kinesis
             {
                 if (_timerKey == (string)timerKey)
                     RequestRecords(_self);
+            }
+
+            public override void PostStop()
+            {
+                try { _kinesisClient.Dispose(); }
+                finally { base.PostStop(); }
             }
         }
 

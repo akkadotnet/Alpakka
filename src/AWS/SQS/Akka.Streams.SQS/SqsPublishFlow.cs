@@ -95,6 +95,7 @@ namespace Akka.Streams.SQS
                         {
                             var result = resultEntries[i];
                             results.Add(new SqsPublishResultEntry(request, result, responseMetadata));
+                            i++;
                         }
 
                         return (IReadOnlyList<SqsPublishResultEntry>)results;

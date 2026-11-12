@@ -13,12 +13,12 @@ using Xunit.Abstractions;
 
 namespace Akka.Streams.Xml.Tests.Dsl
 {
-    public class XmlSubsliceTest : Akka.TestKit.Xunit2.TestKit
+    public class XmlSubsliceTest : XmlSpec
     {
         private readonly ActorMaterializer _materializer;
         private readonly Sink<string, Task<IImmutableList<IParseEvent>>> _parser;
 
-        public XmlSubsliceTest(ITestOutputHelper output) : base(output: output)
+        public XmlSubsliceTest(ITestOutputHelper output) : base(output)
         {
             _materializer = Sys.Materializer();
 
@@ -30,7 +30,7 @@ namespace Akka.Streams.Xml.Tests.Dsl
         }
 
         [Fact]
-        public void XmlSubslice_support_must_properly_extract_subslices_of_events()
+        public async Task XmlSubslice_support_must_properly_extract_subslices_of_events()
         {
             var doc =
 @"<doc>
@@ -42,16 +42,15 @@ namespace Akka.Streams.Xml.Tests.Dsl
 </doc>";
 
             var fut = Source.Single(doc).RunWith(_parser, _materializer);
-            fut.Wait(TimeSpan.FromSeconds(3));
 
-            var result = fut.Result;
+            var result = (await CompletedWithin(fut));
             ((Characters) result[0]).Should().BeEquivalentTo(new Characters("i1"));
             ((Characters) result[1]).Should().BeEquivalentTo(new Characters("i2"));
             ((Characters) result[2]).Should().BeEquivalentTo(new Characters("i3"));
         }
 
         [Fact]
-        public void XmlSubslice_support_must_properly_extract_subslices_of_nested_events()
+        public async Task XmlSubslice_support_must_properly_extract_subslices_of_nested_events()
         {
             var doc =
 @"<doc>
@@ -63,9 +62,8 @@ namespace Akka.Streams.Xml.Tests.Dsl
 </doc>";
 
             var fut = Source.Single(doc).RunWith(_parser, _materializer);
-            fut.Wait(TimeSpan.FromSeconds(3));
 
-            var result = fut.Result;
+            var result = (await CompletedWithin(fut));
             ((Characters)result[0]).Should().BeEquivalentTo(new Characters("i1"));
             ((StartElement) result[1]).Should().BeEquivalentTo(new StartElement("sub", new Dictionary<string, string>()));
             ((Characters)result[2]).Should().BeEquivalentTo(new Characters("i2"));
@@ -74,7 +72,7 @@ namespace Akka.Streams.Xml.Tests.Dsl
         }
 
         [Fact]
-        public void XmlSubslice_support_must_properly_ignore_matches_not_deep_enough()
+        public async Task XmlSubslice_support_must_properly_ignore_matches_not_deep_enough()
         {
             var doc =
 @"<doc>
@@ -84,14 +82,13 @@ namespace Akka.Streams.Xml.Tests.Dsl
 </doc>";
 
             var fut = Source.Single(doc).RunWith(_parser, _materializer);
-            fut.Wait(TimeSpan.FromSeconds(3));
 
-            fut.Result.Count.Should().Be(0);
+            (await CompletedWithin(fut)).Count.Should().Be(0);
         }
 
 
         [Fact]
-        public void XmlSubslice_support_must_properly_ignore_partial_matches()
+        public async Task XmlSubslice_support_must_properly_ignore_partial_matches()
         {
             var doc =
 @"<doc>
@@ -103,13 +100,12 @@ namespace Akka.Streams.Xml.Tests.Dsl
 </doc>";
 
             var fut = Source.Single(doc).RunWith(_parser, _materializer);
-            fut.Wait(TimeSpan.FromSeconds(3));
 
-            fut.Result.Count.Should().Be(0);
+            (await CompletedWithin(fut)).Count.Should().Be(0);
         }
 
         [Fact]
-        public void XmlSubslice_support_must_properly_filter_from_the_combination_of_the_above()
+        public async Task XmlSubslice_support_must_properly_filter_from_the_combination_of_the_above()
         {
             var doc =
 @"<doc>
@@ -128,9 +124,8 @@ namespace Akka.Streams.Xml.Tests.Dsl
 </doc>";
 
             var fut = Source.Single(doc).RunWith(_parser, _materializer);
-            fut.Wait(TimeSpan.FromSeconds(3));
 
-            var result = fut.Result;
+            var result = (await CompletedWithin(fut));
             ((Characters)result[0]).Should().BeEquivalentTo(new Characters("i1"));
             ((StartElement)result[1]).Should().BeEquivalentTo(new StartElement("sub", new Dictionary<string, string>()));
             ((Characters)result[2]).Should().BeEquivalentTo(new Characters("i2"));

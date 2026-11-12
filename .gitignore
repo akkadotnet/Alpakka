@@ -211,3 +211,5 @@ build/
 /src/Amqp/Akka.Streams.RabbitMq.Amqp.Benchmarks/BenchmarkDotNet.Artifacts
 /EventHubResults/
 /EventHubPackages/
+/RabbitMqResults/
+/RabbitMqPackages/

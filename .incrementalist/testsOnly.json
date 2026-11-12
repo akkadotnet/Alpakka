@@ -8,6 +8,7 @@
   "failOnNoProjects": false,
   "skip": [
     "**/.Tests.MultiNode.csproj",
+    "**/Akka.Streams.Amqp.RabbitMq.Tests.csproj",
     "**/examples/**"
   ],
   "target": [

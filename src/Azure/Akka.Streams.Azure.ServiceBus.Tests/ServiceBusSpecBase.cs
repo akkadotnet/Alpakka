@@ -16,6 +16,7 @@ namespace Akka.Streams.ServiceBus.Tests;
 
 public class ServiceBusSpecBase: Akka.TestKit.Xunit2.TestKit, IAsyncLifetime
 {
+    private IDistributedApplicationTestingBuilder? _builder;
     private DistributedApplication? _app;
     private ServiceBusClient? _client;
     private string? _connectionString;
@@ -35,9 +36,10 @@ public class ServiceBusSpecBase: Akka.TestKit.Xunit2.TestKit, IAsyncLifetime
         try
         {
             using var startup = new CancellationTokenSource(TimeSpan.FromMinutes(5));
-            var builder = await DistributedApplicationTestingBuilder
+            _builder = await DistributedApplicationTestingBuilder
                 .CreateAsync<Projects.ServiceBus_AppHost>(["--Testing=true"], startup.Token);
-            _app = await builder.BuildAsync(startup.Token);
+            _app = await _builder.BuildAsync(startup.Token);
+            _builder = null;
             await _app.StartAsync(startup.Token);
             await _app.ResourceNotifications.WaitForResourceHealthyAsync("messaging", startup.Token);
             _connectionString = await _app.GetConnectionStringAsync("messaging", startup.Token)
@@ -63,19 +65,26 @@ public class ServiceBusSpecBase: Akka.TestKit.Xunit2.TestKit, IAsyncLifetime
     {
         var client = _client;
         var app = _app;
+        var builder = _builder;
         _client = null;
         _app = null;
+        _builder = null;
         _connectionString = null;
 
-        try
+        List<Exception> errors = [];
+        if (client is not null)
+            await CleanupAsync(() => client.DisposeAsync().AsTask());
+        if (builder is not null)
+            await CleanupAsync(() => builder.DisposeAsync().AsTask());
+        if (app is not null)
+            await CleanupAsync(() => app.DisposeAsync().AsTask());
+        if (errors.Count > 0)
+            throw new AggregateException("Service Bus cleanup failed", errors);
+
+        async Task CleanupAsync(Func<Task> cleanup)
         {
-            if (client is not null)
-                await client.DisposeAsync();
-        }
-        finally
-        {
-            if (app is not null)
-                await app.DisposeAsync();
+            try { await cleanup().WaitAsync(TimeSpan.FromSeconds(30)); }
+            catch (Exception error) { errors.Add(error); }
         }
     }
 }

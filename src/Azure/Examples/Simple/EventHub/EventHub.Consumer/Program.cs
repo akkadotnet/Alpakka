@@ -19,9 +19,10 @@ var factory = new EventHub.Consumer.ProcessorFactory();
 var processor =  EventHubSource.Create(factory)
     .SelectAsync(1, async evt =>
     {
-        if (!evt.HasEvent)
+        var data = evt.Data;
+        if (!evt.HasEvent || data is null)
             return Done.Instance;
-        var message = evt.Data!.EventBody.ToString();
+        var message = data.EventBody.ToString();
         Console.WriteLine($"Message from Partition: {evt.Partition.PartitionId} , Message: {message}");
         await evt.UpdateCheckpointAsync(); // usually checkpoint after processing batch of messages
         return Done.Instance;

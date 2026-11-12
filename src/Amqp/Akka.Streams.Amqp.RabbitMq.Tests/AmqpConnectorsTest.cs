@@ -14,6 +14,10 @@ using FluentAssertions.Extensions;
 using static FluentAssertions.FluentActions;
 using Xunit;
 using Xunit.Abstractions;
+using System.Threading;
+using RabbitMQ.Client;
+using RabbitMQ.Client.Exceptions;
+using Testcontainers.RabbitMq;
 
 namespace Akka.Streams.Amqp.Tests
 {
@@ -74,7 +78,7 @@ namespace Akka.Streams.Amqp.Tests
             result.Subject.Should().Equal(input);
         }
 
-        [Fact(Skip = "RPC specs not working")]
+        [Fact]
         public async Task Publish_via_RPC_and_then_consume_through_a_simple_queue_again_in_the_same_process()
         {
             var queueName = "amqp-conn-it-spec-rpc-queue-" + Environment.TickCount;
@@ -103,6 +107,7 @@ namespace Akka.Streams.Amqp.Tests
             var amqpSink = AmqpSink.ReplyTo(AmqpReplyToSinkSettings.Create(_connectionSettings));
 
             var task = amqpSource
+                .Take(input.Length)
                 .Select(msg => new OutgoingMessage(msg.Bytes.Concat(ByteString.FromString("a")), false, false, msg.Properties))
                 .RunWith(amqpSink, _mat);
 
@@ -114,7 +119,7 @@ namespace Akka.Streams.Amqp.Tests
             await Awaiting(() => task).Should().CompleteWithinAsync(3.Seconds());
         }
 
-        [Fact(Skip = "RPC specs not working")]
+        [Fact]
         public async Task Publish_via_RPC_which_expects_2_responses_per_message_and_then_consume_through_a_simple_queue_again_in_the_same_process()
         {
             var queueName = "amqp-conn-it-spec-rpc-queue-" + Environment.TickCount;
@@ -140,6 +145,7 @@ namespace Akka.Streams.Amqp.Tests
             var amqpSink = AmqpSink.ReplyTo(AmqpReplyToSinkSettings.Create(_connectionSettings));
 
             var task = amqpSource
+                .Take(input.Length)
                 .SelectMany(b =>
                     new[]
                     {
@@ -403,7 +409,7 @@ namespace Akka.Streams.Amqp.Tests
             task.IsCompleted.Should().BeFalse();
         }
 
-        [Fact(Skip = "RPC specs not working")]
+        [Fact]
         public async Task Publish_via_RPC_and_then_consume_through_a_simple_queue_again_in_the_same_process_without_autoAck()
         {
             var queueName = "amqp-conn-it-spec-rpc-queue-" + Environment.TickCount;
@@ -435,6 +441,7 @@ namespace Akka.Streams.Amqp.Tests
 
             await Awaiting(() =>
                 amqpSource
+                    .Take(input.Length)
                     .Select(b => new OutgoingMessage(b.Bytes, false, false, b.Properties))
                     .RunWith(amqpSink, _mat)
             ).Should().CompleteWithinAsync(15.Seconds());
@@ -635,6 +642,79 @@ namespace Akka.Streams.Amqp.Tests
                 amqpSource.Take(input.Length).RunWith(Sink.Seq<CommittableIncomingMessage>(), _mat)
             ).Should().CompleteWithinAsync(15.Seconds());
             result.Subject.Select(x => x.Message.Bytes.ToString(Encoding.UTF8)).Should().Equal(input);
+        }
+
+        [Fact]
+        public async Task Durable_queues_interoperate_on_stock_broker_and_cancelled_deliveries_can_be_nacked_before_shutdown()
+        {
+            await using var broker = new RabbitMqBuilder("rabbitmq:4.4.0").Build();
+            using var startup = new CancellationTokenSource(TimeSpan.FromMinutes(3));
+            await broker.StartAsync(startup.Token);
+            var factory = new ConnectionFactory { Uri = new Uri(broker.GetConnectionString()) };
+            using (var legacyConnection = factory.CreateConnection())
+            using (var legacy = legacyConnection.CreateModel())
+            {
+                var failure = Assert.Throws<OperationInterruptedException>(() =>
+                    legacy.QueueDeclare("rejected-legacy-default", durable: false, exclusive: false, autoDelete: false));
+                Assert.Contains("transient_nonexcl_queues", failure.ShutdownReason.ReplyText);
+            }
+
+            using var connection = factory.CreateConnection();
+            using var channel = connection.CreateModel();
+            const string queue = "durable-native-interop";
+            var settings = AmqpConnectionUri.Create(new Uri(broker.GetConnectionString()));
+            var declaration = QueueDeclaration.Create(queue).WithDurable(true);
+            var sink = AmqpSink.Create(AmqpSinkSettings.Create(settings)
+                .WithRoutingKey(queue).WithDeclarations(declaration).WithWaitForConfirms(TimeSpan.FromSeconds(5)));
+            var expected = new[] { "first", "café", "last" };
+            await Awaiting(() => Source.From(expected).Select(payload =>
+                {
+                    var properties = channel.CreateBasicProperties();
+                    properties.ContentType = "text/plain;charset=utf-8";
+                    properties.MessageId = payload;
+                    properties.Persistent = true;
+                    return new OutgoingMessage(ByteString.FromString(payload), false, false, properties);
+                }).RunWith(sink, _mat))
+                .Should().CompleteWithinAsync(15.Seconds());
+            foreach (var payload in expected)
+            {
+                var received = channel.BasicGet(queue, autoAck: false);
+                Assert.NotNull(received);
+                Assert.Equal(payload, Encoding.UTF8.GetString(received.Body.ToArray()));
+                Assert.Equal("text/plain;charset=utf-8", received.BasicProperties.ContentType);
+                Assert.Equal(payload, received.BasicProperties.MessageId);
+                Assert.True(received.BasicProperties.Persistent);
+                channel.BasicAck(received.DeliveryTag, multiple: false);
+            }
+            Assert.Null(channel.BasicGet(queue, autoAck: true));
+
+            channel.BasicPublish("", queue, basicProperties: null, Encoding.UTF8.GetBytes("cancel-me"));
+            var probe = AmqpSource.CommittableSource(NamedQueueSourceSettings.Create(settings, queue), 1)
+                .RunWith(this.SinkProbe<CommittableIncomingMessage>(), _mat);
+            probe.EnsureSubscription();
+            try
+            {
+                var delivered = probe.Request(1).ExpectNext();
+                Assert.Equal("cancel-me", delivered.Message.Bytes.ToString(Encoding.UTF8));
+                Assert.False(delivered.Message.Envelope.Redeliver);
+                probe.Cancel();
+                // The existing source contract retains its connection until emitted
+                // deliveries have been explicitly acknowledged or rejected.
+                await Awaiting(() => delivered.Nack(requeue: true)).Should().CompleteWithinAsync(5.Seconds());
+                BasicGetResult? redelivered = null;
+                await AwaitAssertAsync(() =>
+                {
+                    Assert.Equal(0u, channel.QueueDeclarePassive(queue).ConsumerCount);
+                    redelivered = channel.BasicGet(queue, autoAck: false);
+                    Assert.NotNull(redelivered);
+                });
+                Assert.True(redelivered!.Redelivered);
+                Assert.Equal("cancel-me", Encoding.UTF8.GetString(redelivered.Body.ToArray()));
+                channel.BasicAck(redelivered.DeliveryTag, multiple: false);
+                Assert.Null(channel.BasicGet(queue, autoAck: true));
+                Assert.True(connection.IsOpen);
+            }
+            finally { probe.Cancel(); }
         }
     }
 }

@@ -5,6 +5,8 @@
 
 Amazon SQS publishing, receiving and acknowledgment stages for Akka.NET Streams. This package uses **AWSSDK.SQS 3.x**, exposes its public request/response types, and targets .NET Standard 2.0 and .NET 6. SDK 4 is not a drop-in replacement for those public driver contracts.
 
+AWS SDK for .NET v3 [reached end of support on June 1, 2026](https://aws.amazon.com/blogs/developer/aws-sdk-for-net-v3-end-of-support-announcement/); AWS does not plan further v3 updates, including security fixes. This adapter retains its existing v3 contracts for compatibility. Updating this package does not restore vendor support for the SDK.
+
 ```sh
 dotnet add package Akka.Streams.SQS
 ```

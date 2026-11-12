@@ -56,8 +56,21 @@ jobs:
       includeRootFolder: false
       archiveType: zip
       archiveFile: '$(Build.ArtifactStagingDirectory)/documentation.zip'
+  - pwsh: |
+      $archive = Join-Path '$(Build.ArtifactStagingDirectory)' 'documentation.zip'
+      $legacyArchive = Join-Path '$(Build.ArtifactStagingDirectory)' '$(Build.BuildId).zip'
+      Copy-Item $archive $legacyArchive -Force
+      if ((Get-FileHash $archive).Hash -ne (Get-FileHash $legacyArchive).Hash) {
+        throw 'Documentation archives differ.'
+      }
+    displayName: 'Preserve the existing documentation archive name'
   - task: PublishBuildArtifacts@1
     displayName: 'Publish Artifact: drop'
+    inputs:
+      PathtoPublish: '$(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip'
+      ArtifactName: drop
+  - task: PublishBuildArtifacts@1
+    displayName: 'Publish Artifact: documentation'
     inputs:
       PathtoPublish: '$(Build.ArtifactStagingDirectory)/documentation.zip'
       ArtifactName: documentation

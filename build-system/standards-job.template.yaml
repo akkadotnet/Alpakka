@@ -1,0 +1,26 @@
+jobs:
+  - job: code_standards_validation
+    displayName: 'Code standards'
+    timeoutInMinutes: 20
+    strategy:
+      matrix:
+        linux:
+          image: ubuntu-latest
+        windows:
+          image: windows-latest
+    pool:
+      vmImage: $(image)
+    steps:
+      - checkout: self
+      - task: UseDotNet@2
+        inputs:
+          packageType: sdk
+          useGlobalJson: true
+      - pwsh: |
+          dotnet build Alpakka.slnx -c Release
+          if ($LASTEXITCODE -ne 0) { throw 'Solution code standards build failed.' }
+        displayName: 'Build all projects with enforced reliability and nullable rules'
+      - pwsh: |
+          & ./build-system/Verify-CodeStandards.ps1
+          if ($LASTEXITCODE -ne 0) { throw 'Code standards enforcement probes failed.' }
+        displayName: 'Require clean control and rejection of each forbidden diagnostic'

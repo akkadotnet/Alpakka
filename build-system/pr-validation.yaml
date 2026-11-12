@@ -305,3 +305,4 @@ jobs:
           testResultsFiles: StorageQueueResults/*.trx
           failTaskOnFailedTests: true
           failTaskOnMissingResultsFile: true
+  - template: standards-job.template.yaml

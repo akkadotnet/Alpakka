@@ -47,30 +47,12 @@ jobs:
         displayName: 'dotnet build'
         continueOnError: false
 
-      # Linux
-      # Install Azurite in linux
-      - bash: |
-          sudo npm install -g azurite@3.26.0
-          sudo mkdir azurite
-          sudo azurite --silent --location azurite --debug azirute/debug.log &
-        displayName: 'Install and Run Azurite (Linux)'
-        condition: in( variables['Agent.OS'], 'Linux', 'Darwin' )
-      
       # Do build
       - script: dotnet incrementalist run --config .incrementalist/testsOnly.json -- test -c Release --no-build --framework net10.0 --logger:trx --collect:"XPlat Code Coverage" --results-directory TestResults --settings coverlet.runsettings
         displayName: 'Run Tests (Linux)'
         continueOnError: true
         condition: in( variables['Agent.OS'], 'Linux', 'Darwin' )
 
-      # Windows
-      # Start Azure Storage Emulator in windows
-      - powershell: |
-          npm install -g azurite@3.26.0
-          mkdir azurite
-          Start-Process azurite.cmd -PassThru
-        displayName: 'Install and Run Azurite (Windows)'
-        condition: eq( variables['Agent.OS'], 'Windows_NT' )
-      
       # Do build
       - script: dotnet incrementalist run --config .incrementalist/testsOnly.json -- test -c Release --no-build --logger:trx --collect:"XPlat Code Coverage" --results-directory TestResults --settings coverlet.runsettings
         displayName: 'Run Tests (Windows)'

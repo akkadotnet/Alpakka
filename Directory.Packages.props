@@ -5,16 +5,19 @@
   </PropertyGroup>
   <PropertyGroup Label="SharedVersions">
     <AkkaVersion>1.5.60</AkkaVersion>
+    <RabbitMqConsumerPackageVersion Condition="'$(RabbitMqConsumerPackageVersion)' == ''">1.5.59</RabbitMqConsumerPackageVersion>
+    <StorageQueueConsumerPackageVersion Condition="'$(StorageQueueConsumerPackageVersion)' == ''">1.5.59</StorageQueueConsumerPackageVersion>
     <SqsConsumerPackageVersion Condition="'$(SqsConsumerPackageVersion)' == ''">1.5.59</SqsConsumerPackageVersion>
   </PropertyGroup>
   <ItemGroup>
-    <PackageVersion Include="Akka.Streams.SQS" Version="$(SqsConsumerPackageVersion)" />
+    <PackageVersion Include="Akka.Streams.Azure.StorageQueue" Version="$(StorageQueueConsumerPackageVersion)" />
+    <PackageVersion Include="Akka.Streams.Amqp.RabbitMq" Version="$(RabbitMqConsumerPackageVersion)" />
     <PackageVersion Include="Aspire.Azure.Messaging.EventHubs" Version="13.0.2" />
     <PackageVersion Include="Aspire.Hosting.Azure.EventHubs" Version="13.0.2" />
     <PackageVersion Include="Aspire.Hosting.Azure.ServiceBus" Version="13.0.0" />
     <PackageVersion Include="Aspire.Hosting.Azure.Storage" Version="13.0.2" />
     <PackageVersion Include="Microsoft.AspNetCore.SignalR" Version="1.2.0" />
-    <PackageVersion Include="Testcontainers.Floci" Version="4.16.0" />
+    <PackageVersion Include="Testcontainers.MsSql" Version="4.16.0" />
     <PackageVersion Include="xunit" Version="2.9.2" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.0" />
     <PackageVersion Include="NBench" Version="2.0.1" />
@@ -34,7 +37,7 @@
     <PackageVersion Include="Microsoft.AspNetCore.SignalR.Client" Version="9.0.4" />
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="9.0.4" />
     <PackageVersion Include="NSubstitute" Version="5.1.0" />
-    <PackageVersion Include="Testcontainers.RabbitMq" Version="3.8.0" />
+    <PackageVersion Include="Testcontainers.RabbitMq" Version="4.16.0" />
     <PackageVersion Include="AWSSDK.SQS" Version="3.7.400.136" />
     <PackageVersion Include="AWSSDK.SimpleNotificationService" Version="4.0.0" />
     <PackageVersion Include="AWSSDK.Kinesis" Version="4.0.1.1" />
@@ -45,7 +48,10 @@
     <PackageVersion Include="AMQPNetLite.Core" Version="2.4.11" />
     <PackageVersion Include="AMQPNetLite.Serialization" Version="2.4.11" />
     <PackageVersion Include="RabbitMQ.Client" Version="6.8.1" />
-    <PackageVersion Include="Testcontainers.ServiceBus" Version="4.6.0" />
+    <PackageVersion Include="Testcontainers.ServiceBus" Version="4.16.0" />
     <PackageVersion Include="Aspire.Hosting.AppHost" Version="$(AspireVersion)" />
+    <PackageVersion Include="Testcontainers.Azurite" Version="4.16.0" />
+    <PackageVersion Include="Akka.Streams.SQS" Version="$(SqsConsumerPackageVersion)" />
+    <PackageVersion Include="Testcontainers.Floci" Version="4.16.0" />
   </ItemGroup>
 </Project>

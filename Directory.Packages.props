@@ -5,8 +5,10 @@
   </PropertyGroup>
   <PropertyGroup Label="SharedVersions">
     <AkkaVersion>1.5.60</AkkaVersion>
+    <CsvConsumerPackageVersion Condition="'$(CsvConsumerPackageVersion)' == ''">1.5.59</CsvConsumerPackageVersion>
   </PropertyGroup>
   <ItemGroup>
+    <PackageVersion Include="Akka.Streams.Csv" Version="$(CsvConsumerPackageVersion)" />
     <PackageVersion Include="Aspire.Azure.Messaging.EventHubs" Version="13.0.2" />
     <PackageVersion Include="Aspire.Hosting.Azure.EventHubs" Version="13.0.2" />
     <PackageVersion Include="Aspire.Hosting.Azure.ServiceBus" Version="13.0.0" />

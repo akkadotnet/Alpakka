@@ -30,7 +30,8 @@ namespace Akka.Streams.Azure.StorageQueue.Tests
             {
                 using var startup = new CancellationTokenSource(TimeSpan.FromMinutes(2));
                 await _container.StartAsync(startup.Token);
-                _queue = new QueueClient(_container.GetConnectionString(), "testqueue");
+                _queue = new QueueClient(_container.GetConnectionString(), "testqueue",
+                    new QueueClientOptions(QueueClientOptions.ServiceVersion.V2024_05_04));
                 await _queue.CreateIfNotExistsAsync(cancellationToken: startup.Token);
             }
             catch (Exception startupException)

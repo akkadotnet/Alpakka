@@ -90,7 +90,7 @@ From the repository root, with the pinned .NET SDK and Docker running Linux cont
 dotnet test src/Azure/Akka.Streams.Azure.StorageQueue.Tests/Akka.Streams.Azure.StorageQueue.Tests.csproj -c Release --framework net10.0
 ```
 
-The tests use `Testcontainers.Azurite` to start Azurite 3.35.0 for each case, discover its connection string, and remove the owned container afterward. They do not require a separately installed Azurite, fixed host ports or an Azure account. The Windows/.NET Framework test target can also run when a Linux Docker endpoint is available.
+The tests use `Testcontainers.Azurite` to start Azurite 3.35.0 for each case, discover its connection string, and remove the owned container afterward. The test client explicitly uses `QueueClientOptions.ServiceVersion.V2024_05_04`, the protocol version used by the original SDK, because newer SDK defaults can exceed the emulator's supported API versions. API-version validation stays enabled. Your application's client selects its own service version. The tests do not require a separately installed Azurite, fixed host ports or an Azure account. The Windows/.NET Framework test target can also run when a Linux Docker endpoint is available.
 
 Azurite tests establish the exercised queue operations against that pinned emulator. They do not establish Azure identity configuration, service-scale behavior or managed-service durability. See [Azure Queue Storage client documentation](https://learn.microsoft.com/dotnet/api/overview/azure/storage.queues-readme) and [Azurite's documented differences](https://learn.microsoft.com/azure/storage/common/storage-use-azurite#differences-between-azurite-and-azure-storage).
 

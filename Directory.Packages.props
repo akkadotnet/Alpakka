@@ -8,12 +8,13 @@
     <ServiceBusConsumerPackageVersion Condition="'$(ServiceBusConsumerPackageVersion)' == ''">1.5.59</ServiceBusConsumerPackageVersion>
     <StorageQueueConsumerPackageVersion Condition="'$(StorageQueueConsumerPackageVersion)' == ''">1.5.59</StorageQueueConsumerPackageVersion>
     <AmqpV1ConsumerPackageVersion Condition="'$(AmqpV1ConsumerPackageVersion)' == ''">1.5.59</AmqpV1ConsumerPackageVersion>
+    <EventHubConsumerPackageVersion Condition="'$(EventHubConsumerPackageVersion)' == ''">1.5.59</EventHubConsumerPackageVersion>
   </PropertyGroup>
   <ItemGroup>
-    <PackageVersion Include="Aspire.Azure.Messaging.EventHubs" Version="13.0.2" />
-    <PackageVersion Include="Aspire.Hosting.Azure.EventHubs" Version="13.0.2" />
+    <PackageVersion Include="Aspire.Azure.Messaging.EventHubs" Version="$(AspireVersion)" />
+    <PackageVersion Include="Aspire.Hosting.Azure.EventHubs" Version="$(AspireVersion)" />
     <PackageVersion Include="Aspire.Hosting.Azure.ServiceBus" Version="$(AspireVersion)" />
-    <PackageVersion Include="Aspire.Hosting.Azure.Storage" Version="13.0.2" />
+    <PackageVersion Include="Aspire.Hosting.Azure.Storage" Version="$(AspireVersion)" />
     <PackageVersion Include="Microsoft.AspNetCore.SignalR" Version="1.2.0" />
     <PackageVersion Include="xunit" Version="2.9.2" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.0" />
@@ -53,5 +54,6 @@
     <PackageVersion Include="Testcontainers.Azurite" Version="4.16.0" />
     <PackageVersion Include="Akka.Streams.Amqp.V1" Version="$(AmqpV1ConsumerPackageVersion)" />
     <PackageVersion Include="Testcontainers.ActiveMq" Version="4.16.0" />
+    <PackageVersion Include="Akka.Streams.Azure.EventHub" Version="$(EventHubConsumerPackageVersion)" />
   </ItemGroup>
 </Project>

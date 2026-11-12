@@ -29,6 +29,7 @@
     <Project Path="src/Azure/Akka.Streams.Azure.StorageQueue.Tests/Akka.Streams.Azure.StorageQueue.Tests.csproj" />
     <Project Path="src/Azure/Akka.Streams.Azure.StorageQueue/Akka.Streams.Azure.StorageQueue.csproj" />
     <Project Path="src\Azure\Akka.Streams.Azure.ServiceBus.Tests\Akka.Streams.Azure.ServiceBus.Tests.csproj" />
+    <Project Path="src/Azure/Akka.Streams.Azure.EventHub.Tests/Akka.Streams.Azure.EventHub.Tests.csproj" />
   </Folder>
   <Folder Name="/Azure/Examples/">
     <Project Path="src/Azure/Examples/Akka.Streams.Azure.EventHub.Examples/Akka.Streams.Azure.EventHub.Examples.csproj" />

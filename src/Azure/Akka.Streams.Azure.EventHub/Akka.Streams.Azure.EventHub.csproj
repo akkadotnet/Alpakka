@@ -6,11 +6,18 @@
         <PackageTags>$(AkkaPackageTags);azure;EventHubs</PackageTags>
         <RootNamespace>Akka.Streams.Azure.EventHub</RootNamespace>
         <Nullable>enable</Nullable>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <EnablePackageValidation>true</EnablePackageValidation>
+        <PackageValidationBaselineVersion>1.5.59</PackageValidationBaselineVersion>
     </PropertyGroup>
 
     <ItemGroup>
         <PackageReference Include="Akka.Streams" />
         <PackageReference Include="Azure.Messaging.EventHubs.Processor" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Include="README.md" Pack="true" PackagePath="" />
     </ItemGroup>
 
 </Project>

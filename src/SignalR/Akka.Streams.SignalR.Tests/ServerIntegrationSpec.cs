@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using Akka.Event;
 using Akka.Streams.Dsl;
@@ -18,11 +20,13 @@ namespace Akka.Streams.SignalR.Tests
 {
     public class ServerIntegrationSpec : 
         Akka.TestKit.Xunit2.TestKit, 
-        IPublishSinkSource
+        IPublishSinkSource,
+        IAsyncLifetime
     {
         private readonly TestServer _testServer;
 
-        private bool _connected;
+        private volatile bool _connected;
+        private readonly List<HubConnection> _connections = new List<HubConnection>();
         private HubConnection _connection;
 
         private TestSubscriber.Probe<ISignalREvent> _fromClient;
@@ -78,13 +82,14 @@ namespace Akka.Streams.SignalR.Tests
         public async Task Websocket_connection_should_be_able_to_send_data()
         {
             // Arrange
-            var tcs = new TaskCompletionSource<object>();
-            await ConnectAsync(msg => tcs.SetResult(msg));
+            var tcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
+            await ConnectAsync(msg => tcs.TrySetResult(msg));
 
             // Act
             _toClient.SendNext(Signals.Broadcast("payload"));
 
             // Assert
+            await AwaitAssertAsync(() => Assert.True(tcs.Task.IsCompleted));
             var result = await tcs.Task;
             result.Should().Be("payload");
         }
@@ -102,13 +107,14 @@ namespace Akka.Streams.SignalR.Tests
             _connected = false;
             await _connection.StopAsync();
             await _connection.DisposeAsync();
+            _connections.Remove(_connection);
             _connection = null;
 
             // Server should know
             _fromClient.RequestNext().Should().BeOfType<Disconnected>();
 
             // Client reconnects to server
-            var connection = _testServer.CreateHubConnection();
+            var connection = CreateConnection();
             connection.On<string>(nameof(IClientSink.Receive), msg => Log.Info(msg));
             await connection.StartAsync();
 
@@ -154,19 +160,39 @@ namespace Akka.Streams.SignalR.Tests
 
         private async Task ConnectAsync(Action<string> handler)
         {
-            _connection = _testServer.CreateHubConnection();
+            _connection = CreateConnection();
             _connection.On<string>(nameof(IClientSink.Receive), handler);
             await _connection.StartAsync();
 
-            var deadline = DateTime.Now + TimeSpan.FromSeconds(5);
-            while (DateTime.Now < deadline)
-            {
-                await Task.Delay(50);
-                if (_connected)
-                    return;
-            }
+            await AwaitAssertAsync(() => Assert.True(_connected), TimeSpan.FromSeconds(5));
+        }
 
-            throw new Exception("Connection timeout");
+        private HubConnection CreateConnection()
+        {
+            var connection = _testServer.CreateHubConnection();
+            _connections.Add(connection);
+            return connection;
+        }
+
+        public Task InitializeAsync() => Task.CompletedTask;
+
+        public async Task DisposeAsync()
+        {
+            var failures = new List<Exception>();
+            foreach (var connection in _connections)
+            {
+                try
+                {
+                    using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                    await connection.StopAsync(timeout.Token);
+                }
+                catch (Exception error) { failures.Add(error); }
+                try { await connection.DisposeAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(5)); }
+                catch (Exception error) { failures.Add(error); }
+            }
+            try { _testServer.Dispose(); }
+            catch (Exception error) { failures.Add(error); }
+            if (failures.Count > 0) throw new AggregateException("SignalR fixture cleanup failed.", failures);
         }
 
         public void Connect(Source<ISignalREvent, NotUsed> source, Sink<ISignalRResult, NotUsed> sink)
@@ -175,6 +201,9 @@ namespace Akka.Streams.SignalR.Tests
             _toClient = sink.RunWith(this.SourceProbe<ISignalRResult>(), Sys.Materializer());
 
             _connectCallback?.Invoke(source, sink);
+            // A probe subscription arrives after the source stage has subscribed to connector events.
+            _fromClient.EnsureSubscription();
+            _fromClient2?.EnsureSubscription();
             _connected = true;
         }
     }

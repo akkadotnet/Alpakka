@@ -16,6 +16,7 @@
     <FileConsumerPackageVersion Condition="'$(FileConsumerPackageVersion)' == ''">1.5.59</FileConsumerPackageVersion>
     <CsvConsumerPackageVersion Condition="'$(CsvConsumerPackageVersion)' == ''">1.5.59</CsvConsumerPackageVersion>
     <XmlConsumerPackageVersion Condition="'$(XmlConsumerPackageVersion)' == ''">1.5.59</XmlConsumerPackageVersion>
+    <SignalRConsumerPackageVersion Condition="'$(SignalRConsumerPackageVersion)' == ''">1.5.59</SignalRConsumerPackageVersion>
   </PropertyGroup>
   <ItemGroup>
     <PackageVersion Include="Aspire.Azure.Messaging.EventHubs" Version="$(AspireVersion)" />
@@ -70,5 +71,6 @@
     <PackageVersion Include="Akka.Streams.File" Version="$(FileConsumerPackageVersion)" />
     <PackageVersion Include="Akka.Streams.Csv" Version="$(CsvConsumerPackageVersion)" />
     <PackageVersion Include="Akka.Streams.Xml" Version="$(XmlConsumerPackageVersion)" />
+    <PackageVersion Include="Akka.Streams.SignalR" Version="$(SignalRConsumerPackageVersion)" />
   </ItemGroup>
 </Project>

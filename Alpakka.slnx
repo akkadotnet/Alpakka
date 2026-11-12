@@ -18,6 +18,7 @@
   <Folder Name="/AWS/SNS/">
     <Project Path="src/AWS/SNS/Akka.Streams.Sns.Tests/Akka.Streams.Sns.Tests.csproj" />
     <Project Path="src/AWS/SNS/Akka.Streams.Sns/Akka.Streams.Sns.csproj" />
+    <Project Path="src/AWS/SNS/Akka.Streams.Sns.IntegrationTests/Akka.Streams.Sns.IntegrationTests.csproj" />
   </Folder>
   <Folder Name="/AWS/SQS/">
     <Project Path="src/AWS/SQS/Akka.Streams.SQS.Tests/Akka.Streams.SQS.Tests.csproj" />

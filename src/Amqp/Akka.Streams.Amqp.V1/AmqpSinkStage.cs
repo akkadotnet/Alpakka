@@ -60,9 +60,17 @@ namespace Akka.Streams.Amqp.V1
                     inlet: _stage.In, 
                     onPush: () =>
                     {
-                        var elem = Grab(_stage.In);
-                        _sender.Send(new Message(amqpSinkStage.AmqpSourceSettings.GetBytes(elem)));
-                        Pull(_stage.In);
+                        try
+                        {
+                            var elem = Grab(_stage.In);
+                            _sender.Send(new Message(amqpSinkStage.AmqpSourceSettings.GetBytes(elem)));
+                            Pull(_stage.In);
+                        }
+                        catch (Exception exception)
+                        {
+                            _promise.TrySetException(exception);
+                            FailStage(exception);
+                        }
                     },
                     onUpstreamFinish: () => _promise.SetResult(Done.Instance),
                     onUpstreamFailure: _promise.SetException
@@ -107,7 +115,11 @@ namespace Akka.Streams.Amqp.V1
             }
 
             private void HandleDisconnection((IAmqpObject sender, Error error) args)
-                => FailStage(new DisconnectedException(args.sender, args.error));
+            {
+                var exception = new DisconnectedException(args.sender, args.error);
+                _promise.TrySetException(exception);
+                FailStage(exception);
+            }
 
             private void HandleConnectionResult(ConnectResult result)
             {

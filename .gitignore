@@ -213,3 +213,10 @@ build/
 /RabbitMqPackages/
 /EventHubResults/
 /EventHubPackages/
+SignalRResults/
+SignalRPackages/
+/SnsResults/
+/SnsIntegrationResults/
+/SnsPackages/
+/SqsResults/
+/SqsPackages/

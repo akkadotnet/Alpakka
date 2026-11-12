@@ -101,7 +101,7 @@ namespace Akka.Streams.File.Impl
                 _watcher.Changed -= EventReceived;
                 _watcher.Created -= EventReceived;
                 _watcher.Deleted -= EventReceived;
-                _watcher.Renamed += EventReceived;
+                _watcher.Renamed -= EventReceived;
                 _watcher.Dispose();
 
                 base.PostStop();

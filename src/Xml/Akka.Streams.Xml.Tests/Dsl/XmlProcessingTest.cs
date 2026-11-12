@@ -13,12 +13,12 @@ using Xunit.Abstractions;
 
 namespace Akka.Streams.Xml.Tests.Dsl
 {
-    public class XmlProcessingTest : Akka.TestKit.Xunit2.TestKit
+    public class XmlProcessingTest : XmlSpec
     {
         private readonly ActorMaterializer _materializer;
         private readonly Sink<string, Task<IImmutableList<IParseEvent>>> _parser;
 
-        public XmlProcessingTest(ITestOutputHelper output) : base(output: output)
+        public XmlProcessingTest(ITestOutputHelper output) : base(output)
         {
             _materializer = Sys.Materializer();
 
@@ -29,13 +29,12 @@ namespace Akka.Streams.Xml.Tests.Dsl
         }
 
         [Fact]
-        public void XmlParser_must_properly_parse_simple_XML()
+        public async Task XmlParser_must_properly_parse_simple_XML()
         {
             var doc = "<doc><elem>elem1</elem><elem>elem2</elem></doc>";
             var fut = Source.Single(doc).RunWith(_parser, _materializer);
             
-            fut.Wait(TimeSpan.FromSeconds(3));
-            var result = fut.Result;
+            var result = (await CompletedWithin(fut));
 
             result[0].Should().BeOfType<StartDocument>();
             (result[1] as StartElement).Should().BeEquivalentTo(new StartElement("doc", new Dictionary<string, string>()));
@@ -50,7 +49,7 @@ namespace Akka.Streams.Xml.Tests.Dsl
         }
 
         [Fact]
-        public void XmlParser_must_properly_parse_multiple_XML_in_a_single_stream()
+        public async Task XmlParser_must_properly_parse_multiple_XML_in_a_single_stream()
         {
             var doc = "<doc><elem>elem1</elem></doc>";
             var fut = Source
@@ -58,8 +57,7 @@ namespace Akka.Streams.Xml.Tests.Dsl
                 .Concat(Source.Single(doc))
                 .RunWith(_parser, _materializer);
 
-            fut.Wait(TimeSpan.FromSeconds(3));
-            var result = fut.Result;
+            var result = (await CompletedWithin(fut));
 
             result[0].Should().BeOfType<StartDocument>();
             (result[1] as StartElement).Should().BeEquivalentTo(new StartElement("doc", new Dictionary<string, string>()));
@@ -78,13 +76,12 @@ namespace Akka.Streams.Xml.Tests.Dsl
         }
 
         [Fact]
-        public void XmlParser_must_properly_process_a_comment()
+        public async Task XmlParser_must_properly_process_a_comment()
         {
             var doc = "<doc><!--comment--></doc>";
             var fut = Source.Single(doc).RunWith(_parser, _materializer);
 
-            fut.Wait(TimeSpan.FromSeconds(3));
-            var result = fut.Result;
+            var result = (await CompletedWithin(fut));
 
             result[0].Should().BeOfType<StartDocument>();
             (result[1] as StartElement).Should().BeEquivalentTo(new StartElement("doc", new Dictionary<string, string>()));
@@ -94,13 +91,12 @@ namespace Akka.Streams.Xml.Tests.Dsl
         }
 
         [Fact]
-        public void XmlParser_must_properly_process_parse_instructions()
+        public async Task XmlParser_must_properly_process_parse_instructions()
         {
             var doc = "<?target content?><doc></doc>";
             var fut = Source.Single(doc).RunWith(_parser, _materializer);
 
-            fut.Wait(TimeSpan.FromSeconds(3));
-            var result = fut.Result;
+            var result = (await CompletedWithin(fut));
 
             result[0].Should().BeOfType<StartDocument>();
             (result[1] as ProcessingInstruction).Should().BeEquivalentTo(new ProcessingInstruction("target", "content"));
@@ -110,13 +106,12 @@ namespace Akka.Streams.Xml.Tests.Dsl
         }
 
         [Fact]
-        public void XmlParser_must_properly_process_attributes()
+        public async Task XmlParser_must_properly_process_attributes()
         {
             var doc = "<doc good=\"yes\"><elem nice=\"yes\" very=\"true\">elem1</elem></doc>";
             var fut = Source.Single(doc).RunWith(_parser, _materializer);
 
-            fut.Wait(TimeSpan.FromSeconds(3));
-            var result = fut.Result;
+            var result = (await CompletedWithin(fut));
 
             result[0].Should().BeOfType<StartDocument>();
             (result[1] as StartElement).Should().BeEquivalentTo(new StartElement("doc", new Dictionary<string, string> {{"good", "yes"}}));
@@ -128,13 +123,12 @@ namespace Akka.Streams.Xml.Tests.Dsl
         }
 
         [Fact]
-        public void XmlParser_must_properly_process_CDATA_blocks()
+        public async Task XmlParser_must_properly_process_CDATA_blocks()
         {
             var doc = "<doc><![CDATA[<not>even</valid>]]></doc>";
             var fut = Source.Single(doc).RunWith(_parser, _materializer);
 
-            fut.Wait(TimeSpan.FromSeconds(3));
-            var result = fut.Result;
+            var result = (await CompletedWithin(fut));
 
             result[0].Should().BeOfType<StartDocument>();
             (result[1] as StartElement).Should().BeEquivalentTo(new StartElement("doc", new Dictionary<string, string>()));
@@ -145,7 +139,7 @@ namespace Akka.Streams.Xml.Tests.Dsl
 
         // I'm not sure what the original very convoluted code does
         [Fact]
-        public void XmlParser_must_properly_parse_large_XML()
+        public async Task XmlParser_must_properly_parse_large_XML()
         {
             var elements = Enumerable.Range(0, 10).Select(i => i.ToString()).ToImmutableArray();
 
@@ -157,16 +151,15 @@ namespace Akka.Streams.Xml.Tests.Dsl
             var fut = documentStream
                 .Select(ByteString.FromString)
                 .Via(XmlParsing.Parser())
-                .Collect(evt => evt is Characters ? evt : null)
-                .Collect(evt => ((Characters) evt).Text)
+                .Where(evt => evt is Characters)
+                .Select(evt => ((Characters)evt).Text)
                 .RunWith(Sink.Seq<string>(), _materializer);
 
-            fut.Wait(TimeSpan.FromSeconds(3));
-            fut.Result.Should().BeEquivalentTo(elements);
+            (await CompletedWithin(fut)).Should().BeEquivalentTo(elements);
         }
 
         [Fact]
-        public void XmlParser_must_properly_parse_chunks_bigger_than_its_buffer_size()
+        public async Task XmlParser_must_properly_parse_chunks_bigger_than_its_buffer_size()
         {
             var documentStream = Source
                 .Single("<doc>")
@@ -193,7 +186,11 @@ namespace Akka.Streams.Xml.Tests.Dsl
                 .Via(XmlParsing.Parser(bufferSize:64))
                 .RunWith(Sink.Seq<IParseEvent>(), _materializer);
 
-            fut.Invoking(f => f.Wait(TimeSpan.FromSeconds(3))).Should().NotThrow();
+            var events = await CompletedWithin(fut);
+            Assert.IsType<StartDocument>(events[0]);
+            Assert.IsType<EndDocument>(events[events.Count - 1]);
+            Assert.Equal(Enumerable.Repeat(new[] { "i1", "i2", "i3" }, 4).SelectMany(values => values),
+                events.OfType<Characters>().Select(text => text.Text));
         }
     }
 }

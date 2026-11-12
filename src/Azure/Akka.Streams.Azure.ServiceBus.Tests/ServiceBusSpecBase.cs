@@ -7,10 +7,8 @@
 
 using Akka.Configuration;
 using Azure.Messaging.ServiceBus;
-using DotNet.Testcontainers.Builders;
-using DotNet.Testcontainers.Networks;
-using Testcontainers.MsSql;
-using Testcontainers.ServiceBus;
+using Aspire.Hosting;
+using Aspire.Hosting.Testing;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -18,19 +16,18 @@ namespace Akka.Streams.ServiceBus.Tests;
 
 public class ServiceBusSpecBase: Akka.TestKit.Xunit2.TestKit, IAsyncLifetime
 {
-    private ServiceBusContainer? _container;
+    private IDistributedApplicationTestingBuilder? _builder;
+    private DistributedApplication? _app;
     private ServiceBusClient? _client;
-    private MsSqlContainer? _database;
-    private INetwork? _network;
+    private string? _connectionString;
 
     public ServiceBusSpecBase(Config config, string name, ITestOutputHelper output) : base(config, name, output)
     {
         Materializer = Sys.Materializer();
     }
     
-    public ServiceBusContainer Container => _container ?? throw new InvalidOperationException("Container not initialized");
     public ActorMaterializer Materializer { get; }
-    public string ConnectionString => _container?.GetConnectionString() ?? throw new InvalidOperationException("Container not initialized");
+    public string ConnectionString => _connectionString ?? throw new InvalidOperationException("Application not initialized");
 
     public ServiceBusClient Client => _client ?? throw new InvalidOperationException("Container not initialized");
 
@@ -39,27 +36,27 @@ public class ServiceBusSpecBase: Akka.TestKit.Xunit2.TestKit, IAsyncLifetime
         try
         {
             using var startup = new CancellationTokenSource(TimeSpan.FromMinutes(5));
-            _network = new NetworkBuilder().Build();
-            // Pin the companion used by the reviewed Aspire fixture: the module's default CU14 tag is unavailable.
-            _database = new MsSqlBuilder("mcr.microsoft.com/mssql/server@sha256:cf8f0ab2ebe61feec2eed2629061a07d247f791c2a8ddda74a4ac9f06a291718")
-                .WithNetwork(_network)
-                .WithNetworkAliases("servicebus-database")
-                .Build();
-            _container = new ServiceBusBuilder("mcr.microsoft.com/azure-messaging/servicebus-emulator:2.0.0")
-                .WithMsSqlContainer(_network, _database, "servicebus-database")
-                .WithConfig("./config/config.json")
-                .WithAcceptLicenseAgreement(true)
-                .Build();
-            await _container.StartAsync(startup.Token);
+            _builder = await DistributedApplicationTestingBuilder
+                .CreateAsync<Projects.ServiceBus_AppHost>(["--Testing=true"], startup.Token);
+            _app = await _builder.BuildAsync(startup.Token);
+            _builder = null;
+            await _app.StartAsync(startup.Token);
+            await _app.ResourceNotifications.WaitForResourceHealthyAsync("messaging", startup.Token);
+            _connectionString = await _app.GetConnectionStringAsync("messaging", startup.Token)
+                ?? throw new InvalidOperationException("Service Bus connection string was not provided");
             _client = new ServiceBusClient(ConnectionString);
         }
         catch (Exception startupException)
         {
-            try { await DisposeAsync(); }
+            try
+            {
+                await DisposeAsync();
+            }
             catch (Exception cleanupException)
             {
                 throw new AggregateException("Service Bus startup and cleanup both failed", startupException, cleanupException);
             }
+
             throw;
         }
     }
@@ -67,23 +64,20 @@ public class ServiceBusSpecBase: Akka.TestKit.Xunit2.TestKit, IAsyncLifetime
     public virtual async Task DisposeAsync()
     {
         var client = _client;
-        var container = _container;
-        var database = _database;
-        var network = _network;
+        var app = _app;
+        var builder = _builder;
         _client = null;
-        _container = null;
-        _database = null;
-        _network = null;
+        _app = null;
+        _builder = null;
+        _connectionString = null;
 
         List<Exception> errors = [];
         if (client is not null)
             await CleanupAsync(() => client.DisposeAsync().AsTask());
-        if (container is not null)
-            await CleanupAsync(() => container.DisposeAsync().AsTask());
-        if (database is not null)
-            await CleanupAsync(() => database.DisposeAsync().AsTask());
-        if (network is not null)
-            await CleanupAsync(() => network.DisposeAsync().AsTask());
+        if (builder is not null)
+            await CleanupAsync(() => builder.DisposeAsync().AsTask());
+        if (app is not null)
+            await CleanupAsync(() => app.DisposeAsync().AsTask());
         if (errors.Count > 0)
             throw new AggregateException("Service Bus cleanup failed", errors);
 

@@ -16,7 +16,8 @@
     "**/Akka.Streams.Amqp.RabbitMq.Tests.csproj",
     "**/Akka.Streams.SQS.Tests.csproj",
     "**/Akka.Streams.Sns.Tests.csproj",
-    "**/Akka.Streams.Sns.IntegrationTests.csproj"
+    "**/Akka.Streams.Sns.IntegrationTests.csproj",
+    "**/Akka.Streams.Kinesis.Tests.csproj"
   ],
   "target": [
     "**/*.Tests.csproj"

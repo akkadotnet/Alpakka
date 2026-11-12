@@ -218,3 +218,5 @@ build/
 /SnsResults/
 /SnsIntegrationResults/
 /SnsPackages/
+/KinesisResults/
+/KinesisPackages/

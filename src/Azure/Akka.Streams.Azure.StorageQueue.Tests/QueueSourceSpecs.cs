@@ -4,6 +4,7 @@ using Akka.Streams.Dsl;
 using Akka.Streams.Supervision;
 using Akka.Streams.TestKit;
 using FluentAssertions;
+using Azure;
 using Azure.Storage.Queues;
 using Azure.Storage.Queues.Models;
 using Xunit;
@@ -15,6 +16,39 @@ namespace Akka.Streams.Azure.StorageQueue.Tests
     {
         public QueueSourceSpecs(ITestOutputHelper output) : base(output)
         {
+        }
+
+        [Fact]
+        public async Task Source_leaves_settlement_to_the_caller_and_unsettled_messages_are_redelivered()
+        {
+            await Queue.SendMessageAsync("redelivery");
+            var probe = QueueSource.Create(Queue, prefetchCount: 1,
+                    options: new GetRequestOptions(visibilityTimeout: TimeSpan.FromSeconds(1)))
+                .Take(1)
+                .RunWith(this.SinkProbe<QueueMessage>(), Materializer);
+
+            probe.Request(1);
+            var first = probe.ExpectNext();
+            Assert.Equal("redelivery", first.MessageText);
+            probe.ExpectComplete();
+
+            QueueMessage redelivered = null;
+            await AwaitAssertAsync(async () =>
+            {
+                var messages = (await Queue.ReceiveMessagesAsync(1, TimeSpan.FromSeconds(30))).Value;
+                redelivered = Assert.Single(messages);
+            }, TimeSpan.FromSeconds(5), TimeSpan.FromMilliseconds(100));
+
+            Assert.Equal(first.MessageId, redelivered.MessageId);
+            Assert.Equal(first.MessageText, redelivered.MessageText);
+            Assert.Equal(first.DequeueCount + 1, redelivered.DequeueCount);
+            Assert.NotEqual(first.PopReceipt, redelivered.PopReceipt);
+            await Queue.DeleteMessageAsync(redelivered.MessageId, redelivered.PopReceipt);
+
+            var missing = await Assert.ThrowsAsync<RequestFailedException>(() =>
+                Queue.UpdateMessageAsync(redelivered.MessageId, redelivered.PopReceipt, "still here"));
+            Assert.Equal(404, missing.Status);
+            Assert.Equal("MessageNotFound", missing.ErrorCode);
         }
 
         [Fact]

@@ -26,7 +26,7 @@
     <PackageVersion Include="Aspire.Hosting.Azure.EventHubs" Version="$(AspireVersion)" />
     <PackageVersion Include="Aspire.Hosting.Azure.ServiceBus" Version="$(AspireVersion)" />
     <PackageVersion Include="Aspire.Hosting.Azure.Storage" Version="$(AspireVersion)" />
-    <PackageVersion Include="Microsoft.AspNetCore.SignalR" Version="1.2.0" />
+    <PackageVersion Include="Microsoft.AspNetCore.SignalR" Version="1.2.14" />
     <PackageVersion Include="Testcontainers.MsSql" Version="4.16.0" />
     <PackageVersion Include="xunit" Version="2.9.2" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.0" />
@@ -71,6 +71,8 @@
     <PackageVersion Include="Testcontainers.ActiveMq" Version="4.16.0" />
     <PackageVersion Include="Akka.Streams.SignalR" Version="$(SignalRConsumerPackageVersion)" />
     <PackageVersion Include="Aspire.Hosting.Testing" Version="13.6.5" />
+    <PackageVersion Include="Microsoft.AspNetCore.Http.Connections" Version="1.2.14" />
+    <PackageVersion Include="Microsoft.AspNetCore.WebUtilities" Version="2.3.14" />
     <PackageVersion Include="Akka.Streams.Sns" Version="$(SnsConsumerPackageVersion)" />
     <PackageVersion Include="Akka.Streams.SQS" Version="$(SqsConsumerPackageVersion)" />
     <PackageVersion Include="Testcontainers.Floci" Version="4.16.0" />

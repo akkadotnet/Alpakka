@@ -752,6 +752,30 @@ jobs:
           }
         displayName: 'Inspect NuGet README/TFMs and compile the shipped examples'
       - pwsh: |
+          $projects = @(
+            'src/SignalR/Akka.Streams.SignalR/Akka.Streams.SignalR.csproj',
+            '$(Agent.TempDirectory)/signalr-readme-0/Example.csproj',
+            '$(Agent.TempDirectory)/signalr-readme-1/Example.csproj'
+          )
+          foreach ($project in $projects) {
+            $output = dotnet list $project package --vulnerable --include-transitive --format json
+            if ($LASTEXITCODE -ne 0) { throw "NuGet vulnerability query failed for $project." }
+            $audit = ($output -join "`n") | ConvertFrom-Json
+            if (@($audit.projects).Count -ne 1 -or
+                [IO.Path]::GetFullPath($audit.projects[0].path) -ne [IO.Path]::GetFullPath($project)) {
+              throw "NuGet audit did not cover the requested project: $project."
+            }
+            foreach ($framework in $audit.projects[0].frameworks) {
+              foreach ($package in @($framework.topLevelPackages) + @($framework.transitivePackages)) {
+                if ($package -and $package.vulnerabilities) {
+                  throw "Vulnerable package $($package.id) $($package.resolvedVersion) in $project."
+                }
+              }
+            }
+            Write-Host "NuGet package audit passed: $project"
+          }
+        displayName: 'Audit SignalR product and exact packaged README consumers'
+      - pwsh: |
           $start = [Diagnostics.ProcessStartInfo]::new((Get-Command dotnet).Source)
           $start.UseShellExecute = $false
           $start.RedirectStandardOutput = $true

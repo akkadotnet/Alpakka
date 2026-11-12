@@ -11,7 +11,9 @@
 
     <ItemGroup>
         <PackageReference Include="Akka.Streams" />
+        <PackageReference Include="Microsoft.AspNetCore.Http.Connections" />
         <PackageReference Include="Microsoft.AspNetCore.SignalR" />
+        <PackageReference Include="Microsoft.AspNetCore.WebUtilities" />
     </ItemGroup>
 
     <ItemGroup>

@@ -88,14 +88,24 @@ jobs:
           $output = "compatibility/ServiceBusConsumer/bin/Release/$framework"
           $binary = if ($IsWindows) { "$output/ServiceBusCompatibilityConsumer.exe" } else { "$output/ServiceBusCompatibilityConsumer.dll" }
           $before = (Get-FileHash $binary).Hash
+          $originalBinary = Join-Path '$(Agent.TempDirectory)' ([IO.Path]::GetFileName($binary))
+          Copy-Item $binary $originalBinary -Force
           if ($IsWindows) { & $binary } else { dotnet $binary }
           if ($LASTEXITCODE -ne 0) { throw 'Released-package consumer execution failed.' }
 
           dotnet pack src/Azure/Akka.Streams.Azure.ServiceBus/Akka.Streams.Azure.ServiceBus.csproj -c Release -p:PackageVersion=1.5.59-servicebus-validation -o ServiceBusPackages
           if ($LASTEXITCODE -ne 0) { throw 'Package creation or API/TFM validation failed.' }
+          $feed = (Resolve-Path ServiceBusPackages).Path
+          $candidateCache = Join-Path '$(Agent.TempDirectory)' "servicebus-consumer-$framework-packages"
+          # Resolve dependencies and binding configuration for the consumer's own TFM.
+          dotnet build $consumer -c Release --framework $framework --force --no-incremental -p:ServiceBusConsumerPackageVersion=1.5.59-servicebus-validation "-p:RestoreAdditionalProjectSources=$feed" "-p:RestorePackagesPath=$candidateCache"
+          if ($LASTEXITCODE -ne 0) { throw 'Consumer source is incompatible with the candidate package.' }
+          $resolvedPackage = Join-Path $candidateCache 'akka.streams.azure.servicebus/1.5.59-servicebus-validation/akka.streams.azure.servicebus.1.5.59-servicebus-validation.nupkg'
+          $builtPackage = Join-Path $feed 'Akka.Streams.Azure.ServiceBus.1.5.59-servicebus-validation.nupkg'
+          if ((Get-FileHash $resolvedPackage).Hash -ne (Get-FileHash $builtPackage).Hash) { throw 'Consumer resolved a different candidate package.' }
           $libraryFramework = if ($IsWindows) { 'netstandard2.0' } else { 'net6.0' }
           $candidate = "src/Azure/Akka.Streams.Azure.ServiceBus/bin/Release/$libraryFramework"
-          Copy-Item "$candidate/*.dll" $output -Force
+          Copy-Item $originalBinary $binary -Force
           if ((Get-FileHash $binary).Hash -ne $before) { throw 'Consumer was changed after compilation.' }
           if ((Get-FileHash "$output/Akka.Streams.Azure.ServiceBus.dll").Hash -ne (Get-FileHash "$candidate/Akka.Streams.Azure.ServiceBus.dll").Hash) {
             throw 'Consumer did not receive the candidate library.'

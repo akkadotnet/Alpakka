@@ -201,15 +201,24 @@ public sealed class AmqpInteropSpec : Akka.TestKit.Xunit2.TestKit
         var connection = new Connection(address);
         var session = new Session(connection);
         var failure = new InvalidOperationException("serialization failed");
-        var settings = new ObservedSinkSettings(new NamedQueueSinkSettings<string>(
-            session, "failing-serializer", $"serialize-{Guid.NewGuid():N}",
-            Sys.Serialization.FindSerializerForType(typeof(string))), _ => throw failure);
+        var queue = $"serialize-{Guid.NewGuid():N}";
+        var receiver = CreateReceiver(session, "serializer-observer", queue);
+        var serializer = Sys.Serialization.FindSerializerForType(typeof(string));
+        var inner = new NamedQueueSinkSettings<string>(session, "failing-serializer", queue, serializer);
+        var settings = new ObservedSinkSettings(inner,
+            value => value == "warm-up" ? inner.GetBytes(value) : throw failure);
         var (publisher, completion) = this.SourceProbe<string>()
             .ToMaterialized(Dsl.AmqpSink.Create(settings), Keep.Both)
             .Run(Sys.Materializer());
 
         try
         {
+            publisher.SendNext("warm-up");
+            var message = await receiver.ReceiveAsync(TimeSpan.FromSeconds(5));
+            Assert.NotNull(message);
+            Assert.Equal("warm-up", serializer.FromBinary<string>(message.GetBody<byte[]>()));
+            receiver.Accept(message);
+            Assert.False(completion.IsCompleted);
             publisher.SendNext("fails conversion");
             publisher.ExpectCancellation();
             await AwaitAssertAsync(() => Assert.True(settings.Link?.IsClosed));
@@ -218,6 +227,7 @@ public sealed class AmqpInteropSpec : Akka.TestKit.Xunit2.TestKit
         }
         finally
         {
+            await receiver.CloseAsync();
             await session.CloseAsync();
             await connection.CloseAsync();
         }

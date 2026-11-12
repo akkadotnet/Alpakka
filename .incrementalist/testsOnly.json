@@ -12,7 +12,8 @@
     "**/examples/**",
     "**/Akka.Streams.Azure.StorageQueue.Tests.csproj",
     "**/Akka.Streams.Sns.Tests.csproj",
-    "**/Akka.Streams.Sns.IntegrationTests.csproj"
+    "**/Akka.Streams.Sns.IntegrationTests.csproj",
+    "**/Akka.Streams.SQS.Tests.csproj"
   ],
   "target": [
     "**/*.Tests.csproj"

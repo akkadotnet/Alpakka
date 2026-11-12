@@ -8,6 +8,7 @@
     <RabbitMqConsumerPackageVersion Condition="'$(RabbitMqConsumerPackageVersion)' == ''">1.5.59</RabbitMqConsumerPackageVersion>
     <StorageQueueConsumerPackageVersion Condition="'$(StorageQueueConsumerPackageVersion)' == ''">1.5.59</StorageQueueConsumerPackageVersion>
     <SnsConsumerPackageVersion Condition="'$(SnsConsumerPackageVersion)' == ''">1.5.59</SnsConsumerPackageVersion>
+    <SqsConsumerPackageVersion Condition="'$(SqsConsumerPackageVersion)' == ''">1.5.59</SqsConsumerPackageVersion>
   </PropertyGroup>
   <ItemGroup>
     <PackageVersion Include="Akka.Streams.Azure.StorageQueue" Version="$(StorageQueueConsumerPackageVersion)" />
@@ -41,7 +42,7 @@
     <PackageVersion Include="AWSSDK.SQS" Version="3.7.400.136" />
     <PackageVersion Include="AWSSDK.SimpleNotificationService" Version="4.0.0" />
     <PackageVersion Include="AWSSDK.Kinesis" Version="4.0.1.1" />
-    <PackageVersion Include="Azure.Storage.Queues" Version="12.18.0" />
+    <PackageVersion Include="Azure.Storage.Queues" Version="12.28.1" />
     <PackageVersion Include="Azure.Messaging.ServiceBus" Version="7.17.4" />
     <PackageVersion Include="Azure.Messaging.EventHubs.Processor" Version="5.11.3" />
     <PackageVersion Include="BenchmarkDotNet" Version="0.14.0" />
@@ -52,6 +53,7 @@
     <PackageVersion Include="Aspire.Hosting.AppHost" Version="$(AspireVersion)" />
     <PackageVersion Include="Testcontainers.Azurite" Version="4.16.0" />
     <PackageVersion Include="Akka.Streams.Sns" Version="$(SnsConsumerPackageVersion)" />
+    <PackageVersion Include="Akka.Streams.SQS" Version="$(SqsConsumerPackageVersion)" />
     <PackageVersion Include="Testcontainers.Floci" Version="4.16.0" />
   </ItemGroup>
 </Project>

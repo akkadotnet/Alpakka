@@ -214,3 +214,5 @@ build/
 /SnsResults/
 /SnsIntegrationResults/
 /SnsPackages/
+/SqsResults/
+/SqsPackages/

@@ -13,6 +13,7 @@
     <SqsConsumerPackageVersion Condition="'$(SqsConsumerPackageVersion)' == ''">1.5.59</SqsConsumerPackageVersion>
     <SnsConsumerPackageVersion Condition="'$(SnsConsumerPackageVersion)' == ''">1.5.59</SnsConsumerPackageVersion>
     <KinesisConsumerPackageVersion Condition="'$(KinesisConsumerPackageVersion)' == ''">1.5.59</KinesisConsumerPackageVersion>
+    <FileConsumerPackageVersion Condition="'$(FileConsumerPackageVersion)' == ''">1.5.59</FileConsumerPackageVersion>
   </PropertyGroup>
   <ItemGroup>
     <PackageVersion Include="Aspire.Azure.Messaging.EventHubs" Version="$(AspireVersion)" />
@@ -64,5 +65,6 @@
     <PackageVersion Include="Testcontainers.Floci" Version="4.16.0" />
     <PackageVersion Include="Akka.Streams.Sns" Version="$(SnsConsumerPackageVersion)" />
     <PackageVersion Include="Akka.Streams.Kinesis" Version="$(KinesisConsumerPackageVersion)" />
+    <PackageVersion Include="Akka.Streams.File" Version="$(FileConsumerPackageVersion)" />
   </ItemGroup>
 </Project>

@@ -220,3 +220,5 @@ build/
 /SnsPackages/
 /KinesisResults/
 /KinesisPackages/
+FileResults/
+FilePackages/

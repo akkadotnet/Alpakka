@@ -7,6 +7,7 @@
     <AkkaVersion>1.5.60</AkkaVersion>
     <RabbitMqConsumerPackageVersion Condition="'$(RabbitMqConsumerPackageVersion)' == ''">1.5.59</RabbitMqConsumerPackageVersion>
     <StorageQueueConsumerPackageVersion Condition="'$(StorageQueueConsumerPackageVersion)' == ''">1.5.59</StorageQueueConsumerPackageVersion>
+    <XmlConsumerPackageVersion Condition="'$(XmlConsumerPackageVersion)' == ''">1.5.59</XmlConsumerPackageVersion>
     <CsvConsumerPackageVersion Condition="'$(CsvConsumerPackageVersion)' == ''">1.5.59</CsvConsumerPackageVersion>
     <FileConsumerPackageVersion Condition="'$(FileConsumerPackageVersion)' == ''">1.5.59</FileConsumerPackageVersion>
     <KinesisConsumerPackageVersion Condition="'$(KinesisConsumerPackageVersion)' == ''">1.5.59</KinesisConsumerPackageVersion>
@@ -59,6 +60,7 @@
     <PackageVersion Include="Testcontainers.ServiceBus" Version="4.16.0" />
     <PackageVersion Include="Aspire.Hosting.AppHost" Version="$(AspireVersion)" />
     <PackageVersion Include="Testcontainers.Azurite" Version="4.16.0" />
+    <PackageVersion Include="Akka.Streams.Xml" Version="$(XmlConsumerPackageVersion)" />
     <PackageVersion Include="Akka.Streams.Csv" Version="$(CsvConsumerPackageVersion)" />
     <PackageVersion Include="Akka.Streams.File" Version="$(FileConsumerPackageVersion)" />
     <PackageVersion Include="Akka.Streams.Kinesis" Version="$(KinesisConsumerPackageVersion)" />

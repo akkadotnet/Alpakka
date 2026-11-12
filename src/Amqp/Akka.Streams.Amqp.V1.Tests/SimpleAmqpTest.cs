@@ -14,25 +14,16 @@ namespace Akka.Streams.Amqp.V1.Tests
     [Collection("AmqpSpec")]
     public class SimpleAmqpV1Test
     {
-        private readonly ITestOutputHelper _output;
         private readonly AmqpFixture _fixture;
 
-        public SimpleAmqpV1Test(AmqpFixture fixture, ITestOutputHelper output)
+        public SimpleAmqpV1Test(AmqpFixture fixture)
         {
-            _output = output;
             _fixture = fixture;
         }
 
         [Fact]
         public async Task TestHelloWorld()
         {
-            Connection.DisableServerCertValidation = true;
-            Trace.TraceLevel = TraceLevel.Frame;
-            Trace.TraceListener = (l, f, a) =>
-                _output.WriteLine(DateTime.Now.ToString("[hh:mm:ss.fff]") + " " + string.Format(f, a));
-
-            //strange, works using regular activeMQ and the amqp test broker from here: http://azure.github.io/amqpnetlite/articles/hello_amqp.html
-            //but this does not work in ActiveMQ Artemis
             var address = new Address(_fixture.HostName, _fixture.AmqpPort, _fixture.UserName, _fixture.Password, scheme: "AMQP");
             var connection = new Connection(address);
             var session = new Session(connection);

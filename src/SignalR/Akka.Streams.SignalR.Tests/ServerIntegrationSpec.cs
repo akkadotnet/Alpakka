@@ -175,6 +175,9 @@ namespace Akka.Streams.SignalR.Tests
             _toClient = sink.RunWith(this.SourceProbe<ISignalRResult>(), Sys.Materializer());
 
             _connectCallback?.Invoke(source, sink);
+            // A probe subscription arrives after the source stage has subscribed to connector events.
+            _fromClient.EnsureSubscription();
+            _fromClient2?.EnsureSubscription();
             _connected = true;
         }
     }

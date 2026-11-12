@@ -236,6 +236,7 @@ jobs:
           $before = (Get-FileHash $binary).Hash
           $originalBinary = Join-Path '$(Agent.TempDirectory)' ([IO.Path]::GetFileName($binary))
           Copy-Item $binary $originalBinary -Force
+          if ($IsWindows -and (Test-Path "$binary.config")) { Copy-Item "$binary.config" "$originalBinary.config" -Force }
           if ($IsWindows) { & $binary } else { dotnet $binary }
           if ($LASTEXITCODE -ne 0) { throw 'Released-package consumer execution failed.' }
 
@@ -249,6 +250,10 @@ jobs:
           $resolvedPackage = Join-Path $candidateCache 'akka.streams.azure.storagequeue/1.5.59-storagequeue-validation/akka.streams.azure.storagequeue.1.5.59-storagequeue-validation.nupkg'
           $builtPackage = Join-Path $feed 'Akka.Streams.Azure.StorageQueue.1.5.59-storagequeue-validation.nupkg'
           if ((Get-FileHash $resolvedPackage).Hash -ne (Get-FileHash $builtPackage).Hash) { throw 'Consumer resolved a different candidate package.' }
+          if ($IsWindows) {
+            & $binary
+            if ($LASTEXITCODE -ne 0) { throw 'Recompiled Windows consumer failed with the candidate graph.' }
+          }
           $libraryFramework = if ($IsWindows) { 'netstandard2.0' } else { 'net6.0' }
           $candidate = "src/Azure/Akka.Streams.Azure.StorageQueue/bin/Release/$libraryFramework"
           Copy-Item $originalBinary $binary -Force
@@ -256,9 +261,22 @@ jobs:
           if ((Get-FileHash "$output/Akka.Streams.Azure.StorageQueue.dll").Hash -ne (Get-FileHash "$candidate/Akka.Streams.Azure.StorageQueue.dll").Hash) {
             throw 'Consumer did not receive the candidate library.'
           }
-          if ($IsWindows) { & $binary } else { dotnet $binary }
-          if ($LASTEXITCODE -ne 0) { throw 'Previously compiled consumer failed with the candidate.' }
-        displayName: 'Validate API/TFMs and run unchanged released-package consumer with candidate'
+          if ($IsWindows) {
+            # Resolve standard output binding policy with the frozen executable as an MSBuild input.
+            Write-Host '##vso[task.setvariable variable=AzureBindingDiagnosticAttempted]true'
+            & ./build-system/diagnostics/Invoke-AzureBindingDiagnostic.ps1 -OriginalBinary '$(Agent.TempDirectory)/StorageQueueCompatibilityConsumer.exe' -CandidateOutput 'compatibility/StorageQueueConsumer/bin/Release/net48' -Feed 'StorageQueuePackages' -PackageId 'Akka.Streams.Azure.StorageQueue' -PackageVersion '1.5.59-storagequeue-validation' -BindingAssembly 'Azure.Storage.Queues' -ArtifactRoot '$(Agent.TempDirectory)/storagequeue-binding-diagnostic'
+            if ($LASTEXITCODE -ne 0) { throw 'Frozen consumer binding-policy verification failed.' }
+          } else {
+            dotnet $binary
+            if ($LASTEXITCODE -ne 0) { throw 'Previously compiled consumer failed with the candidate.' }
+          }
+        displayName: 'Validate API/TFMs and frozen consumer through standard NuGet upgrade resolution'
+      - task: PublishBuildArtifacts@1
+        displayName: 'Publish bounded binding diagnostic evidence'
+        condition: and(always(), eq(variables['Agent.OS'], 'Windows_NT'), eq(variables['AzureBindingDiagnosticAttempted'], 'true'))
+        inputs:
+          PathtoPublish: '$(Agent.TempDirectory)/storagequeue-binding-diagnostic/report'
+          ArtifactName: 'storagequeue-binding-diagnostic'
       - pwsh: |
           Add-Type -AssemblyName System.IO.Compression.FileSystem
           $packages = @(Get-ChildItem StorageQueuePackages/*.nupkg)
@@ -306,6 +324,751 @@ jobs:
           failTaskOnFailedTests: true
           failTaskOnMissingResultsFile: true
   - template: standards-job.template.yaml
+  - job: sqs_validation
+    displayName: 'SQS integration and compatibility'
+    timeoutInMinutes: 30
+    strategy:
+      matrix:
+        linux:
+          image: ubuntu-latest
+          sqsFramework: net10.0
+          sqsFilter: FullyQualifiedName~Akka.Streams.SQS.Tests
+        windows:
+          image: windows-latest
+          sqsFramework: net48
+          sqsFilter: FullyQualifiedName!~SqsIntegrationTests
+    pool:
+      vmImage: $(image)
+    steps:
+      - checkout: self
+      - task: UseDotNet@2
+        inputs:
+          packageType: sdk
+          useGlobalJson: true
+      - pwsh: |
+          dotnet test src/AWS/SQS/Akka.Streams.SQS.Tests/Akka.Streams.SQS.Tests.csproj -c Release --framework "$(sqsFramework)" --filter "$(sqsFilter)" --logger "trx;LogFileName=sqs.trx" --results-directory SqsResults
+          if ($LASTEXITCODE -ne 0) { throw 'SQS tests failed.' }
+        displayName: 'Run SQS required tests'
+      - pwsh: |
+          [xml]$trx = Get-Content SqsResults/sqs.trx -Raw
+          $results = @($trx.TestRun.Results.UnitTestResult)
+          $required = @{
+            SqsAckFlow_default_stream_should_react_on_Delete_commands = 1
+            SqsAckFlow_default_stream_should_react_on_ChangeVisibility_commands = 1
+            SqsAckFlow_default_stream_should_react_on_Ignore_commands = 1
+            SqsAckFlow_grouped_stream_should_react_on_Delete_commands = 1
+            SqsAckFlow_grouped_stream_should_react_on_ChangeVisibility_commands = 1
+            SqsAckFlow_grouped_stream_should_react_on_Ignore_commands = 1
+            SqsPublishFlow_default_should_send_messages_to_SQS = 1
+            SqsPublishFlow_grouped_should_send_messages_to_SQS_in_batches = 1
+            SqsPublishFlow_grouped_should_fail_downstream_on_partial_failure = 1
+            SqsPublishFlow_batch_should_send_messages_to_SQS_in_batches = 1
+            SqsPublishFlow_batch_should_fail_downstream_on_partial_failures = 1
+            SqsSource_should_return_events = 1
+            SqsSource_when_closeOnEmptyReceive_should_complete_after_returning_empty_result = 1
+            SqsSource_when_NOT_closeOnEmptyReceive_should_continue_after_returning_empty_result = 1
+          }
+          if (!$IsWindows) {
+            $required['Publish_results_match_the_native_messages_for_each_mode'] = 3
+            $required['Source_and_acknowledgment_flows_preserve_attributes_visibility_and_deletion'] = 2
+            $required['Close_on_empty_receive_completes_without_disposing_the_borrowed_client'] = 1
+            $required['Missing_queue_fails_the_source_without_disposing_the_borrowed_client'] = 1
+          }
+          if ($results.Count -eq 0 -or @($results | Where-Object outcome -ne Passed).Count -gt 0) {
+            throw 'Every discovered test must execute and pass; empty or skipped runs are invalid.'
+          }
+          if (@($results.testName | Select-Object -Unique).Count -ne $results.Count) {
+            throw 'Duplicate test cases cannot replace required coverage.'
+          }
+          foreach ($case in $required.GetEnumerator()) {
+            $matching = @($results | Where-Object testName -match "\.$($case.Key)(\(|$)")
+            if ($matching.Count -ne $case.Value) { throw "Missing or duplicate cases for $($case.Key)." }
+          }
+        displayName: 'Require named cases and reject empty or skipped TRX runs'
+      - pwsh: |
+          $consumer = 'compatibility/SqsConsumer/SqsCompatibilityConsumer.csproj'
+          $framework = if ($IsWindows) { 'net48' } else { 'net10.0' }
+          dotnet build $consumer -c Release --framework $framework
+          if ($LASTEXITCODE -ne 0) { throw 'Old consumer compilation failed.' }
+          $output = "compatibility/SqsConsumer/bin/Release/$framework"
+          $binary = if ($IsWindows) { "$output/SqsCompatibilityConsumer.exe" } else { "$output/SqsCompatibilityConsumer.dll" }
+          $before = (Get-FileHash $binary).Hash
+          $originalBinary = Join-Path '$(Agent.TempDirectory)' ([IO.Path]::GetFileName($binary))
+          Copy-Item $binary $originalBinary -Force
+          if ($IsWindows) { & $binary } else { dotnet $binary }
+          if ($LASTEXITCODE -ne 0) { throw 'Released-package consumer execution failed.' }
+
+          dotnet pack src/AWS/SQS/Akka.Streams.SQS/Akka.Streams.SQS.csproj -c Release -p:PackageVersion=1.5.59-sqs-validation -o SqsPackages
+          if ($LASTEXITCODE -ne 0) { throw 'Package creation or API/TFM validation failed.' }
+          $feed = (Resolve-Path SqsPackages).Path
+          $candidateCache = Join-Path '$(Agent.TempDirectory)' ("sqs-consumer-{0}-{1}-packages" -f $framework, [guid]::NewGuid().ToString('N'))
+          # Resolve dependencies and binding configuration for the consumer's own TFM.
+          dotnet build $consumer -c Release --framework $framework --force --no-incremental -p:SqsConsumerPackageVersion=1.5.59-sqs-validation "-p:RestoreAdditionalProjectSources=$feed" "-p:RestorePackagesPath=$candidateCache"
+          if ($LASTEXITCODE -ne 0) { throw 'Consumer source is incompatible with the candidate package.' }
+          $resolvedPackage = Join-Path $candidateCache 'akka.streams.sqs/1.5.59-sqs-validation/akka.streams.sqs.1.5.59-sqs-validation.nupkg'
+          $builtPackage = Join-Path $feed 'Akka.Streams.SQS.1.5.59-sqs-validation.nupkg'
+          if ((Get-FileHash $resolvedPackage).Hash -ne (Get-FileHash $builtPackage).Hash) { throw 'Consumer resolved a different candidate package.' }
+          $libraryFramework = if ($IsWindows) { 'netstandard2.0' } else { 'net6.0' }
+          $candidate = "src/AWS/SQS/Akka.Streams.SQS/bin/Release/$libraryFramework"
+          Copy-Item $originalBinary $binary -Force
+          if ((Get-FileHash $binary).Hash -ne $before) { throw 'Consumer was changed after compilation.' }
+          if ((Get-FileHash "$output/Akka.Streams.SQS.dll").Hash -ne (Get-FileHash "$candidate/Akka.Streams.SQS.dll").Hash) {
+            throw 'Consumer did not receive the candidate library.'
+          }
+          if ($IsWindows) { & $binary } else { dotnet $binary }
+          if ($LASTEXITCODE -ne 0) { throw 'Previously compiled consumer failed with the candidate.' }
+        displayName: 'Validate API/TFMs and run unchanged released-package consumer with candidate'
+      - pwsh: |
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $packages = @(Get-ChildItem SqsPackages/*.nupkg)
+          if ($packages.Count -ne 1) { throw 'Expected exactly one SQS package.' }
+          $package = $packages[0]
+          $archive = [IO.Compression.ZipFile]::OpenRead($package.FullName)
+          try {
+            $nuspecEntry = @($archive.Entries | Where-Object FullName -like '*.nuspec')
+            if ($nuspecEntry.Count -ne 1) { throw 'Expected exactly one package manifest.' }
+            $reader = [IO.StreamReader]::new($nuspecEntry[0].Open())
+            try { [xml]$nuspec = $reader.ReadToEnd() } finally { $reader.Dispose() }
+            if ($nuspec.package.metadata.id -ne 'Akka.Streams.SQS') { throw 'Unexpected package identity.' }
+            $version = $nuspec.package.metadata.version
+            $readmePath = [string]$nuspec.package.metadata.readme
+            if (!$readmePath) { throw 'NuGet manifest does not declare a README.' }
+            $entry = $archive.GetEntry($readmePath)
+            if (!$entry) { throw 'README is absent from NuGet archive.' }
+            $reader = [IO.StreamReader]::new($entry.Open())
+            try { $readme = $reader.ReadToEnd() } finally { $reader.Dispose() }
+            $sourceReadme = Get-Content src/AWS/SQS/Akka.Streams.SQS/README.md -Raw
+            if ($readme -cne $sourceReadme) { throw 'Packaged README differs from the source.' }
+            foreach ($tfm in @('net6.0', 'netstandard2.0')) {
+              if (!$archive.GetEntry("lib/$tfm/Akka.Streams.SQS.dll")) { throw "Missing retained TFM $tfm." }
+            }
+          } finally { $archive.Dispose() }
+
+          $examples = [regex]::Matches($readme, '(?s)```csharp\r?\n(.*?)```')
+          if ($examples.Count -ne 2) { throw 'Expected two complete README examples.' }
+          $feed = [Security.SecurityElement]::Escape((Resolve-Path SqsPackages).Path)
+          $cache = [Security.SecurityElement]::Escape((Join-Path '$(Agent.TempDirectory)' ("sqs-readme-{0}-packages" -f [guid]::NewGuid().ToString('N'))))
+          for ($i = 0; $i -lt $examples.Count; $i++) {
+            $directory = Join-Path '$(Agent.TempDirectory)' "sqs-readme-$i"
+            New-Item $directory -ItemType Directory -Force | Out-Null
+            Set-Content "$directory/Program.cs" $examples[$i].Groups[1].Value
+            Set-Content "$directory/Example.csproj" "<Project Sdk='Microsoft.NET.Sdk'><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><RestoreSources>$feed;https://api.nuget.org/v3/index.json</RestoreSources><RestorePackagesPath>$cache</RestorePackagesPath></PropertyGroup><ItemGroup><PackageReference Include='Akka.Streams.SQS' Version='$version' /></ItemGroup></Project>"
+            dotnet build "$directory/Example.csproj" -c Release
+            if ($LASTEXITCODE -ne 0) { throw "README example $i did not compile." }
+          }
+        displayName: 'Inspect NuGet README/TFMs and compile the shipped examples'
+      - task: PublishTestResults@2
+        condition: always()
+        inputs:
+          testResultsFormat: VSTest
+          testResultsFiles: SqsResults/*.trx
+          failTaskOnFailedTests: true
+          failTaskOnMissingResultsFile: true
+  - job: sns_validation
+    displayName: 'SNS integration and compatibility'
+    timeoutInMinutes: 30
+    strategy:
+      matrix:
+        linux:
+          image: ubuntu-latest
+          snsFramework: net10.0
+          snsFilter: FullyQualifiedName~Akka.Streams.Sns.Tests
+        windows:
+          image: windows-latest
+          snsFramework: net48
+          snsFilter: FullyQualifiedName~Akka.Streams.Sns.Tests
+    pool:
+      vmImage: $(image)
+    steps:
+      - checkout: self
+      - task: UseDotNet@2
+        inputs:
+          packageType: sdk
+          useGlobalJson: true
+      - pwsh: |
+          dotnet test src/AWS/SNS/Akka.Streams.Sns.Tests/Akka.Streams.Sns.Tests.csproj -c Release --framework "$(snsFramework)" --filter "$(snsFilter)" --logger "trx;LogFileName=sns.trx" --results-directory SnsResults
+          if ($LASTEXITCODE -ne 0) { throw 'SNS tests failed.' }
+        displayName: 'Run SNS required tests'
+      - pwsh: |
+          dotnet test src/AWS/SNS/Akka.Streams.Sns.IntegrationTests/Akka.Streams.Sns.IntegrationTests.csproj -c Release --logger "trx;LogFileName=sns-integration.trx" --results-directory SnsIntegrationResults
+          if ($LASTEXITCODE -ne 0) { throw 'SNS native integration tests failed.' }
+          $observer = Get-Content src/AWS/SNS/Akka.Streams.Sns.IntegrationTests/obj/project.assets.json -Raw | ConvertFrom-Json
+          $names = @($observer.libraries.PSObject.Properties.Name)
+          if (@($names | Where-Object { $_ -match '^AWSSDK\.SQS/4\.' }).Count -ne 1 -or @($names | Where-Object { $_ -match '^AWSSDK\.Core/4\.' }).Count -ne 1 -or @($names | Where-Object { $_ -match '^Akka\.Streams\.SQS/' -or $_ -match '^AWSSDK\.(SQS|Core)/3\.' }).Count -gt 0) { throw 'SNS observer must use a separate SDK4 graph.' }
+          dotnet restore src/AWS/SQS/Akka.Streams.SQS/Akka.Streams.SQS.csproj
+          if ($LASTEXITCODE -ne 0) { throw 'Legacy SQS dependency restore failed.' }
+          $legacy = Get-Content src/AWS/SQS/Akka.Streams.SQS/obj/project.assets.json -Raw | ConvertFrom-Json
+          if (@($legacy.libraries.PSObject.Properties.Name | Where-Object { $_ -match '^AWSSDK\.SQS/3\.' }).Count -ne 1) { throw 'The shipped SQS adapter must retain its SDK3 dependency.' }
+        displayName: 'Run native SNS subscriptions and verify SDK isolation'
+        condition: eq(variables['Agent.OS'], 'Linux')
+      - pwsh: |
+          [xml]$trx = Get-Content SnsResults/sns.trx -Raw
+          $results = @($trx.TestRun.Results.UnitTestResult)
+          $required = @{
+            ItShouldPublishASingleMessageToSns = 1
+            ItShouldPublishMultipleMessagesToSns = 1
+            ItShouldFailTheStageIfTheAmazonSnsAsyncClientRequestFails = 1
+            ItShouldFailTheStageIfAnUpstreamFailureOccurs = 1
+            The_final_response_completes_without_extra_downstream_demand = 1
+            A_canceled_sdk_publish_fails_with_a_cancellation_error = 1
+          }
+          if ($results.Count -eq 0 -or @($results | Where-Object outcome -ne Passed).Count -gt 0) {
+            throw 'Every discovered test must execute and pass; empty or skipped runs are invalid.'
+          }
+          if (@($results.testName | Select-Object -Unique).Count -ne $results.Count) {
+            throw 'Duplicate test cases cannot replace required coverage.'
+          }
+          foreach ($case in $required.GetEnumerator()) {
+            $matching = @($results | Where-Object testName -match "\.$($case.Key)(\(|$)")
+            if ($matching.Count -ne $case.Value) { throw "Missing or duplicate cases for $($case.Key)." }
+          }
+        displayName: 'Require named cases and reject empty or skipped TRX runs'
+      - pwsh: |
+          [xml]$trx = Get-Content SnsIntegrationResults/sns-integration.trx -Raw
+          $results = @($trx.TestRun.Results.UnitTestResult)
+          $required = @{
+            Plain_flow_delivers_exact_payloads_to_native_subscribers_and_keeps_the_borrowed_client_open = 2
+            Plain_sink_awaits_publication_and_preserves_the_borrowed_client = 1
+            Missing_topic_fails_with_the_sdk_error_and_preserves_the_borrowed_client = 1
+          }
+          if ($results.Count -eq 0 -or @($results | Where-Object outcome -ne Passed).Count -gt 0) {
+            throw 'Every discovered test must execute and pass; empty or skipped runs are invalid.'
+          }
+          if (@($results.testName | Select-Object -Unique).Count -ne $results.Count) {
+            throw 'Duplicate test cases cannot replace required coverage.'
+          }
+          foreach ($case in $required.GetEnumerator()) {
+            $matching = @($results | Where-Object testName -match "\.$($case.Key)(\(|$)")
+            if ($matching.Count -ne $case.Value) { throw "Missing or duplicate cases for $($case.Key)." }
+          }
+        displayName: 'Require native SNS cases with zero skips'
+        condition: eq(variables['Agent.OS'], 'Linux')
+      - pwsh: |
+          $consumer = 'compatibility/SnsConsumer/SnsCompatibilityConsumer.csproj'
+          $framework = if ($IsWindows) { 'net48' } else { 'net10.0' }
+          dotnet build $consumer -c Release --framework $framework
+          if ($LASTEXITCODE -ne 0) { throw 'Old consumer compilation failed.' }
+          $output = "compatibility/SnsConsumer/bin/Release/$framework"
+          $binary = if ($IsWindows) { "$output/SnsCompatibilityConsumer.exe" } else { "$output/SnsCompatibilityConsumer.dll" }
+          $before = (Get-FileHash $binary).Hash
+          $originalBinary = Join-Path '$(Agent.TempDirectory)' ([IO.Path]::GetFileName($binary))
+          Copy-Item $binary $originalBinary -Force
+          if ($IsWindows) { & $binary } else { dotnet $binary }
+          if ($LASTEXITCODE -ne 0) { throw 'Released-package consumer execution failed.' }
+
+          dotnet pack src/AWS/SNS/Akka.Streams.Sns/Akka.Streams.Sns.csproj -c Release -p:PackageVersion=1.5.59-sns-validation -o SnsPackages
+          if ($LASTEXITCODE -ne 0) { throw 'Package creation or API/TFM validation failed.' }
+          $feed = (Resolve-Path SnsPackages).Path
+          $candidateCache = Join-Path '$(Agent.TempDirectory)' ("sns-consumer-{0}-{1}-packages" -f $framework, [guid]::NewGuid().ToString('N'))
+          # Resolve dependencies and binding configuration for the consumer's own TFM.
+          dotnet build $consumer -c Release --framework $framework --force --no-incremental -p:SnsConsumerPackageVersion=1.5.59-sns-validation "-p:RestoreAdditionalProjectSources=$feed" "-p:RestorePackagesPath=$candidateCache"
+          if ($LASTEXITCODE -ne 0) { throw 'Consumer source is incompatible with the candidate package.' }
+          $resolvedPackage = Join-Path $candidateCache 'akka.streams.sns/1.5.59-sns-validation/akka.streams.sns.1.5.59-sns-validation.nupkg'
+          $builtPackage = Join-Path $feed 'Akka.Streams.Sns.1.5.59-sns-validation.nupkg'
+          if ((Get-FileHash $resolvedPackage).Hash -ne (Get-FileHash $builtPackage).Hash) { throw 'Consumer resolved a different candidate package.' }
+          $libraryFramework = if ($IsWindows) { 'netstandard2.0' } else { 'net6.0' }
+          $candidate = "src/AWS/SNS/Akka.Streams.Sns/bin/Release/$libraryFramework"
+          Copy-Item $originalBinary $binary -Force
+          if ((Get-FileHash $binary).Hash -ne $before) { throw 'Consumer was changed after compilation.' }
+          if ((Get-FileHash "$output/Akka.Streams.Sns.dll").Hash -ne (Get-FileHash "$candidate/Akka.Streams.Sns.dll").Hash) {
+            throw 'Consumer did not receive the candidate library.'
+          }
+          if ($IsWindows) { & $binary } else { dotnet $binary }
+          if ($LASTEXITCODE -ne 0) { throw 'Previously compiled consumer failed with the candidate.' }
+        displayName: 'Validate API/TFMs and run unchanged released-package consumer with candidate'
+      - pwsh: |
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $packages = @(Get-ChildItem SnsPackages/*.nupkg)
+          if ($packages.Count -ne 1) { throw 'Expected exactly one SNS package.' }
+          $package = $packages[0]
+          $archive = [IO.Compression.ZipFile]::OpenRead($package.FullName)
+          try {
+            $nuspecEntry = @($archive.Entries | Where-Object FullName -like '*.nuspec')
+            if ($nuspecEntry.Count -ne 1) { throw 'Expected exactly one package manifest.' }
+            $reader = [IO.StreamReader]::new($nuspecEntry[0].Open())
+            try { [xml]$nuspec = $reader.ReadToEnd() } finally { $reader.Dispose() }
+            if ($nuspec.package.metadata.id -ne 'Akka.Streams.Sns') { throw 'Unexpected package identity.' }
+            $version = $nuspec.package.metadata.version
+            $readmePath = [string]$nuspec.package.metadata.readme
+            if (!$readmePath) { throw 'NuGet manifest does not declare a README.' }
+            $entry = $archive.GetEntry($readmePath)
+            if (!$entry) { throw 'README is absent from NuGet archive.' }
+            $reader = [IO.StreamReader]::new($entry.Open())
+            try { $readme = $reader.ReadToEnd() } finally { $reader.Dispose() }
+            $sourceReadme = Get-Content src/AWS/SNS/Akka.Streams.Sns/README.md -Raw
+            if ($readme -cne $sourceReadme) { throw 'Packaged README differs from the source.' }
+            foreach ($tfm in @('net6.0', 'netstandard2.0')) {
+              if (!$archive.GetEntry("lib/$tfm/Akka.Streams.Sns.dll")) { throw "Missing retained TFM $tfm." }
+            }
+          } finally { $archive.Dispose() }
+
+          $examples = [regex]::Matches($readme, '(?s)```csharp\r?\n(.*?)```')
+          if ($examples.Count -ne 2) { throw 'Expected two complete README examples.' }
+          $feed = [Security.SecurityElement]::Escape((Resolve-Path SnsPackages).Path)
+          $cache = [Security.SecurityElement]::Escape((Join-Path '$(Agent.TempDirectory)' ("sns-readme-{0}-packages" -f [guid]::NewGuid().ToString('N'))))
+          for ($i = 0; $i -lt $examples.Count; $i++) {
+            $directory = Join-Path '$(Agent.TempDirectory)' "sns-readme-$i"
+            New-Item $directory -ItemType Directory -Force | Out-Null
+            Set-Content "$directory/Program.cs" $examples[$i].Groups[1].Value
+            Set-Content "$directory/Example.csproj" "<Project Sdk='Microsoft.NET.Sdk'><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><RestoreSources>$feed;https://api.nuget.org/v3/index.json</RestoreSources><RestorePackagesPath>$cache</RestorePackagesPath></PropertyGroup><ItemGroup><PackageReference Include='Akka.Streams.Sns' Version='$version' /></ItemGroup></Project>"
+            dotnet build "$directory/Example.csproj" -c Release
+            if ($LASTEXITCODE -ne 0) { throw "README example $i did not compile." }
+          }
+        displayName: 'Inspect NuGet README/TFMs and compile the shipped examples'
+      - task: PublishTestResults@2
+        condition: always()
+        inputs:
+          testResultsFormat: VSTest
+          testResultsFiles: |
+            SnsResults/*.trx
+            SnsIntegrationResults/*.trx
+          failTaskOnFailedTests: true
+          failTaskOnMissingResultsFile: true
+  - job: signalr_validation
+    displayName: 'SignalR integration and compatibility'
+    timeoutInMinutes: 30
+    strategy:
+      matrix:
+        linux:
+          image: ubuntu-latest
+          signalrFramework: net10.0
+          signalrFilter: FullyQualifiedName~Akka.Streams.SignalR.Tests
+        windows:
+          image: windows-latest
+          signalrFramework: net10.0
+          signalrFilter: FullyQualifiedName~Akka.Streams.SignalR.Tests
+    pool:
+      vmImage: $(image)
+    steps:
+      - checkout: self
+      - task: UseDotNet@2
+        inputs:
+          packageType: sdk
+          useGlobalJson: true
+      - pwsh: |
+          dotnet test src/SignalR/Akka.Streams.SignalR.Tests/Akka.Streams.SignalR.Tests.csproj -c Release --framework "$(signalrFramework)" --filter "$(signalrFilter)" --logger "trx;LogFileName=signalr.trx" --results-directory SignalRResults
+          if ($LASTEXITCODE -ne 0) { throw 'SignalR tests failed.' }
+        displayName: 'Run SignalR required tests'
+      - pwsh: |
+          [xml]$trx = Get-Content SignalRResults/signalr.trx -Raw
+          $results = @($trx.TestRun.Results.UnitTestResult)
+          $required = @{
+            A_pending_send_does_not_block_upstream_failure = 3
+            Closing_and_replacing_a_native_client_keeps_the_shared_stream_usable = 1
+            Failed_and_canceled_transport_tasks_fail_the_open_stream = 6
+            Native_websockets_receive_exact_payloads_and_honor_routing_and_exclusions = 3
+            Sends_keep_their_target_payload_and_sequential_order = 3
+            Websocket_connection_should_be_able_to_receive_data = 1
+            Websocket_connection_should_be_able_to_send_data = 1
+            Websocket_stream_should_work_when_client_closes = 1
+            Websocket_stream_should_work_when_used_by_multiple_flows = 1
+          }
+          if ($results.Count -eq 0 -or @($results | Where-Object outcome -ne Passed).Count -gt 0) {
+            throw 'Every discovered test must execute and pass; empty or skipped runs are invalid.'
+          }
+          if (@($results.testName | Select-Object -Unique).Count -ne $results.Count) {
+            throw 'Duplicate test cases cannot replace required coverage.'
+          }
+          foreach ($case in $required.GetEnumerator()) {
+            $matching = @($results | Where-Object testName -match "\.$($case.Key)(\(|$)")
+            if ($matching.Count -ne $case.Value) { throw "Missing or duplicate cases for $($case.Key)." }
+          }
+        displayName: 'Require named cases and reject empty or skipped TRX runs'
+      - pwsh: |
+          $consumer = 'compatibility/SignalRConsumer/SignalRCompatibilityConsumer.csproj'
+          $framework = 'net10.0'
+          dotnet build $consumer -c Release --framework $framework
+          if ($LASTEXITCODE -ne 0) { throw 'Old consumer compilation failed.' }
+          $output = "compatibility/SignalRConsumer/bin/Release/$framework"
+          $binary = "$output/SignalRCompatibilityConsumer.dll"
+          $before = (Get-FileHash $binary).Hash
+          $originalBinary = Join-Path '$(Agent.TempDirectory)' ([IO.Path]::GetFileName($binary))
+          Copy-Item $binary $originalBinary -Force
+          dotnet $binary
+          if ($LASTEXITCODE -ne 0) { throw 'Released-package consumer execution failed.' }
+
+          dotnet pack src/SignalR/Akka.Streams.SignalR/Akka.Streams.SignalR.csproj -c Release -p:PackageVersion=1.5.59-signalr-validation -o SignalRPackages
+          if ($LASTEXITCODE -ne 0) { throw 'Package creation or API/TFM validation failed.' }
+          $feed = (Resolve-Path SignalRPackages).Path
+          $candidateCache = Join-Path '$(Agent.TempDirectory)' ("signalr-consumer-{0}-{1}-packages" -f $framework, [guid]::NewGuid().ToString('N'))
+          # Resolve dependencies and binding configuration for the consumer's own TFM.
+          dotnet build $consumer -c Release --framework $framework --force --no-incremental -p:SignalRConsumerPackageVersion=1.5.59-signalr-validation "-p:RestoreAdditionalProjectSources=$feed" "-p:RestorePackagesPath=$candidateCache"
+          if ($LASTEXITCODE -ne 0) { throw 'Consumer source is incompatible with the candidate package.' }
+          $resolvedPackage = Join-Path $candidateCache 'akka.streams.signalr/1.5.59-signalr-validation/akka.streams.signalr.1.5.59-signalr-validation.nupkg'
+          $builtPackage = Join-Path $feed 'Akka.Streams.SignalR.1.5.59-signalr-validation.nupkg'
+          if ((Get-FileHash $resolvedPackage).Hash -ne (Get-FileHash $builtPackage).Hash) { throw 'Consumer resolved a different candidate package.' }
+          $libraryFramework = 'net6.0'
+          $candidate = "src/SignalR/Akka.Streams.SignalR/bin/Release/$libraryFramework"
+          Copy-Item $originalBinary $binary -Force
+          if ((Get-FileHash $binary).Hash -ne $before) { throw 'Consumer was changed after compilation.' }
+          if ((Get-FileHash "$output/Akka.Streams.SignalR.dll").Hash -ne (Get-FileHash "$candidate/Akka.Streams.SignalR.dll").Hash) {
+            throw 'Consumer did not receive the candidate library.'
+          }
+          dotnet $binary
+          if ($LASTEXITCODE -ne 0) { throw 'Previously compiled consumer failed with the candidate.' }
+        displayName: 'Validate API/TFMs and run unchanged released-package consumer with candidate'
+      - pwsh: |
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $packages = @(Get-ChildItem SignalRPackages/*.nupkg)
+          if ($packages.Count -ne 1) { throw 'Expected exactly one SignalR package.' }
+          $package = $packages[0]
+          $archive = [IO.Compression.ZipFile]::OpenRead($package.FullName)
+          try {
+            $nuspecEntry = @($archive.Entries | Where-Object FullName -like '*.nuspec')
+            if ($nuspecEntry.Count -ne 1) { throw 'Expected exactly one package manifest.' }
+            $reader = [IO.StreamReader]::new($nuspecEntry[0].Open())
+            try { [xml]$nuspec = $reader.ReadToEnd() } finally { $reader.Dispose() }
+            if ($nuspec.package.metadata.id -ne 'Akka.Streams.SignalR') { throw 'Unexpected package identity.' }
+            $version = $nuspec.package.metadata.version
+            $readmePath = [string]$nuspec.package.metadata.readme
+            if (!$readmePath) { throw 'NuGet manifest does not declare a README.' }
+            $entry = $archive.GetEntry($readmePath)
+            if (!$entry) { throw 'README is absent from NuGet archive.' }
+            $reader = [IO.StreamReader]::new($entry.Open())
+            try { $readme = $reader.ReadToEnd() } finally { $reader.Dispose() }
+            $sourceReadme = Get-Content src/SignalR/Akka.Streams.SignalR/README.md -Raw
+            if ($readme -cne $sourceReadme) { throw 'Packaged README differs from the source.' }
+            foreach ($tfm in @('net6.0')) {
+              if (!$archive.GetEntry("lib/$tfm/Akka.Streams.SignalR.dll")) { throw "Missing retained TFM $tfm." }
+            }
+          } finally { $archive.Dispose() }
+
+          $examples = [regex]::Matches($readme, '(?s)```csharp\r?\n(.*?)```')
+          if ($examples.Count -ne 2) { throw 'Expected two complete README examples.' }
+          $feed = [Security.SecurityElement]::Escape((Resolve-Path SignalRPackages).Path)
+          $cache = [Security.SecurityElement]::Escape((Join-Path '$(Agent.TempDirectory)' ("signalr-readme-{0}-packages" -f [guid]::NewGuid().ToString('N'))))
+          [xml]$central = Get-Content Directory.Packages.props -Raw
+          $clientVersion = [string]($central.Project.ItemGroup.PackageVersion | Where-Object Include -eq 'Microsoft.AspNetCore.SignalR.Client').Version
+          if (!$clientVersion) { throw 'Missing centrally managed SignalR client version.' }
+          for ($i = 0; $i -lt $examples.Count; $i++) {
+            $directory = Join-Path '$(Agent.TempDirectory)' "signalr-readme-$i"
+            New-Item $directory -ItemType Directory -Force | Out-Null
+            Set-Content "$directory/Program.cs" $examples[$i].Groups[1].Value
+            $sdk = if ($i -eq 0) { 'Microsoft.NET.Sdk.Web' } else { 'Microsoft.NET.Sdk' }
+            $clientReference = if ($i -eq 1) { "<PackageReference Include='Microsoft.AspNetCore.SignalR.Client' Version='$clientVersion' />" } else { '' }
+            Set-Content "$directory/Example.csproj" "<Project Sdk='$sdk'><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><RestoreSources>$feed;https://api.nuget.org/v3/index.json</RestoreSources><RestorePackagesPath>$cache</RestorePackagesPath></PropertyGroup><ItemGroup><PackageReference Include='Akka.Streams.SignalR' Version='$version' />$clientReference</ItemGroup></Project>"
+            dotnet build "$directory/Example.csproj" -c Release
+            if ($LASTEXITCODE -ne 0) { throw "README example $i did not compile." }
+          }
+        displayName: 'Inspect NuGet README/TFMs and compile the shipped examples'
+      - pwsh: |
+          $start = [Diagnostics.ProcessStartInfo]::new((Get-Command dotnet).Source)
+          $start.UseShellExecute = $false
+          $start.RedirectStandardOutput = $true
+          $start.RedirectStandardError = $true
+          $start.ArgumentList.Add('$(Agent.TempDirectory)/signalr-readme-0/bin/Release/net10.0/Example.dll')
+          $start.ArgumentList.Add('--urls')
+          $start.ArgumentList.Add('http://127.0.0.1:0')
+          $server = [Diagnostics.Process]::Start($start)
+          $errors = $server.StandardError.ReadToEndAsync()
+          $remainingOutput = $null
+          try {
+            $startup = [Threading.CancellationTokenSource]::new([TimeSpan]::FromSeconds(30))
+            try {
+              while ($true) {
+                $line = $server.StandardOutput.ReadLineAsync($startup.Token).AsTask().GetAwaiter().GetResult()
+                if ($null -eq $line) { throw 'Packaged README server exited before reporting its endpoint.' }
+                if ($line -match '^SIGNALR_READY (http://127\.0\.0\.1:\d+/echo)$') { $env:SIGNALR_URL = $Matches[1]; break }
+              }
+            } finally { $startup.Dispose() }
+            $remainingOutput = $server.StandardOutput.ReadToEndAsync()
+            $reply = @(dotnet '$(Agent.TempDirectory)/signalr-readme-1/bin/Release/net10.0/Example.dll')
+            if ($LASTEXITCODE -ne 0) { throw 'Packaged README SignalR client failed.' }
+            if ([string]::Join("`n", $reply) -cne 'Hello café') { throw 'Packaged README echo differed.' }
+          } finally {
+            try {
+              if (!$server.HasExited) { $server.Kill($true) }
+              if (!$server.WaitForExit(10000)) { throw 'Owned README server did not stop.' }
+            } finally { $server.Dispose() }
+          }
+        displayName: 'Run packaged README server/client through a real dynamic WebSocket endpoint'
+      - task: PublishTestResults@2
+        condition: always()
+        inputs:
+          testResultsFormat: VSTest
+          testResultsFiles: SignalRResults/*.trx
+          failTaskOnFailedTests: true
+          failTaskOnMissingResultsFile: true
+  - job: amqp_v1_validation
+    displayName: 'AMQP 1.0 integration and compatibility'
+    timeoutInMinutes: 30
+    strategy:
+      matrix:
+        linux:
+          image: ubuntu-latest
+        windows:
+          image: windows-latest
+    pool:
+      vmImage: $(image)
+    steps:
+      - checkout: self
+      - task: UseDotNet@2
+        inputs:
+          packageType: sdk
+          useGlobalJson: true
+      - pwsh: |
+          dotnet build src/Amqp/Akka.Streams.Amqp.V1.Tests/Akka.Streams.Amqp.V1.Tests.csproj -c Release --framework net48
+          if ($LASTEXITCODE -ne 0) { throw '.NET Framework test compilation failed.' }
+        displayName: 'Compile retained .NET Framework test target'
+        condition: eq(variables['Agent.OS'], 'Windows_NT')
+      - pwsh: |
+          dotnet test src/Amqp/Akka.Streams.Amqp.V1.Tests/Akka.Streams.Amqp.V1.Tests.csproj -c Release --framework net10.0 --filter FullyQualifiedName~Akka.Streams.Amqp.V1.Tests --logger "trx;LogFileName=amqp-v1.trx" --results-directory AmqpV1Results
+          if ($LASTEXITCODE -ne 0) { throw 'AMQP 1.0 tests failed.' }
+        displayName: 'Run AMQP 1.0 integration tests'
+        condition: eq(variables['Agent.OS'], 'Linux')
+      - pwsh: |
+          [xml]$trx = Get-Content AmqpV1Results/amqp-v1.trx -Raw
+          $results = @($trx.TestRun.Results.UnitTestResult)
+          $required = @{
+            Publish_and_consume_elements_through_a_simple_queue_again_in_the_same_process = 1
+            TestHelloWorld = 1
+            Named_and_address_settings_interoperate_with_native_peers_and_close_their_links = 2
+            A_closed_sender_faults_the_materialized_task_instead_of_leaving_it_pending = 1
+            A_closed_receiver_fails_the_source_and_keeps_the_borrowed_session_open = 1
+            A_serialization_failure_faults_the_materialized_task_with_the_original_error = 1
+          }
+          if ($results.Count -eq 0 -or @($results | Where-Object outcome -ne Passed).Count -gt 0) {
+            throw 'Every discovered test must execute and pass; empty or skipped runs are invalid.'
+          }
+          if (@($results.testName | Select-Object -Unique).Count -ne $results.Count) {
+            throw 'Duplicate test cases cannot replace required coverage.'
+          }
+          foreach ($case in $required.GetEnumerator()) {
+            $matching = @($results | Where-Object testName -match "\.$($case.Key)(\(|$)")
+            if ($matching.Count -ne $case.Value) { throw "Missing or duplicate cases for $($case.Key)." }
+          }
+        displayName: 'Require named cases and reject empty or skipped TRX runs'
+        condition: eq(variables['Agent.OS'], 'Linux')
+      - pwsh: |
+          $consumer = 'compatibility/AmqpV1Consumer/AmqpV1CompatibilityConsumer.csproj'
+          $framework = if ($IsWindows) { 'net48' } else { 'net10.0' }
+          dotnet build $consumer -c Release --framework $framework
+          if ($LASTEXITCODE -ne 0) { throw 'Old consumer compilation failed.' }
+          $output = "compatibility/AmqpV1Consumer/bin/Release/$framework"
+          $binary = if ($IsWindows) { "$output/AmqpV1CompatibilityConsumer.exe" } else { "$output/AmqpV1CompatibilityConsumer.dll" }
+          $before = (Get-FileHash $binary).Hash
+          $originalBinary = Join-Path '$(Agent.TempDirectory)' ([IO.Path]::GetFileName($binary))
+          Copy-Item $binary $originalBinary -Force
+          if ($IsWindows -and (Test-Path "$binary.config")) { Copy-Item "$binary.config" "$originalBinary.config" -Force }
+          if ($IsWindows) { & $binary } else { dotnet $binary }
+          if ($LASTEXITCODE -ne 0) { throw 'Released-package consumer execution failed.' }
+
+          dotnet pack src/Amqp/Akka.Streams.Amqp.V1/Akka.Streams.Amqp.V1.csproj -c Release -p:PackageVersion=1.5.59-amqp-v1-validation -o AmqpV1Packages
+          if ($LASTEXITCODE -ne 0) { throw 'Package creation or API/TFM validation failed.' }
+          $feed = (Resolve-Path AmqpV1Packages).Path
+          $candidateCache = Join-Path '$(Agent.TempDirectory)' "amqp-v1-consumer-$framework-packages"
+          # Resolve dependencies and binding configuration for the consumer's own TFM.
+          dotnet build $consumer -c Release --framework $framework --force --no-incremental -p:AmqpV1ConsumerPackageVersion=1.5.59-amqp-v1-validation "-p:RestoreAdditionalProjectSources=$feed" "-p:RestorePackagesPath=$candidateCache"
+          if ($LASTEXITCODE -ne 0) { throw 'Consumer source is incompatible with the candidate package.' }
+          $resolvedPackage = Join-Path $candidateCache 'akka.streams.amqp.v1/1.5.59-amqp-v1-validation/akka.streams.amqp.v1.1.5.59-amqp-v1-validation.nupkg'
+          $builtPackage = Join-Path $feed 'Akka.Streams.Amqp.V1.1.5.59-amqp-v1-validation.nupkg'
+          if ((Get-FileHash $resolvedPackage).Hash -ne (Get-FileHash $builtPackage).Hash) { throw 'Consumer resolved a different candidate package.' }
+          if ($IsWindows) {
+            & $binary
+            if ($LASTEXITCODE -ne 0) { throw 'Recompiled Windows consumer failed with the candidate graph.' }
+          }
+          $libraryFramework = if ($IsWindows) { 'netstandard2.0' } else { 'net6.0' }
+          $candidate = "src/Amqp/Akka.Streams.Amqp.V1/bin/Release/$libraryFramework"
+          Copy-Item $originalBinary $binary -Force
+          if ((Get-FileHash $binary).Hash -ne $before) { throw 'Consumer was changed after compilation.' }
+          if ((Get-FileHash "$output/Akka.Streams.Amqp.V1.dll").Hash -ne (Get-FileHash "$candidate/Akka.Streams.Amqp.V1.dll").Hash) {
+            throw 'Consumer did not receive the candidate library.'
+          }
+          if ($IsWindows) {
+            # Include frozen IL when MSBuild generates standard output binding policy.
+            Write-Host '##vso[task.setvariable variable=BindingDiagnosticAttempted]true'
+            New-Item '$(Agent.TempDirectory)/amqp-binding-diagnostic/report' -ItemType Directory -Force | Out-Null
+            ./build-system/diagnostics/Invoke-AmqpBindingDiagnostic.ps1 `
+              -OriginalBinary '$(Agent.TempDirectory)/AmqpV1CompatibilityConsumer.exe' `
+              -CandidateOutput 'compatibility/AmqpV1Consumer/bin/Release/net48' `
+              -Feed 'AmqpV1Packages' `
+              -ArtifactRoot '$(Agent.TempDirectory)/amqp-binding-diagnostic'
+          } else {
+            dotnet $binary
+            if ($LASTEXITCODE -ne 0) { throw 'Previously compiled consumer failed with the candidate.' }
+          }
+        displayName: 'Validate API/TFMs and frozen consumer through standard NuGet upgrade resolution'
+      - task: PublishBuildArtifacts@1
+        displayName: 'Publish bounded binding diagnostic evidence'
+        condition: and(always(), eq(variables['Agent.OS'], 'Windows_NT'), eq(variables['BindingDiagnosticAttempted'], 'true'))
+        inputs:
+          PathtoPublish: '$(Agent.TempDirectory)/amqp-binding-diagnostic/report'
+          ArtifactName: 'amqp-binding-diagnostic'
+          publishLocation: Container
+      - pwsh: |
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $packages = @(Get-ChildItem AmqpV1Packages/*.nupkg)
+          if ($packages.Count -ne 1) { throw 'Expected exactly one AMQP 1.0 package.' }
+          $package = $packages[0]
+          $archive = [IO.Compression.ZipFile]::OpenRead($package.FullName)
+          try {
+            $nuspecEntry = @($archive.Entries | Where-Object FullName -like '*.nuspec')
+            if ($nuspecEntry.Count -ne 1) { throw 'Expected exactly one package manifest.' }
+            $reader = [IO.StreamReader]::new($nuspecEntry[0].Open())
+            try { [xml]$nuspec = $reader.ReadToEnd() } finally { $reader.Dispose() }
+            if ($nuspec.package.metadata.id -ne 'Akka.Streams.Amqp.V1') { throw 'Unexpected package identity.' }
+            $version = $nuspec.package.metadata.version
+            $readmePath = [string]$nuspec.package.metadata.readme
+            if (!$readmePath) { throw 'NuGet manifest does not declare a README.' }
+            $entry = $archive.GetEntry($readmePath)
+            if (!$entry) { throw 'README is absent from NuGet archive.' }
+            $reader = [IO.StreamReader]::new($entry.Open())
+            try { $readme = $reader.ReadToEnd() } finally { $reader.Dispose() }
+            $sourceReadme = Get-Content src/Amqp/Akka.Streams.Amqp.V1/README.md -Raw
+            if ($readme -cne $sourceReadme) { throw 'Packaged README differs from the source.' }
+            foreach ($tfm in @('net6.0', 'netstandard2.0')) {
+              if (!$archive.GetEntry("lib/$tfm/Akka.Streams.Amqp.V1.dll")) { throw "Missing retained TFM $tfm." }
+            }
+          } finally { $archive.Dispose() }
+
+          $examples = [regex]::Matches($readme, '(?s)```csharp\r?\n(.*?)```')
+          if ($examples.Count -ne 1) { throw 'Expected one complete README example.' }
+          $feed = [Security.SecurityElement]::Escape((Resolve-Path AmqpV1Packages).Path)
+          $cache = [Security.SecurityElement]::Escape((Join-Path '$(Agent.TempDirectory)' 'amqp-v1-readme-packages'))
+          for ($i = 0; $i -lt $examples.Count; $i++) {
+            $directory = Join-Path '$(Agent.TempDirectory)' "amqp-v1-readme-$i"
+            New-Item $directory -ItemType Directory -Force | Out-Null
+            Set-Content "$directory/Program.cs" $examples[$i].Groups[1].Value
+            Set-Content "$directory/Example.csproj" "<Project Sdk='Microsoft.NET.Sdk'><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><RestoreSources>$feed;https://api.nuget.org/v3/index.json</RestoreSources><RestorePackagesPath>$cache</RestorePackagesPath></PropertyGroup><ItemGroup><PackageReference Include='Akka.Streams.Amqp.V1' Version='$version' /></ItemGroup></Project>"
+            dotnet build "$directory/Example.csproj" -c Release
+            if ($LASTEXITCODE -ne 0) { throw "README example $i did not compile." }
+          }
+        displayName: 'Inspect NuGet README/TFMs and compile the shipped examples'
+      - task: PublishTestResults@2
+        condition: and(always(), eq(variables['Agent.OS'], 'Linux'))
+        inputs:
+          testResultsFormat: VSTest
+          testResultsFiles: AmqpV1Results/*.trx
+          failTaskOnFailedTests: true
+          failTaskOnMissingResultsFile: true
+  - job: eventhub_validation
+    displayName: 'Event Hubs integration and compatibility'
+    timeoutInMinutes: 30
+    strategy:
+      matrix:
+        linux:
+          image: ubuntu-latest
+          eventHubFilter: FullyQualifiedName~Akka.Streams.Azure.EventHub.Tests
+        windows:
+          image: windows-latest
+          eventHubFilter: FullyQualifiedName~EventHubSourceContractSpec
+    pool:
+      vmImage: $(image)
+    steps:
+      - checkout: self
+      - task: UseDotNet@2
+        inputs:
+          packageType: sdk
+          useGlobalJson: true
+      - pwsh: |
+          dotnet test src/Azure/Akka.Streams.Azure.EventHub.Tests/Akka.Streams.Azure.EventHub.Tests.csproj -c Release --framework net10.0 --filter "$(eventHubFilter)" --logger "trx;LogFileName=eventhub.trx" --results-directory EventHubResults
+          if ($LASTEXITCODE -ne 0) { throw 'Event Hubs tests failed.' }
+        displayName: 'Run Event Hubs required tests'
+      - pwsh: |
+          [xml]$trx = Get-Content EventHubResults/eventhub.trx -Raw
+          $results = @($trx.TestRun.Results.UnitTestResult)
+          $required = @{
+            Batched_callback_waits_for_downstream_demand = 1
+            Cancellation_releases_pending_callbacks_and_stops_the_processor = 2
+            Partition_close_and_processing_failure_release_callbacks_and_stop_once = 4
+            Partition_cancellation_releases_the_callback_without_emitting_its_event = 2
+            Startup_failure_keeps_the_original_error_and_stops_the_processor = 2
+            Batch_checkpoint_uses_the_highest_offset_and_its_sequence_number = 1
+          }
+          if (!$IsWindows) {
+            $required['Sink_sends_exact_payloads_and_preserves_the_borrowed_producer'] = 1
+            $required['Source_checkpoints_to_blob_and_recreated_processor_resumes_after_it'] = 2
+          }
+          if ($results.Count -eq 0 -or @($results | Where-Object outcome -ne Passed).Count -gt 0) {
+            throw 'Every discovered test must execute and pass; empty or skipped runs are invalid.'
+          }
+          if (@($results.testName | Select-Object -Unique).Count -ne $results.Count) {
+            throw 'Duplicate test cases cannot replace required coverage.'
+          }
+          foreach ($case in $required.GetEnumerator()) {
+            $matching = @($results | Where-Object testName -match "\.$($case.Key)(\(|$)")
+            if ($matching.Count -ne $case.Value) { throw "Missing or duplicate cases for $($case.Key)." }
+          }
+        displayName: 'Require named cases and reject empty or skipped TRX runs'
+      - pwsh: |
+          $consumer = 'compatibility/EventHubConsumer/EventHubCompatibilityConsumer.csproj'
+          $framework = if ($IsWindows) { 'net48' } else { 'net10.0' }
+          dotnet build $consumer -c Release --framework $framework
+          if ($LASTEXITCODE -ne 0) { throw 'Old consumer compilation failed.' }
+          $output = "compatibility/EventHubConsumer/bin/Release/$framework"
+          $binary = if ($IsWindows) { "$output/EventHubCompatibilityConsumer.exe" } else { "$output/EventHubCompatibilityConsumer.dll" }
+          $before = (Get-FileHash $binary).Hash
+          $originalBinary = Join-Path '$(Agent.TempDirectory)' ([IO.Path]::GetFileName($binary))
+          Copy-Item $binary $originalBinary -Force
+          if ($IsWindows) { & $binary } else { dotnet $binary }
+          if ($LASTEXITCODE -ne 0) { throw 'Released-package consumer execution failed.' }
+
+          dotnet pack src/Azure/Akka.Streams.Azure.EventHub/Akka.Streams.Azure.EventHub.csproj -c Release -p:PackageVersion=1.5.59-eventhub-validation -o EventHubPackages
+          if ($LASTEXITCODE -ne 0) { throw 'Package creation or API/TFM validation failed.' }
+          $feed = (Resolve-Path EventHubPackages).Path
+          $candidateCache = Join-Path '$(Agent.TempDirectory)' ("eventhub-consumer-{0}-{1}-packages" -f $framework, [guid]::NewGuid().ToString('N'))
+          # Resolve dependencies and binding configuration for the consumer's own TFM.
+          dotnet build $consumer -c Release --framework $framework --force --no-incremental -p:EventHubConsumerPackageVersion=1.5.59-eventhub-validation "-p:RestoreAdditionalProjectSources=$feed" "-p:RestorePackagesPath=$candidateCache"
+          if ($LASTEXITCODE -ne 0) { throw 'Consumer source is incompatible with the candidate package.' }
+          $resolvedPackage = Join-Path $candidateCache 'akka.streams.azure.eventhub/1.5.59-eventhub-validation/akka.streams.azure.eventhub.1.5.59-eventhub-validation.nupkg'
+          $builtPackage = Join-Path $feed 'Akka.Streams.Azure.EventHub.1.5.59-eventhub-validation.nupkg'
+          if ((Get-FileHash $resolvedPackage).Hash -ne (Get-FileHash $builtPackage).Hash) { throw 'Consumer resolved a different candidate package.' }
+          $libraryFramework = if ($IsWindows) { 'netstandard2.0' } else { 'net6.0' }
+          $candidate = "src/Azure/Akka.Streams.Azure.EventHub/bin/Release/$libraryFramework"
+          Copy-Item $originalBinary $binary -Force
+          if ((Get-FileHash $binary).Hash -ne $before) { throw 'Consumer was changed after compilation.' }
+          if ((Get-FileHash "$output/Akka.Streams.Azure.EventHub.dll").Hash -ne (Get-FileHash "$candidate/Akka.Streams.Azure.EventHub.dll").Hash) {
+            throw 'Consumer did not receive the candidate library.'
+          }
+          if ($IsWindows) { & $binary } else { dotnet $binary }
+          if ($LASTEXITCODE -ne 0) { throw 'Previously compiled consumer failed with the candidate.' }
+        displayName: 'Validate API/TFMs and run unchanged released-package consumer with candidate'
+      - pwsh: |
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $packages = @(Get-ChildItem EventHubPackages/*.nupkg)
+          if ($packages.Count -ne 1) { throw 'Expected exactly one Event Hubs package.' }
+          $package = $packages[0]
+          $archive = [IO.Compression.ZipFile]::OpenRead($package.FullName)
+          try {
+            $nuspecEntry = @($archive.Entries | Where-Object FullName -like '*.nuspec')
+            if ($nuspecEntry.Count -ne 1) { throw 'Expected exactly one package manifest.' }
+            $reader = [IO.StreamReader]::new($nuspecEntry[0].Open())
+            try { [xml]$nuspec = $reader.ReadToEnd() } finally { $reader.Dispose() }
+            if ($nuspec.package.metadata.id -ne 'Akka.Streams.Azure.EventHub') { throw 'Unexpected package identity.' }
+            $version = $nuspec.package.metadata.version
+            $readmePath = [string]$nuspec.package.metadata.readme
+            if (!$readmePath) { throw 'NuGet manifest does not declare a README.' }
+            $entry = $archive.GetEntry($readmePath)
+            if (!$entry) { throw 'README is absent from NuGet archive.' }
+            $reader = [IO.StreamReader]::new($entry.Open())
+            try { $readme = $reader.ReadToEnd() } finally { $reader.Dispose() }
+            $sourceReadme = Get-Content src/Azure/Akka.Streams.Azure.EventHub/README.md -Raw
+            if ($readme -cne $sourceReadme) { throw 'Packaged README differs from the source.' }
+            foreach ($tfm in @('net6.0', 'netstandard2.0')) {
+              if (!$archive.GetEntry("lib/$tfm/Akka.Streams.Azure.EventHub.dll")) { throw "Missing retained TFM $tfm." }
+            }
+          } finally { $archive.Dispose() }
+
+          $examples = [regex]::Matches($readme, '(?s)```csharp\r?\n(.*?)```')
+          if ($examples.Count -ne 2) { throw 'Expected two complete README examples.' }
+          $feed = [Security.SecurityElement]::Escape((Resolve-Path EventHubPackages).Path)
+          $cache = [Security.SecurityElement]::Escape((Join-Path '$(Agent.TempDirectory)' ("eventhub-readme-{0}-packages" -f [guid]::NewGuid().ToString('N'))))
+          for ($i = 0; $i -lt $examples.Count; $i++) {
+            $directory = Join-Path '$(Agent.TempDirectory)' "eventhub-readme-$i"
+            New-Item $directory -ItemType Directory -Force | Out-Null
+            Set-Content "$directory/Program.cs" $examples[$i].Groups[1].Value
+            Set-Content "$directory/Example.csproj" "<Project Sdk='Microsoft.NET.Sdk'><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><RestoreSources>$feed;https://api.nuget.org/v3/index.json</RestoreSources><RestorePackagesPath>$cache</RestorePackagesPath></PropertyGroup><ItemGroup><PackageReference Include='Akka.Streams.Azure.EventHub' Version='$version' /></ItemGroup></Project>"
+            dotnet build "$directory/Example.csproj" -c Release
+            if ($LASTEXITCODE -ne 0) { throw "README example $i did not compile." }
+          }
+        displayName: 'Inspect NuGet README/TFMs and compile the shipped examples'
+      - task: PublishTestResults@2
+        condition: always()
+        inputs:
+          testResultsFormat: VSTest
+          testResultsFiles: EventHubResults/*.trx
+          failTaskOnFailedTests: true
+          failTaskOnMissingResultsFile: true
   - job: servicebus_validation
     displayName: 'Service Bus integration and compatibility'
     timeoutInMinutes: 30
@@ -455,5 +1218,657 @@ jobs:
         inputs:
           testResultsFormat: VSTest
           testResultsFiles: ServiceBusResults/*.trx
+          failTaskOnFailedTests: true
+          failTaskOnMissingResultsFile: true
+  - job: kinesis_validation
+    displayName: 'Kinesis integration and compatibility'
+    timeoutInMinutes: 30
+    strategy:
+      matrix:
+        linux:
+          image: ubuntu-latest
+          kinesisFramework: net10.0
+          kinesisFilter: FullyQualifiedName~Akka.Streams.Kinesis.Tests
+        windows:
+          image: windows-latest
+          kinesisFramework: net48
+          kinesisFilter: FullyQualifiedName!~KinesisIntegrationSpec
+    pool:
+      vmImage: $(image)
+    steps:
+      - checkout: self
+      - task: UseDotNet@2
+        inputs:
+          packageType: sdk
+          useGlobalJson: true
+      - pwsh: |
+          dotnet test src/AWS/Kinesis/Akka.Streams.Kinesis.Tests/Akka.Streams.Kinesis.Tests.csproj -c Release --framework "$(kinesisFramework)" --filter "$(kinesisFilter)" --logger "trx;LogFileName=kinesis.trx" --results-directory KinesisResults
+          if ($LASTEXITCODE -ne 0) { throw 'Kinesis tests failed.' }
+        displayName: 'Run Kinesis required tests'
+      - pwsh: |
+          [xml]$trx = Get-Content KinesisResults/kinesis.trx -Raw
+          $results = @($trx.TestRun.Results.UnitTestResult)
+          $required = @{
+            KinesisFlow_must_publish_records = 1
+            KinesisFlow_must_publish_records_with_retries = 1
+            KinesisFlow_must_fail_after_trying_to_publish_records_with_several_retries = 1
+            KinesisFlow_must_fail_when_request_returns_an_error = 1
+            A_terminal_shard_response_drains_every_record_before_completion = 1
+            A_finite_publish_completes_after_its_last_pending_sdk_result = 1
+            Concurrent_failed_batches_retry_every_record = 1
+            KinesisSource_must_poll_for_records = 1
+            KinesisSource_must_poll_for_records_with_multiple_requests = 1
+            KinesisSource_must_poll_for_batched_records_with_multiple_requests = 1
+            KinesisSource_must_wait_for_request_before_passing_downstream = 1
+            KinesisSource_must_complete_stage_when_shard_iterator_is_null = 1
+            KinesisSource_must_fail_when_kinesis_client_fails = 1
+            The_source_disposes_its_owned_client_once_on_every_termination = 3
+          }
+          if (!$IsWindows) {
+            $required['Publishing_modes_match_native_payloads_and_sequence_numbers_and_dispose_their_client'] = 3
+            $required['Source_reads_native_records_from_the_requested_position_and_disposes_its_client'] = 3
+            $required['A_missing_stream_fails_and_disposes_the_owned_client'] = 2
+            $required['The_sink_publishes_native_records_and_disposes_its_client_after_completion'] = 1
+          }
+          if ($results.Count -eq 0 -or @($results | Where-Object outcome -ne Passed).Count -gt 0) {
+            throw 'Every discovered test must execute and pass; empty or skipped runs are invalid.'
+          }
+          if (@($results.testName | Select-Object -Unique).Count -ne $results.Count) {
+            throw 'Duplicate test cases cannot replace required coverage.'
+          }
+          foreach ($case in $required.GetEnumerator()) {
+            $matching = @($results | Where-Object testName -match "\.$($case.Key)(\(|$)")
+            if ($matching.Count -ne $case.Value) { throw "Missing or duplicate cases for $($case.Key)." }
+          }
+        displayName: 'Require named cases and reject empty or skipped TRX runs'
+      - pwsh: |
+          $consumer = 'compatibility/KinesisConsumer/KinesisCompatibilityConsumer.csproj'
+          $framework = if ($IsWindows) { 'net48' } else { 'net10.0' }
+          dotnet build $consumer -c Release --framework $framework
+          if ($LASTEXITCODE -ne 0) { throw 'Old consumer compilation failed.' }
+          $output = "compatibility/KinesisConsumer/bin/Release/$framework"
+          $binary = if ($IsWindows) { "$output/KinesisCompatibilityConsumer.exe" } else { "$output/KinesisCompatibilityConsumer.dll" }
+          $before = (Get-FileHash $binary).Hash
+          $originalBinary = Join-Path '$(Agent.TempDirectory)' ([IO.Path]::GetFileName($binary))
+          Copy-Item $binary $originalBinary -Force
+          if ($IsWindows) { & $binary } else { dotnet $binary }
+          if ($LASTEXITCODE -ne 0) { throw 'Released-package consumer execution failed.' }
+
+          dotnet pack src/AWS/Kinesis/Akka.Streams.Kinesis/Akka.Streams.Kinesis.csproj -c Release -p:PackageVersion=1.5.59-kinesis-validation -o KinesisPackages
+          if ($LASTEXITCODE -ne 0) { throw 'Package creation or API/TFM validation failed.' }
+          $feed = (Resolve-Path KinesisPackages).Path
+          $candidateCache = Join-Path '$(Agent.TempDirectory)' ("kinesis-consumer-{0}-{1}-packages" -f $framework, [guid]::NewGuid().ToString('N'))
+          # Resolve dependencies and binding configuration for the consumer's own TFM.
+          dotnet build $consumer -c Release --framework $framework --force --no-incremental -p:KinesisConsumerPackageVersion=1.5.59-kinesis-validation "-p:RestoreAdditionalProjectSources=$feed" "-p:RestorePackagesPath=$candidateCache"
+          if ($LASTEXITCODE -ne 0) { throw 'Consumer source is incompatible with the candidate package.' }
+          $resolvedPackage = Join-Path $candidateCache 'akka.streams.kinesis/1.5.59-kinesis-validation/akka.streams.kinesis.1.5.59-kinesis-validation.nupkg'
+          $builtPackage = Join-Path $feed 'Akka.Streams.Kinesis.1.5.59-kinesis-validation.nupkg'
+          if ((Get-FileHash $resolvedPackage).Hash -ne (Get-FileHash $builtPackage).Hash) { throw 'Consumer resolved a different candidate package.' }
+          $libraryFramework = if ($IsWindows) { 'netstandard2.0' } else { 'net6.0' }
+          $candidate = "src/AWS/Kinesis/Akka.Streams.Kinesis/bin/Release/$libraryFramework"
+          Copy-Item $originalBinary $binary -Force
+          if ((Get-FileHash $binary).Hash -ne $before) { throw 'Consumer was changed after compilation.' }
+          if ((Get-FileHash "$output/Akka.Streams.Kinesis.dll").Hash -ne (Get-FileHash "$candidate/Akka.Streams.Kinesis.dll").Hash) {
+            throw 'Consumer did not receive the candidate library.'
+          }
+          if ($IsWindows) { & $binary } else { dotnet $binary }
+          if ($LASTEXITCODE -ne 0) { throw 'Previously compiled consumer failed with the candidate.' }
+        displayName: 'Validate API/TFMs and run unchanged released-package consumer with candidate'
+      - pwsh: |
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $packages = @(Get-ChildItem KinesisPackages/*.nupkg)
+          if ($packages.Count -ne 1) { throw 'Expected exactly one Kinesis package.' }
+          $package = $packages[0]
+          $archive = [IO.Compression.ZipFile]::OpenRead($package.FullName)
+          try {
+            $nuspecEntry = @($archive.Entries | Where-Object FullName -like '*.nuspec')
+            if ($nuspecEntry.Count -ne 1) { throw 'Expected exactly one package manifest.' }
+            $reader = [IO.StreamReader]::new($nuspecEntry[0].Open())
+            try { [xml]$nuspec = $reader.ReadToEnd() } finally { $reader.Dispose() }
+            if ($nuspec.package.metadata.id -ne 'Akka.Streams.Kinesis') { throw 'Unexpected package identity.' }
+            $version = $nuspec.package.metadata.version
+            $readmePath = [string]$nuspec.package.metadata.readme
+            if (!$readmePath) { throw 'NuGet manifest does not declare a README.' }
+            $entry = $archive.GetEntry($readmePath)
+            if (!$entry) { throw 'README is absent from NuGet archive.' }
+            $reader = [IO.StreamReader]::new($entry.Open())
+            try { $readme = $reader.ReadToEnd() } finally { $reader.Dispose() }
+            $sourceReadme = Get-Content src/AWS/Kinesis/Akka.Streams.Kinesis/README.md -Raw
+            if ($readme -cne $sourceReadme) { throw 'Packaged README differs from the source.' }
+            foreach ($tfm in @('net6.0', 'netstandard2.0')) {
+              if (!$archive.GetEntry("lib/$tfm/Akka.Streams.Kinesis.dll")) { throw "Missing retained TFM $tfm." }
+            }
+          } finally { $archive.Dispose() }
+
+          $examples = [regex]::Matches($readme, '(?s)```csharp\r?\n(.*?)```')
+          if ($examples.Count -ne 2) { throw 'Expected two complete README examples.' }
+          $feed = [Security.SecurityElement]::Escape((Resolve-Path KinesisPackages).Path)
+          $cache = [Security.SecurityElement]::Escape((Join-Path '$(Agent.TempDirectory)' ("kinesis-readme-{0}-packages" -f [guid]::NewGuid().ToString('N'))))
+          for ($i = 0; $i -lt $examples.Count; $i++) {
+            $directory = Join-Path '$(Agent.TempDirectory)' "kinesis-readme-$i"
+            New-Item $directory -ItemType Directory -Force | Out-Null
+            Set-Content "$directory/Program.cs" $examples[$i].Groups[1].Value
+            Set-Content "$directory/Example.csproj" "<Project Sdk='Microsoft.NET.Sdk'><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><RestoreSources>$feed;https://api.nuget.org/v3/index.json</RestoreSources><RestorePackagesPath>$cache</RestorePackagesPath></PropertyGroup><ItemGroup><PackageReference Include='Akka.Streams.Kinesis' Version='$version' /></ItemGroup></Project>"
+            dotnet build "$directory/Example.csproj" -c Release
+            if ($LASTEXITCODE -ne 0) { throw "README example $i did not compile." }
+          }
+        displayName: 'Inspect NuGet README/TFMs and compile the shipped examples'
+      - task: PublishTestResults@2
+        condition: always()
+        inputs:
+          testResultsFormat: VSTest
+          testResultsFiles: KinesisResults/*.trx
+          failTaskOnFailedTests: true
+          failTaskOnMissingResultsFile: true
+  - job: file_validation
+    displayName: 'File integration and compatibility'
+    timeoutInMinutes: 30
+    strategy:
+      matrix:
+        linux:
+          image: ubuntu-latest
+          fileFramework: net10.0
+          fileFilter: FullyQualifiedName~Akka.Streams.File.Tests
+        windows:
+          image: windows-latest
+          fileFramework: net48
+          fileFilter: Platform!=Linux
+    pool:
+      vmImage: $(image)
+    steps:
+      - checkout: self
+      - task: UseDotNet@2
+        inputs:
+          packageType: sdk
+          useGlobalJson: true
+      - pwsh: |
+          dotnet test src/File/Akka.Streams.File.Tests/Akka.Streams.File.Tests.csproj -c Release --framework "$(fileFramework)" --filter "$(fileFilter)" --logger "trx;LogFileName=file-final.trx" --results-directory FileResults
+          if ($LASTEXITCODE -ne 0) { throw 'File tests failed.' }
+        displayName: 'Run File required tests'
+      - pwsh: |
+          [xml]$trx = Get-Content FileResults/file-final.trx -Raw
+          $results = @($trx.TestRun.Results.UnitTestResult)
+          $required = @{
+            A_current_sink_that_cancels_before_its_first_pull_completes_successfully = 1
+            A_current_sink_that_completes_early_cancels_upstream_successfully = 1
+            A_failed_or_canceled_final_sink_fails_the_materialized_task = 2
+            A_missing_watch_directory_fails_instead_of_silently_completing = 1
+            A_real_watcher_reports_rename_and_cancellation_terminates_the_source = 1
+            A_rotated_factory_failure_terminates_the_previous_child = 1
+            A_throwing_sink_factory_fails_the_materialized_task = 1
+            Completing_a_rotated_sink_does_not_drop_other_sinks_or_stop_upstream = 1
+            DirectoryChangesSource_should_emit_multiple_changes = 1
+            DirectoryChangesSource_should_emit_on_directory_changes = 1
+            Early_current_sink_completion_still_waits_for_every_older_sink = 2
+            LogRotatorSink_must_complete_when_consuming_an_empty_source = 1
+            LogRotatorSink_must_correctly_close_sinks = 1
+            LogRotatorSink_must_downstream_fail_on_file_write = 1
+            LogRotatorSink_must_function_fail_on_path_creation = 1
+            LogRotatorSink_must_upstream_fail_after_first_file_creation = 1
+            LogRotatorSink_must_upstream_fail_before_first_file_creation = 1
+            LogRotatorSink_must_work_for_size_based_rotation = 1
+            LogRotatorSink_must_work_for_time_based_rotation = 1
+            LogRotatorSink_must_write_lines_to_a_single_file = 1
+            LogRotatorSink_must_write_lines_to_multiple_files_due_to_fileSize = 1
+            Materializer_shutdown_fails_a_pending_rotation_task = 1
+            Rotation_preserves_utf8_bytes_file_modes_and_closes_every_file = 3
+          }
+          if (!$IsWindows) {
+            $required['Cancellation_releases_the_native_inotify_watch_for_the_directory'] = 1
+          }
+          if ($results.Count -eq 0 -or @($results | Where-Object outcome -ne Passed).Count -gt 0) {
+            throw 'Every discovered test must execute and pass; empty or skipped runs are invalid.'
+          }
+          if (@($results.testName | Select-Object -Unique).Count -ne $results.Count) {
+            throw 'Duplicate test cases cannot replace required coverage.'
+          }
+          foreach ($case in $required.GetEnumerator()) {
+            $matching = @($results | Where-Object testName -match "\.$($case.Key)(\(|$)")
+            if ($matching.Count -ne $case.Value) { throw "Missing or duplicate cases for $($case.Key)." }
+          }
+        displayName: 'Require named cases and reject empty or skipped TRX runs'
+      - pwsh: |
+          $consumer = 'compatibility/FileConsumer/FileCompatibilityConsumer.csproj'
+          $framework = if ($IsWindows) { 'net48' } else { 'net10.0' }
+          dotnet build $consumer -c Release --framework $framework
+          if ($LASTEXITCODE -ne 0) { throw 'Old consumer compilation failed.' }
+          $output = "compatibility/FileConsumer/bin/Release/$framework"
+          $binary = if ($IsWindows) { "$output/FileCompatibilityConsumer.exe" } else { "$output/FileCompatibilityConsumer.dll" }
+          $before = (Get-FileHash $binary).Hash
+          $originalBinary = Join-Path '$(Agent.TempDirectory)' ([IO.Path]::GetFileName($binary))
+          Copy-Item $binary $originalBinary -Force
+          if ($IsWindows) { & $binary } else { dotnet $binary }
+          if ($LASTEXITCODE -ne 0) { throw 'Released-package consumer execution failed.' }
+
+          dotnet pack src/File/Akka.Streams.File/Akka.Streams.File.csproj -c Release -p:PackageVersion=1.5.59-file-validation -o FilePackages
+          if ($LASTEXITCODE -ne 0) { throw 'Package creation or API/TFM validation failed.' }
+          $feed = (Resolve-Path FilePackages).Path
+          $candidateCache = Join-Path '$(Agent.TempDirectory)' ("file-consumer-{0}-{1}-packages" -f $framework, [guid]::NewGuid().ToString('N'))
+          # Resolve dependencies and binding configuration for the consumer's own TFM.
+          dotnet build $consumer -c Release --framework $framework --force --no-incremental -p:FileConsumerPackageVersion=1.5.59-file-validation "-p:RestoreAdditionalProjectSources=$feed" "-p:RestorePackagesPath=$candidateCache"
+          if ($LASTEXITCODE -ne 0) { throw 'Consumer source is incompatible with the candidate package.' }
+          $resolvedPackage = Join-Path $candidateCache 'akka.streams.file/1.5.59-file-validation/akka.streams.file.1.5.59-file-validation.nupkg'
+          $builtPackage = Join-Path $feed 'Akka.Streams.File.1.5.59-file-validation.nupkg'
+          if ((Get-FileHash $resolvedPackage).Hash -ne (Get-FileHash $builtPackage).Hash) { throw 'Consumer resolved a different candidate package.' }
+          $libraryFramework = if ($IsWindows) { 'netstandard2.0' } else { 'net6.0' }
+          $candidate = "src/File/Akka.Streams.File/bin/Release/$libraryFramework"
+          Copy-Item $originalBinary $binary -Force
+          if ((Get-FileHash $binary).Hash -ne $before) { throw 'Consumer was changed after compilation.' }
+          if ((Get-FileHash "$output/Akka.Streams.File.dll").Hash -ne (Get-FileHash "$candidate/Akka.Streams.File.dll").Hash) {
+            throw 'Consumer did not receive the candidate library.'
+          }
+          if ($IsWindows) { & $binary } else { dotnet $binary }
+          if ($LASTEXITCODE -ne 0) { throw 'Previously compiled consumer failed with the candidate.' }
+        displayName: 'Validate API/TFMs and run unchanged released-package consumer with candidate'
+      - pwsh: |
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $packages = @(Get-ChildItem FilePackages/*.nupkg)
+          if ($packages.Count -ne 1) { throw 'Expected exactly one File package.' }
+          $package = $packages[0]
+          $archive = [IO.Compression.ZipFile]::OpenRead($package.FullName)
+          try {
+            $nuspecEntry = @($archive.Entries | Where-Object FullName -like '*.nuspec')
+            if ($nuspecEntry.Count -ne 1) { throw 'Expected exactly one package manifest.' }
+            $reader = [IO.StreamReader]::new($nuspecEntry[0].Open())
+            try { [xml]$nuspec = $reader.ReadToEnd() } finally { $reader.Dispose() }
+            if ($nuspec.package.metadata.id -ne 'Akka.Streams.File') { throw 'Unexpected package identity.' }
+            $version = $nuspec.package.metadata.version
+            $readmePath = [string]$nuspec.package.metadata.readme
+            if (!$readmePath) { throw 'NuGet manifest does not declare a README.' }
+            $entry = $archive.GetEntry($readmePath)
+            if (!$entry) { throw 'README is absent from NuGet archive.' }
+            $reader = [IO.StreamReader]::new($entry.Open())
+            try { $readme = $reader.ReadToEnd() } finally { $reader.Dispose() }
+            $sourceReadme = Get-Content src/File/Akka.Streams.File/README.md -Raw
+            if ($readme -cne $sourceReadme) { throw 'Packaged README differs from the source.' }
+            foreach ($tfm in @('net6.0', 'netstandard2.0')) {
+              if (!$archive.GetEntry("lib/$tfm/Akka.Streams.File.dll")) { throw "Missing retained TFM $tfm." }
+            }
+          } finally { $archive.Dispose() }
+
+          $examples = [regex]::Matches($readme, '(?s)```csharp\r?\n(.*?)```')
+          if ($examples.Count -ne 2) { throw 'Expected two complete README examples.' }
+          $feed = [Security.SecurityElement]::Escape((Resolve-Path FilePackages).Path)
+          $cache = [Security.SecurityElement]::Escape((Join-Path '$(Agent.TempDirectory)' ("file-readme-{0}-packages" -f [guid]::NewGuid().ToString('N'))))
+          for ($i = 0; $i -lt $examples.Count; $i++) {
+            $directory = Join-Path '$(Agent.TempDirectory)' "file-readme-$i"
+            New-Item $directory -ItemType Directory -Force | Out-Null
+            Set-Content "$directory/Program.cs" $examples[$i].Groups[1].Value
+            Set-Content "$directory/Example.csproj" "<Project Sdk='Microsoft.NET.Sdk'><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><RestoreSources>$feed;https://api.nuget.org/v3/index.json</RestoreSources><RestorePackagesPath>$cache</RestorePackagesPath></PropertyGroup><ItemGroup><PackageReference Include='Akka.Streams.File' Version='$version' /></ItemGroup></Project>"
+            dotnet build "$directory/Example.csproj" -c Release
+            if ($LASTEXITCODE -ne 0) { throw "README example $i did not compile." }
+          }
+        displayName: 'Inspect NuGet README/TFMs and compile the shipped examples'
+      - task: PublishTestResults@2
+        condition: always()
+        inputs:
+          testResultsFormat: VSTest
+          testResultsFiles: FileResults/*.trx
+          failTaskOnFailedTests: true
+          failTaskOnMissingResultsFile: true
+  - job: csv_validation
+    displayName: 'Csv integration and compatibility'
+    timeoutInMinutes: 30
+    strategy:
+      matrix:
+        linux:
+          image: ubuntu-latest
+          csvFramework: net10.0
+          csvFilter: FullyQualifiedName~Akka.Streams.Csv.Tests
+        windows:
+          image: windows-latest
+          csvFramework: net48
+          csvFilter: FullyQualifiedName~Akka.Streams.Csv.Tests
+    pool:
+      vmImage: $(image)
+    steps:
+      - checkout: self
+      - task: UseDotNet@2
+        inputs:
+          packageType: sdk
+          useGlobalJson: true
+      - pwsh: |
+          dotnet test src/Csv/Akka.Streams.Csv.Tests/Akka.Streams.Csv.Tests.csproj -c Release --framework "$(csvFramework)" --filter "$(csvFilter)" --logger "trx;LogFileName=csv.trx" --results-directory CsvResults
+          if ($LASTEXITCODE -ne 0) { throw 'Csv tests failed.' }
+        displayName: 'Run Csv required tests'
+      - pwsh: |
+          [xml]$trx = Get-Content CsvResults/csv.trx -Raw
+          $results = @($trx.TestRun.Results.UnitTestResult)
+          $required = @{
+            A_dangling_escape_at_stream_eof_still_fails = 4
+            An_escape_at_a_chunk_boundary_waits_for_its_following_byte = 5
+            An_invalid_escape_after_a_chunk_boundary_still_fails = 2
+            Buffered_final_rows_respect_demand_and_completion_without_an_extra_pull = 1
+            CsvFormatter_quoting_everything_should_format_strings = 1
+            CsvFormatter_quoting_everything_should_format_strings_containing_quotes = 1
+            CsvFormatter_quoting_everything_should_format_strings_containing_quotes_twice = 1
+            CsvFormatter_quoting_everything_should_format_strings_with_commas = 1
+            CsvFormatter_with_comma_delimiter_should_format_strings = 1
+            CsvFormatter_with_comma_delimiter_should_format_strings_containing_commas = 1
+            CsvFormatter_with_comma_delimiter_should_format_strings_containing_quotes = 1
+            CsvFormatter_with_non_standard_charset_should_get_the_encoding_right = 1
+            CsvFormatter_with_required_quoting_should_duplicate_escape_char = 1
+            CsvFormatter_with_required_quoting_should_duplicate_escape_chars_and_quotes = 1
+            CsvFormatter_with_required_quoting_should_format_strings = 1
+            CsvFormatter_with_required_quoting_should_quote_strings_containing_CR_LF = 1
+            CsvFormatter_with_required_quoting_should_quote_strings_containing_LF = 1
+            CsvFormatter_with_required_quoting_should_quote_strings_with_delimiters = 1
+            CsvFormatter_with_required_quoting_should_quote_strings_with_just_a_quote = 1
+            CsvFormatter_with_required_quoting_should_quote_strings_with_quotes = 1
+            CsvFormatter_with_required_quoting_should_quote_strings_with_quotes_at_end = 1
+            CsvFormatting_should_format_simple_value = 1
+            CsvFormatting_should_include_Byte_Order_Mark = 1
+            CsvParser_should_fail_on_escape_at_line_end = 1
+            CsvParser_should_fail_on_escape_within_field_at_line_end = 1
+            CsvParser_should_fail_on_escape_within_quoted_field_at_line_end = 1
+            CsvParser_should_fail_on_escaped_quote_as_quotes_are_escaped_by_doubled_quote_chars = 1
+            CsvParser_should_ignore_trailing_CR_LF = 1
+            CsvParser_should_ignore_trailing_LF = 1
+            CsvParser_should_keep_whitespace = 1
+            CsvParser_should_not_deliver_input_until_end_of_line_is_reached = 1
+            CsvParser_should_parse_UTF8_chars_unchanged = 1
+            CsvParser_should_parse_an_empty_line_with_CR_LF_into_a_single_column = 1
+            CsvParser_should_parse_an_empty_line_with_LF_into_a_single_column = 1
+            CsvParser_should_parse_double_comma_to_be_an_empty_column = 1
+            CsvParser_should_parse_double_escape_chars_into_one_escape_char = 1
+            CsvParser_should_parse_double_quote_chars_into_empty_column = 1
+            CsvParser_should_parse_double_quote_within_quotes_into_one_quote = 1
+            CsvParser_should_parse_double_quote_within_quotes_into_one_quote_at_end_of_value = 1
+            CsvParser_should_parse_empty_input_to_null = 1
+            CsvParser_should_parse_escaped_comma_into_comma = 1
+            CsvParser_should_parse_escaped_escape_in_text_within_quotes_into_quote = 1
+            CsvParser_should_parse_escaped_escape_within_quotes_into_quote = 1
+            CsvParser_should_parse_escaped_quote_in_text_within_quotes_into_quote = 1
+            CsvParser_should_parse_escaped_quote_within_quotes_into_quote = 1
+            CsvParser_should_parse_leading_comma_to_be_an_empty_column = 1
+            CsvParser_should_parse_quoted_escape_chars_into_one_escape_char = 1
+            CsvParser_should_parse_trailing_comma_to_be_an_empty_column = 1
+            CsvParser_should_preserve_Unicode_L_SEP_0x2028_inside_a_field = 1
+            CsvParser_should_quoted_values_keep_whitespace = 1
+            CsvParser_should_quoted_values_may_contain_CR_LF = 1
+            CsvParser_should_quoted_values_may_contain_LF = 1
+            CsvParser_should_read_a_line_if_line_end_is_not_required = 1
+            CsvParser_should_read_comma_separated_values_into_a_list = 1
+            CsvParser_should_read_two_lines_into_two_lists = 1
+            CsvParser_should_read_values_with_different_separator = 1
+            CsvParser_should_take_double_double_quote_as_single_double_quote = 1
+            CsvParsing_should_emit_completion_even_without_new_line_at_end = 1
+            CsvParsing_should_parse_Apple_Numbers_exported_file = 1
+            CsvParsing_should_parse_Google_Docs_exported_file = 1
+            CsvParsing_should_parse_chunks_successfully = 1
+            CsvParsing_should_parse_one_line = 1
+            CsvParsing_should_parse_semicolon_lines = 1
+            CsvParsing_should_parse_two_line = 1
+            CsvParsing_should_parse_two_line_even_without_line_end = 1
+            CsvParsing_should_parse_uniVocity_correctness_test = 1
+            CsvToDictionary_should_be_OK_with_fewer_header_columns_than_data = 1
+            CsvToDictionary_should_be_OK_with_more_header_columns_than_data = 1
+            CsvToDictionary_should_parse_header_line_and_data_line_into_dictionary = 1
+            CsvToDictionary_should_use_column_names_and_data_line_into_map = 1
+            Csv_parsing_with_Byte_Order_Mark_should_accept_UTF8_BOM = 1
+            Csv_parsing_with_Byte_Order_Mark_should_fail_for_UTF16_BE_BOM = 1
+            Csv_parsing_with_Byte_Order_Mark_should_fail_for_UTF16_LE_BOM = 1
+            Csv_parsing_with_Byte_Order_Mark_should_fail_for_UTF32_BE_BOM = 1
+            Csv_parsing_with_Byte_Order_Mark_should_fail_for_UTF32_LE_BOM = 1
+            Downstream_cancellation_reaches_the_byte_source = 1
+            Standalone_cr_and_extra_blank_lines_survive_crlf_boundary_handling = 1
+            Utf8_bom_quotes_and_crlf_are_preserved_across_byte_chunk_boundaries = 3
+          }
+          if ($results.Count -eq 0 -or @($results | Where-Object outcome -ne Passed).Count -gt 0) {
+            throw 'Every discovered test must execute and pass; empty or skipped runs are invalid.'
+          }
+          if (@($results.testName | Select-Object -Unique).Count -ne $results.Count) {
+            throw 'Duplicate test cases cannot replace required coverage.'
+          }
+          foreach ($case in $required.GetEnumerator()) {
+            $matching = @($results | Where-Object testName -match "\.$($case.Key)(\(|$)")
+            if ($matching.Count -ne $case.Value) { throw "Missing or duplicate cases for $($case.Key)." }
+          }
+        displayName: 'Require named cases and reject empty or skipped TRX runs'
+      - pwsh: |
+          $consumer = 'compatibility/CsvConsumer/CsvCompatibilityConsumer.csproj'
+          $framework = if ($IsWindows) { 'net48' } else { 'net10.0' }
+          dotnet build $consumer -c Release --framework $framework
+          if ($LASTEXITCODE -ne 0) { throw 'Old consumer compilation failed.' }
+          $output = "compatibility/CsvConsumer/bin/Release/$framework"
+          $binary = if ($IsWindows) { "$output/CsvCompatibilityConsumer.exe" } else { "$output/CsvCompatibilityConsumer.dll" }
+          $before = (Get-FileHash $binary).Hash
+          $originalBinary = Join-Path '$(Agent.TempDirectory)' ([IO.Path]::GetFileName($binary))
+          Copy-Item $binary $originalBinary -Force
+          if ($IsWindows) { & $binary } else { dotnet $binary }
+          if ($LASTEXITCODE -ne 0) { throw 'Released-package consumer execution failed.' }
+
+          dotnet pack src/Csv/Akka.Streams.Csv/Akka.Streams.Csv.csproj -c Release -p:PackageVersion=1.5.59-csv-validation -o CsvPackages
+          if ($LASTEXITCODE -ne 0) { throw 'Package creation or API/TFM validation failed.' }
+          $feed = (Resolve-Path CsvPackages).Path
+          $candidateCache = Join-Path '$(Agent.TempDirectory)' ("csv-consumer-{0}-{1}-packages" -f $framework, [guid]::NewGuid().ToString('N'))
+          # Resolve dependencies and binding configuration for the consumer's own TFM.
+          dotnet build $consumer -c Release --framework $framework --force --no-incremental -p:CsvConsumerPackageVersion=1.5.59-csv-validation "-p:RestoreAdditionalProjectSources=$feed" "-p:RestorePackagesPath=$candidateCache"
+          if ($LASTEXITCODE -ne 0) { throw 'Consumer source is incompatible with the candidate package.' }
+          $resolvedPackage = Join-Path $candidateCache 'akka.streams.csv/1.5.59-csv-validation/akka.streams.csv.1.5.59-csv-validation.nupkg'
+          $builtPackage = Join-Path $feed 'Akka.Streams.Csv.1.5.59-csv-validation.nupkg'
+          if ((Get-FileHash $resolvedPackage).Hash -ne (Get-FileHash $builtPackage).Hash) { throw 'Consumer resolved a different candidate package.' }
+          $libraryFramework = if ($IsWindows) { 'netstandard2.0' } else { 'net6.0' }
+          $candidate = "src/Csv/Akka.Streams.Csv/bin/Release/$libraryFramework"
+          Copy-Item $originalBinary $binary -Force
+          if ((Get-FileHash $binary).Hash -ne $before) { throw 'Consumer was changed after compilation.' }
+          if ((Get-FileHash "$output/Akka.Streams.Csv.dll").Hash -ne (Get-FileHash "$candidate/Akka.Streams.Csv.dll").Hash) {
+            throw 'Consumer did not receive the candidate library.'
+          }
+          if ($IsWindows) { & $binary } else { dotnet $binary }
+          if ($LASTEXITCODE -ne 0) { throw 'Previously compiled consumer failed with the candidate.' }
+        displayName: 'Validate API/TFMs and run unchanged released-package consumer with candidate'
+      - pwsh: |
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $packages = @(Get-ChildItem CsvPackages/*.nupkg)
+          if ($packages.Count -ne 1) { throw 'Expected exactly one Csv package.' }
+          $package = $packages[0]
+          $archive = [IO.Compression.ZipFile]::OpenRead($package.FullName)
+          try {
+            $nuspecEntry = @($archive.Entries | Where-Object FullName -like '*.nuspec')
+            if ($nuspecEntry.Count -ne 1) { throw 'Expected exactly one package manifest.' }
+            $reader = [IO.StreamReader]::new($nuspecEntry[0].Open())
+            try { [xml]$nuspec = $reader.ReadToEnd() } finally { $reader.Dispose() }
+            if ($nuspec.package.metadata.id -ne 'Akka.Streams.Csv') { throw 'Unexpected package identity.' }
+            $version = $nuspec.package.metadata.version
+            $readmePath = [string]$nuspec.package.metadata.readme
+            if (!$readmePath) { throw 'NuGet manifest does not declare a README.' }
+            $entry = $archive.GetEntry($readmePath)
+            if (!$entry) { throw 'README is absent from NuGet archive.' }
+            $reader = [IO.StreamReader]::new($entry.Open())
+            try { $readme = $reader.ReadToEnd() } finally { $reader.Dispose() }
+            $sourceReadme = Get-Content src/Csv/Akka.Streams.Csv/README.md -Raw
+            if ($readme -cne $sourceReadme) { throw 'Packaged README differs from the source.' }
+            foreach ($tfm in @('net6.0', 'netstandard2.0')) {
+              if (!$archive.GetEntry("lib/$tfm/Akka.Streams.Csv.dll")) { throw "Missing retained TFM $tfm." }
+            }
+          } finally { $archive.Dispose() }
+
+          $examples = [regex]::Matches($readme, '(?s)```csharp\r?\n(.*?)```')
+          if ($examples.Count -ne 2) { throw 'Expected two complete README examples.' }
+          $feed = [Security.SecurityElement]::Escape((Resolve-Path CsvPackages).Path)
+          $cache = [Security.SecurityElement]::Escape((Join-Path '$(Agent.TempDirectory)' ("csv-readme-{0}-packages" -f [guid]::NewGuid().ToString('N'))))
+          for ($i = 0; $i -lt $examples.Count; $i++) {
+            $directory = Join-Path '$(Agent.TempDirectory)' "csv-readme-$i"
+            New-Item $directory -ItemType Directory -Force | Out-Null
+            Set-Content "$directory/Program.cs" $examples[$i].Groups[1].Value
+            Set-Content "$directory/Example.csproj" "<Project Sdk='Microsoft.NET.Sdk'><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><RestoreSources>$feed;https://api.nuget.org/v3/index.json</RestoreSources><RestorePackagesPath>$cache</RestorePackagesPath></PropertyGroup><ItemGroup><PackageReference Include='Akka.Streams.Csv' Version='$version' /></ItemGroup></Project>"
+            dotnet build "$directory/Example.csproj" -c Release
+            if ($LASTEXITCODE -ne 0) { throw "README example $i did not compile." }
+          }
+        displayName: 'Inspect NuGet README/TFMs and compile the shipped examples'
+      - pwsh: |
+          $env:CSV_OUTPUT = Join-Path '$(Agent.TempDirectory)' 'csv-readme-roundtrip.csv'
+          $env:CSV_INPUT = $env:CSV_OUTPUT
+          dotnet "$(Agent.TempDirectory)/csv-readme-0/bin/Release/net10.0/Example.dll"
+          if ($LASTEXITCODE -ne 0) { throw 'Packaged README writer failed.' }
+          $bytes = [IO.File]::ReadAllBytes($env:CSV_OUTPUT)
+          if ($bytes.Length -lt 3 -or [BitConverter]::ToString($bytes[0..2]) -ne 'EF-BB-BF') {
+            throw 'README writer did not emit the configured UTF-8 BOM.'
+          }
+          $lines = @(dotnet "$(Agent.TempDirectory)/csv-readme-1/bin/Release/net10.0/Example.dll")
+          if ($LASTEXITCODE -ne 0) { throw 'Packaged README reader failed.' }
+          $actual = [string]::Join("`n", $lines)
+          $expected = 'café: comma, quote " and newline' + "`n" + 'inside' + "`n" + 'last: plain'
+          if ($actual -cne $expected) { throw "README round-trip output differed: $actual" }
+        displayName: 'Run both packaged README examples against the real filesystem'
+      - task: PublishTestResults@2
+        condition: always()
+        inputs:
+          testResultsFormat: VSTest
+          testResultsFiles: CsvResults/*.trx
+          failTaskOnFailedTests: true
+          failTaskOnMissingResultsFile: true
+  - job: xml_validation
+    displayName: 'Xml integration and compatibility'
+    timeoutInMinutes: 30
+    strategy:
+      matrix:
+        linux:
+          image: ubuntu-latest
+          xmlFramework: net10.0
+          xmlFilter: FullyQualifiedName~Akka.Streams.Xml.Tests
+        windows:
+          image: windows-latest
+          xmlFramework: net48
+          xmlFilter: FullyQualifiedName~Akka.Streams.Xml.Tests
+    pool:
+      vmImage: $(image)
+    steps:
+      - checkout: self
+      - task: UseDotNet@2
+        inputs:
+          packageType: sdk
+          useGlobalJson: true
+      - pwsh: |
+          dotnet test src/Xml/Akka.Streams.Xml.Tests/Akka.Streams.Xml.Tests.csproj -c Release --framework "$(xmlFramework)" --filter "$(xmlFilter)" --logger "trx;LogFileName=xml.trx" --results-directory XmlResults
+          if ($LASTEXITCODE -ne 0) { throw 'Xml tests failed.' }
+        displayName: 'Run Xml required tests'
+      - pwsh: |
+          [xml]$trx = Get-Content XmlResults/xml.trx -Raw
+          $results = @($trx.TestRun.Results.UnitTestResult)
+          $required = @{
+            A_text_token_split_across_byte_chunks_is_a_documented_parser_limitation = 1
+            Element_events_are_balanced_and_complete_with_exact_demand = 5
+            Malformed_xml_and_dtds_fail_the_stream = 2
+            Namespace_events_retain_local_names_and_utf8_text = 1
+            Parser_cancellation_reaches_the_byte_source = 1
+            XmlCoalesce_support_must_properly_report_an_error_if_text_limit_is_exceeded = 1
+            XmlCoalesce_support_must_properly_unify_a_chain_of_CDATA_and_character_chunks = 1
+            XmlCoalesce_support_must_properly_unify_a_chain_of_CDATA_chunks = 1
+            XmlCoalesce_support_must_properly_unify_a_chain_of_character_chunks = 1
+            XmlParser_must_properly_parse_chunks_bigger_than_its_buffer_size = 1
+            XmlParser_must_properly_parse_large_XML = 1
+            XmlParser_must_properly_parse_multiple_XML_in_a_single_stream = 1
+            XmlParser_must_properly_parse_simple_XML = 1
+            XmlParser_must_properly_process_CDATA_blocks = 1
+            XmlParser_must_properly_process_a_comment = 1
+            XmlParser_must_properly_process_attributes = 1
+            XmlParser_must_properly_process_parse_instructions = 1
+            XmlSubslice_support_must_properly_extract_subslices_of_events = 1
+            XmlSubslice_support_must_properly_extract_subslices_of_nested_events = 1
+            XmlSubslice_support_must_properly_filter_from_the_combination_of_the_above = 1
+            XmlSubslice_support_must_properly_ignore_matches_not_deep_enough = 1
+            XmlSubslice_support_must_properly_ignore_partial_matches = 1
+          }
+          if ($results.Count -eq 0 -or @($results | Where-Object outcome -ne Passed).Count -gt 0) {
+            throw 'Every discovered test must execute and pass; empty or skipped runs are invalid.'
+          }
+          if (@($results.testName | Select-Object -Unique).Count -ne $results.Count) {
+            throw 'Duplicate test cases cannot replace required coverage.'
+          }
+          foreach ($case in $required.GetEnumerator()) {
+            $matching = @($results | Where-Object testName -match "\.$($case.Key)(\(|$)")
+            if ($matching.Count -ne $case.Value) { throw "Missing or duplicate cases for $($case.Key)." }
+          }
+        displayName: 'Require named cases and reject empty or skipped TRX runs'
+      - pwsh: |
+          $consumer = 'compatibility/XmlConsumer/XmlCompatibilityConsumer.csproj'
+          $framework = if ($IsWindows) { 'net48' } else { 'net10.0' }
+          dotnet build $consumer -c Release --framework $framework
+          if ($LASTEXITCODE -ne 0) { throw 'Old consumer compilation failed.' }
+          $output = "compatibility/XmlConsumer/bin/Release/$framework"
+          $binary = if ($IsWindows) { "$output/XmlCompatibilityConsumer.exe" } else { "$output/XmlCompatibilityConsumer.dll" }
+          $before = (Get-FileHash $binary).Hash
+          $originalBinary = Join-Path '$(Agent.TempDirectory)' ([IO.Path]::GetFileName($binary))
+          Copy-Item $binary $originalBinary -Force
+          if ($IsWindows) { & $binary } else { dotnet $binary }
+          if ($LASTEXITCODE -ne 0) { throw 'Released-package consumer execution failed.' }
+
+          dotnet pack src/Xml/Akka.Streams.Xml/Akka.Streams.Xml.csproj -c Release -p:PackageVersion=1.5.59-xml-validation -o XmlPackages
+          if ($LASTEXITCODE -ne 0) { throw 'Package creation or API/TFM validation failed.' }
+          $feed = (Resolve-Path XmlPackages).Path
+          $candidateCache = Join-Path '$(Agent.TempDirectory)' ("xml-consumer-{0}-{1}-packages" -f $framework, [guid]::NewGuid().ToString('N'))
+          # Resolve dependencies and binding configuration for the consumer's own TFM.
+          dotnet build $consumer -c Release --framework $framework --force --no-incremental -p:XmlConsumerPackageVersion=1.5.59-xml-validation "-p:RestoreAdditionalProjectSources=$feed" "-p:RestorePackagesPath=$candidateCache"
+          if ($LASTEXITCODE -ne 0) { throw 'Consumer source is incompatible with the candidate package.' }
+          $resolvedPackage = Join-Path $candidateCache 'akka.streams.xml/1.5.59-xml-validation/akka.streams.xml.1.5.59-xml-validation.nupkg'
+          $builtPackage = Join-Path $feed 'Akka.Streams.Xml.1.5.59-xml-validation.nupkg'
+          if ((Get-FileHash $resolvedPackage).Hash -ne (Get-FileHash $builtPackage).Hash) { throw 'Consumer resolved a different candidate package.' }
+          $libraryFramework = if ($IsWindows) { 'netstandard2.0' } else { 'net6.0' }
+          $candidate = "src/Xml/Akka.Streams.Xml/bin/Release/$libraryFramework"
+          Copy-Item $originalBinary $binary -Force
+          if ((Get-FileHash $binary).Hash -ne $before) { throw 'Consumer was changed after compilation.' }
+          if ((Get-FileHash "$output/Akka.Streams.Xml.dll").Hash -ne (Get-FileHash "$candidate/Akka.Streams.Xml.dll").Hash) {
+            throw 'Consumer did not receive the candidate library.'
+          }
+          if ($IsWindows) { & $binary } else { dotnet $binary }
+          if ($LASTEXITCODE -ne 0) { throw 'Previously compiled consumer failed with the candidate.' }
+        displayName: 'Validate API/TFMs and run unchanged released-package consumer with candidate'
+      - pwsh: |
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $packages = @(Get-ChildItem XmlPackages/*.nupkg)
+          if ($packages.Count -ne 1) { throw 'Expected exactly one Xml package.' }
+          $package = $packages[0]
+          $archive = [IO.Compression.ZipFile]::OpenRead($package.FullName)
+          try {
+            $nuspecEntry = @($archive.Entries | Where-Object FullName -like '*.nuspec')
+            if ($nuspecEntry.Count -ne 1) { throw 'Expected exactly one package manifest.' }
+            $reader = [IO.StreamReader]::new($nuspecEntry[0].Open())
+            try { [xml]$nuspec = $reader.ReadToEnd() } finally { $reader.Dispose() }
+            if ($nuspec.package.metadata.id -ne 'Akka.Streams.Xml') { throw 'Unexpected package identity.' }
+            $version = $nuspec.package.metadata.version
+            $readmePath = [string]$nuspec.package.metadata.readme
+            if (!$readmePath) { throw 'NuGet manifest does not declare a README.' }
+            $entry = $archive.GetEntry($readmePath)
+            if (!$entry) { throw 'README is absent from NuGet archive.' }
+            $reader = [IO.StreamReader]::new($entry.Open())
+            try { $readme = $reader.ReadToEnd() } finally { $reader.Dispose() }
+            $sourceReadme = Get-Content src/Xml/Akka.Streams.Xml/README.md -Raw
+            if ($readme -cne $sourceReadme) { throw 'Packaged README differs from the source.' }
+            foreach ($tfm in @('net6.0', 'netstandard2.0')) {
+              if (!$archive.GetEntry("lib/$tfm/Akka.Streams.Xml.dll")) { throw "Missing retained TFM $tfm." }
+            }
+          } finally { $archive.Dispose() }
+
+          $examples = [regex]::Matches($readme, '(?s)```csharp\r?\n(.*?)```')
+          if ($examples.Count -ne 2) { throw 'Expected two complete README examples.' }
+          $feed = [Security.SecurityElement]::Escape((Resolve-Path XmlPackages).Path)
+          $cache = [Security.SecurityElement]::Escape((Join-Path '$(Agent.TempDirectory)' ("xml-readme-{0}-packages" -f [guid]::NewGuid().ToString('N'))))
+          for ($i = 0; $i -lt $examples.Count; $i++) {
+            $directory = Join-Path '$(Agent.TempDirectory)' "xml-readme-$i"
+            New-Item $directory -ItemType Directory -Force | Out-Null
+            Set-Content "$directory/Program.cs" $examples[$i].Groups[1].Value
+            Set-Content "$directory/Example.csproj" "<Project Sdk='Microsoft.NET.Sdk'><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><RestoreSources>$feed;https://api.nuget.org/v3/index.json</RestoreSources><RestorePackagesPath>$cache</RestorePackagesPath></PropertyGroup><ItemGroup><PackageReference Include='Akka.Streams.Xml' Version='$version' /></ItemGroup></Project>"
+            dotnet build "$directory/Example.csproj" -c Release
+            if ($LASTEXITCODE -ne 0) { throw "README example $i did not compile." }
+          }
+        displayName: 'Inspect NuGet README/TFMs and compile the shipped examples'
+      - pwsh: |
+          $first = @(dotnet "$(Agent.TempDirectory)/xml-readme-0/bin/Release/net10.0/Example.dll")
+          if ($LASTEXITCODE -ne 0) { throw 'Packaged XML event example failed.' }
+          $expected = @('StartDocument', 'start:root', 'start:item', 'text:café', 'cdata: & more', 'end:item', 'start:item', 'end:item', 'end:root', 'EndDocument')
+          if ([string]::Join("`n", $first) -cne [string]::Join("`n", $expected)) {
+            throw 'Packaged XML event example emitted unexpected events.'
+          }
+          $second = @(dotnet "$(Agent.TempDirectory)/xml-readme-1/bin/Release/net10.0/Example.dll")
+          if ($LASTEXITCODE -ne 0) { throw 'Packaged XML coalescing/path example failed.' }
+          if ([string]::Join("`n", $second) -cne 'café & more') { throw 'Packaged XML selection example emitted unexpected text.' }
+        displayName: 'Run both packaged README examples and require exact events/text'
+      - task: PublishTestResults@2
+        condition: always()
+        inputs:
+          testResultsFormat: VSTest
+          testResultsFiles: XmlResults/*.trx
           failTaskOnFailedTests: true
           failTaskOnMissingResultsFile: true

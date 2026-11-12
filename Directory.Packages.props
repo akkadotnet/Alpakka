@@ -53,7 +53,7 @@
     <PackageVersion Include="AWSSDK.Kinesis" Version="4.0.1.1" />
     <PackageVersion Include="Azure.Storage.Queues" Version="12.28.1" />
     <PackageVersion Include="Azure.Messaging.ServiceBus" Version="7.21.0" />
-    <PackageVersion Include="Azure.Messaging.EventHubs.Processor" Version="5.11.3" />
+    <PackageVersion Include="Azure.Messaging.EventHubs.Processor" Version="5.11.6" />
     <PackageVersion Include="BenchmarkDotNet" Version="0.14.0" />
     <PackageVersion Include="AMQPNetLite.Core" Version="$(AmqpNetLiteVersion)" />
     <PackageVersion Include="AMQPNetLite.Serialization" Version="$(AmqpNetLiteVersion)" />

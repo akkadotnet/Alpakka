@@ -8,8 +8,9 @@
   "failOnNoProjects": false,
   "skip": [
     "**/.Tests.MultiNode.csproj",
+    "**/examples/**",
     "**/Akka.Streams.Azure.ServiceBus.Tests.csproj",
-    "**/examples/**"
+    "**/Akka.Streams.Azure.StorageQueue.Tests.csproj"
   ],
   "target": [
     "**/*.Tests.csproj"

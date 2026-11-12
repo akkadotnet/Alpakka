@@ -6,14 +6,13 @@
   <PropertyGroup Label="SharedVersions">
     <AkkaVersion>1.5.60</AkkaVersion>
     <ServiceBusConsumerPackageVersion Condition="'$(ServiceBusConsumerPackageVersion)' == ''">1.5.59</ServiceBusConsumerPackageVersion>
+    <StorageQueueConsumerPackageVersion Condition="'$(StorageQueueConsumerPackageVersion)' == ''">1.5.59</StorageQueueConsumerPackageVersion>
   </PropertyGroup>
   <ItemGroup>
-    <PackageVersion Include="Akka.Streams.Azure.ServiceBus" Version="$(ServiceBusConsumerPackageVersion)" />
     <PackageVersion Include="Aspire.Azure.Messaging.EventHubs" Version="13.0.2" />
     <PackageVersion Include="Aspire.Hosting.Azure.EventHubs" Version="13.0.2" />
     <PackageVersion Include="Aspire.Hosting.Azure.ServiceBus" Version="$(AspireVersion)" />
     <PackageVersion Include="Aspire.Hosting.Azure.Storage" Version="13.0.2" />
-    <PackageVersion Include="Aspire.Hosting.Testing" Version="$(AspireVersion)" />
     <PackageVersion Include="Microsoft.AspNetCore.SignalR" Version="1.2.0" />
     <PackageVersion Include="xunit" Version="2.9.2" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.0" />
@@ -47,5 +46,9 @@
     <PackageVersion Include="RabbitMQ.Client" Version="6.8.1" />
     <PackageVersion Include="Testcontainers.ServiceBus" Version="4.6.0" />
     <PackageVersion Include="Aspire.Hosting.AppHost" Version="$(AspireVersion)" />
+    <PackageVersion Include="Akka.Streams.Azure.ServiceBus" Version="$(ServiceBusConsumerPackageVersion)" />
+    <PackageVersion Include="Aspire.Hosting.Testing" Version="$(AspireVersion)" />
+    <PackageVersion Include="Akka.Streams.Azure.StorageQueue" Version="$(StorageQueueConsumerPackageVersion)" />
+    <PackageVersion Include="Testcontainers.Azurite" Version="4.16.0" />
   </ItemGroup>
 </Project>

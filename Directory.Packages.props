@@ -7,6 +7,7 @@
     <AkkaVersion>1.5.60</AkkaVersion>
     <RabbitMqConsumerPackageVersion Condition="'$(RabbitMqConsumerPackageVersion)' == ''">1.5.59</RabbitMqConsumerPackageVersion>
     <StorageQueueConsumerPackageVersion Condition="'$(StorageQueueConsumerPackageVersion)' == ''">1.5.59</StorageQueueConsumerPackageVersion>
+    <SqsConsumerPackageVersion Condition="'$(SqsConsumerPackageVersion)' == ''">1.5.59</SqsConsumerPackageVersion>
   </PropertyGroup>
   <ItemGroup>
     <PackageVersion Include="Akka.Streams.Azure.StorageQueue" Version="$(StorageQueueConsumerPackageVersion)" />
@@ -50,5 +51,7 @@
     <PackageVersion Include="Testcontainers.ServiceBus" Version="4.16.0" />
     <PackageVersion Include="Aspire.Hosting.AppHost" Version="$(AspireVersion)" />
     <PackageVersion Include="Testcontainers.Azurite" Version="4.16.0" />
+    <PackageVersion Include="Akka.Streams.SQS" Version="$(SqsConsumerPackageVersion)" />
+    <PackageVersion Include="Testcontainers.Floci" Version="4.16.0" />
   </ItemGroup>
 </Project>

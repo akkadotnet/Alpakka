@@ -81,14 +81,18 @@ public sealed class EventHubIntegrationSpec(ITestOutputHelper output) : EventHub
         using var deadline = new CancellationTokenSource(TimeSpan.FromMinutes(2));
         await using var producer = new EventHubProducerClient(ConnectionString, "orders");
         var first = create(true);
-        var probe = first.Source.RunWith(this.SinkProbe<TContext>(), Sys.Materializer());
-        probe.EnsureSubscription();
+        var firstShutdown = KillSwitches.Shared("first-processor");
+        var probe = first.Source.Via(firstShutdown.Flow<TContext>())
+            .RunWith(this.SinkProbe<TContext>(), Sys.Materializer());
         try
         {
+            // Source PreStart validates native connections before the subscriber is
+            // attached. Use the processor-ready barrier for that startup work.
             await first.State.Initialized.Task.WaitAsync(deadline.Token);
+            await probe.EnsureSubscriptionAsync(deadline.Token);
             await Send("checkpointed");
             probe.Request(1);
-            var context = probe.ExpectNext(TimeSpan.FromSeconds(30));
+            var context = await probe.ExpectNextAsync(TimeSpan.FromSeconds(30), deadline.Token);
             var checkpointed = Assert.Single(events(context));
             Assert.Equal("checkpointed", checkpointed.EventBody.ToString());
             await context.UpdateCheckpointAsync(deadline.Token);
@@ -97,7 +101,8 @@ public sealed class EventHubIntegrationSpec(ITestOutputHelper output) : EventHub
         }
         finally
         {
-            probe.Cancel();
+            // Cancellation must also work if startup fails before OnSubscribe.
+            firstShutdown.Shutdown();
             await first.State.Stopped.Task.WaitAsync(TimeSpan.FromSeconds(15));
         }
 
@@ -105,15 +110,18 @@ public sealed class EventHubIntegrationSpec(ITestOutputHelper output) : EventHub
         // would miss these; re-reading from Earliest would replay "checkpointed".
         await Send("second", "third");
         var second = create(false);
-        var resumed = second.Source.RunWith(this.SinkProbe<TContext>(), Sys.Materializer());
-        resumed.EnsureSubscription();
+        var secondShutdown = KillSwitches.Shared("resumed-processor");
+        var resumed = second.Source.Via(secondShutdown.Flow<TContext>())
+            .RunWith(this.SinkProbe<TContext>(), Sys.Materializer());
         try
         {
+            await second.State.Initialized.Task.WaitAsync(deadline.Token);
+            await resumed.EnsureSubscriptionAsync(deadline.Token);
             var received = new List<string>();
             while (received.Count < 2)
             {
                 resumed.Request(1);
-                var context = resumed.ExpectNext(TimeSpan.FromSeconds(30));
+                var context = await resumed.ExpectNextAsync(TimeSpan.FromSeconds(30), deadline.Token);
                 var batch = events(context).ToArray();
                 received.AddRange(batch.Select(data => data.EventBody.ToString()));
                 await context.UpdateCheckpointAsync(deadline.Token);
@@ -123,7 +131,7 @@ public sealed class EventHubIntegrationSpec(ITestOutputHelper output) : EventHub
         }
         finally
         {
-            resumed.Cancel();
+            secondShutdown.Shutdown();
             await second.State.Stopped.Task.WaitAsync(TimeSpan.FromSeconds(15));
         }
 

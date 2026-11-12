@@ -28,6 +28,7 @@
     <Project Path="src/AWS/SQS/Akka.Streams.SQS/Akka.Streams.SQS.csproj" />
   </Folder>
   <Folder Name="/Azure/">
+    <Project Path="src/Azure/Akka.Streams.Azure.EventHub.Tests/Akka.Streams.Azure.EventHub.Tests.csproj" />
     <Project Path="src/Azure/Akka.Streams.Azure.EventHub/Akka.Streams.Azure.EventHub.csproj" />
     <Project Path="src/Azure/Akka.Streams.Azure.ServiceBus/Akka.Streams.Azure.ServiceBus.csproj" />
     <Project Path="src/Azure/Akka.Streams.Azure.StorageQueue.Tests/Akka.Streams.Azure.StorageQueue.Tests.csproj" />

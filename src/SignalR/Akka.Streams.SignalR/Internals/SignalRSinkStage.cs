@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using System.Threading.Tasks;
 using Akka.Streams.Stage;
 using Microsoft.AspNetCore.SignalR;
 
@@ -69,12 +70,13 @@ namespace Akka.Streams.SignalR.Internals
                         .SendAsync(nameof(IClientSink.Receive), send.Data)
                         .ContinueWith(task =>
                         {
-                            if (task.IsFaulted || task.IsCanceled)
+                            if (task.IsCanceled)
+                                _onFailure(new TaskCanceledException(task));
+                            else if (task.IsFaulted)
                                 _onFailure(task.Exception);
                             else
                                 _onSuccess();
-                        })
-                        .Wait();
+                        });
                 }
                 else
                 {
@@ -83,12 +85,13 @@ namespace Akka.Streams.SignalR.Internals
                         .SendAsync(nameof(IClientSink.Receive), broadcast.Data)
                         .ContinueWith(task =>
                         {
-                            if (task.IsFaulted || task.IsCanceled)
+                            if (task.IsCanceled)
+                                _onFailure(new TaskCanceledException(task));
+                            else if (task.IsFaulted)
                                 _onFailure(task.Exception);
                             else
                                 _onSuccess();
-                        })
-                        .Wait();
+                        });
                 }
             }
 

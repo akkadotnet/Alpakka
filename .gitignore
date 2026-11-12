@@ -211,6 +211,8 @@ build/
 /src/Amqp/Akka.Streams.RabbitMq.Amqp.Benchmarks/BenchmarkDotNet.Artifacts
 /RabbitMqResults/
 /RabbitMqPackages/
+SignalRResults/
+SignalRPackages/
 /SnsResults/
 /SnsIntegrationResults/
 /SnsPackages/

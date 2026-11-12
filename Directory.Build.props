@@ -8,6 +8,11 @@
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <LangVersion>latest</LangVersion>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <WarningsAsErrors>$(WarningsAsErrors);nullable;CS4014</WarningsAsErrors>
+    <NuGetAudit>true</NuGetAudit>
+    <NuGetAuditMode>all</NuGetAuditMode>
+    <NuGetAuditLevel>low</NuGetAuditLevel>
     <TargetIsMono Condition="'$(TargetFramework)' == '$(NetFrameworkLibVersion)' and '$(OS)' == 'Unix'">true</TargetIsMono>
     <NoWarn>$(NoWarn);CS1591;xUnit1013</NoWarn>
     <AkkaPackageTags>akka;actors;actor model;Akka;concurrency;streams</AkkaPackageTags>

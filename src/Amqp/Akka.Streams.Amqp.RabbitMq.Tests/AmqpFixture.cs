@@ -6,6 +6,8 @@
 //-----------------------------------------------------------------------
 
 using System;
+using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Testcontainers.RabbitMq;
 using Xunit;
@@ -31,28 +33,41 @@ public class AmqpFixture : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        using var outputConsumer = new OutputConsumer();
-        
-        Container = new RabbitMqBuilder()
+        Container = new RabbitMqBuilder("rabbitmq:4.4.0")
             .WithName(RabbitContainerName)
             .WithUsername(UserName)
             .WithPassword(Password)
-            .WithOutputConsumer(outputConsumer)
+            // Retain coverage of the connector's existing non-durable, non-exclusive
+            // queue defaults. RabbitMQ 4.3+ requires explicitly enabling that feature.
+            .WithResourceMapping(Encoding.UTF8.GetBytes(
+                    "deprecated_features.permit.transient_nonexcl_queues = true\n"),
+                "/etc/rabbitmq/conf.d/20-alpakka-compat.conf")
             .Build();
 
-        await Container.StartAsync();
-        
-        await outputConsumer.WaitUntilReadyAsync("Server startup complete", 1, TimeSpan.FromMinutes(1));
-
-        ConnectionString = Container.GetConnectionString();
+        try
+        {
+            using var startup = new CancellationTokenSource(TimeSpan.FromMinutes(3));
+            await Container.StartAsync(startup.Token);
+            ConnectionString = Container.GetConnectionString();
+        }
+        catch (Exception startupException)
+        {
+            try { await DisposeAsync(); }
+            catch (Exception cleanupException)
+            {
+                throw new AggregateException("RabbitMQ startup and cleanup both failed.", startupException, cleanupException);
+            }
+            throw;
+        }
     }
 
     public async Task DisposeAsync()
     {
-        if (Container != null)
+        var container = Container;
+        Container = null;
+        if (container != null)
         {
-            await Container.StopAsync();
-            await Container.DisposeAsync();
+            await container.DisposeAsync();
         }
     }
 }

@@ -39,6 +39,37 @@ public sealed class ServiceBusSourceContractSpec : Akka.TestKit.Xunit2.TestKit
     }
 
     [Fact]
+    public async Task Empty_receive_schedules_retry_and_preserves_ordered_batch_demand()
+    {
+        var receiver = new PollingReceiver();
+        var probe = ServiceBusSource.Create(receiver, pollInterval: TimeSpan.FromMilliseconds(100))
+            .Take(3)
+            .RunWith(this.SinkProbe<ServiceBusReceivedMessage>(), Sys.Materializer());
+
+        try
+        {
+            probe.Request(2);
+            Assert.Equal("Test1", (await probe.ExpectNextAsync(TimeSpan.FromSeconds(3), CancellationToken.None)).Body.ToString());
+            await receiver.EmptyReceiveStarted.Task.WaitAsync(TimeSpan.FromSeconds(3));
+            Assert.Equal(2, receiver.ReceiveCalls);
+            receiver.ReleaseEmptyReceive.TrySetResult(true);
+            await receiver.TimerReceiveStarted.Task.WaitAsync(TimeSpan.FromSeconds(3));
+            Assert.Equal("Test2", (await probe.ExpectNextAsync(TimeSpan.FromSeconds(3), CancellationToken.None)).Body.ToString());
+            probe.ExpectNoMsg(TimeSpan.FromMilliseconds(200));
+            probe.Request(1);
+            Assert.Equal("Test3", (await probe.ExpectNextAsync(TimeSpan.FromSeconds(3), CancellationToken.None)).Body.ToString());
+            probe.ExpectComplete();
+            Assert.Equal(3, receiver.ReceiveCalls);
+            Assert.Equal(1, receiver.MaxInFlight);
+        }
+        finally
+        {
+            receiver.ReleaseEmptyReceive.TrySetResult(true);
+            probe.Cancel();
+        }
+    }
+
+    [Fact]
     public async Task Canceling_during_settlement_stops_the_stage_without_disposing_the_receiver()
     {
         var receiver = new ControlledReceiver();
@@ -120,6 +151,50 @@ public sealed class ServiceBusSourceContractSpec : Akka.TestKit.Xunit2.TestKit
     }
 
     public sealed record Payload(string Value);
+
+    private sealed class PollingReceiver : ServiceBusReceiver
+    {
+        private int _receiveCalls;
+        private int _inFlight;
+        private int _maxInFlight;
+        public int ReceiveCalls => Volatile.Read(ref _receiveCalls);
+        public int MaxInFlight => Volatile.Read(ref _maxInFlight);
+        public TaskCompletionSource<bool> EmptyReceiveStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource<bool> ReleaseEmptyReceive { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource<bool> TimerReceiveStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public override async Task<IReadOnlyList<ServiceBusReceivedMessage>> ReceiveMessagesAsync(
+            int maxMessages, TimeSpan? maxWaitTime = null, CancellationToken cancellationToken = default)
+        {
+            var inFlight = Interlocked.Increment(ref _inFlight);
+            if (inFlight > 1) Interlocked.Exchange(ref _maxInFlight, inFlight);
+            else Interlocked.CompareExchange(ref _maxInFlight, 1, 0);
+            try
+            {
+                switch (Interlocked.Increment(ref _receiveCalls))
+                {
+                    case 1:
+                        return [Message("Test1")];
+                    case 2:
+                        EmptyReceiveStarted.TrySetResult(true);
+                        await ReleaseEmptyReceive.Task.WaitAsync(cancellationToken);
+                        return [];
+                    case 3:
+                        TimerReceiveStarted.TrySetResult(true);
+                        return [Message("Test2"), Message("Test3")];
+                    default:
+                        throw new InvalidOperationException("Unexpected receive call.");
+                }
+            }
+            finally
+            {
+                Interlocked.Decrement(ref _inFlight);
+            }
+        }
+
+        private static ServiceBusReceivedMessage Message(string body) =>
+            ServiceBusModelFactory.ServiceBusReceivedMessage(BinaryData.FromString(body));
+    }
 
     private sealed class ControlledReceiver : ServiceBusReceiver
     {

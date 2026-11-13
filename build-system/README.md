@@ -1,11 +1,10 @@
-# Azure Pipelines Build Files
-These `.yaml` files are used by Windows Azure DevOps Pipelines to help execute the following types of builds:
+## NuGet releases
 
-- Pull request validation on Linux (Mono / .NET Core)
-- Pull request validation on Windows (.NET Framework / .NET Core)
-- NuGet releases with automatic release notes posted to a Github Release repository.
+The `publish_nuget.yml` GitHub Actions workflow publishes a pushed version tag and creates a GitHub release with the packages and latest release notes. Before tagging, complete the required validation in the [test guide](../docs/community/Testing.md), including service integration, compatibility and package checks, on the exact release commit. The publishing workflow does not rerun those checks.
 
-**NOTE**: you will need to change some of the pipeline variables inside the `windows-release.yaml` for your specific project and you will also want to create variable groups with your signing and NuGet push information.
+Finalize the first `RELEASE_NOTES.md` heading with the version and release date (remove `Unreleased`), and push a matching tag such as `1.5.74` without a `v` prefix. The workflow derives package metadata from those notes and checks the tag, all twelve package identities and their included READMEs before publishing. It uses `--skip-duplicate` for retrying partially published releases; inspect existing package versions before retrying because NuGet packages cannot be replaced.
+
+A repository administrator must configure the `publish` GitHub environment and the `NUGET_USER` secret with the NuGet.org package owner's username. On NuGet.org, that owner must create a Trusted Publishing policy for repository `akkadotnet/Alpakka`, workflow `publish_nuget.yml`, and environment `publish`, with the publish-new-version scope and package patterns covering all twelve packages. See [NuGet trusted publishing](https://learn.microsoft.com/en-us/nuget/nuget-org/trusted-publishing). Disable or delete the retired Azure DevOps release pipeline; its checked-in YAML no longer publishes. The separate nightly feed pipeline is unchanged.
 
 The Windows driver-upgrade check runs an unchanged, previously compiled .NET Framework consumer against the exact candidate NuGet archive. MSBuild generates the output binding redirects with the frozen executable included among its reference inputs, preserving non-binding host settings and every executable/runtime DLL hash. The required check rejects the expected SDK binding failure without that generated policy, requires success with it, then restores the original configuration and requires the same binding failure again. This verifies a normal NuGet upgrade with generated output configuration; it does not promise a DLL-only swap with unchanged generated configuration or compatibility with arbitrary custom host binding policies. Public API, retained TFM, package and native integration checks remain required.
 

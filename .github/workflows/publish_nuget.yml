@@ -1,0 +1,70 @@
+name: Publish NuGet
+
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  publish:
+    name: Pack, push to NuGet and create release
+    runs-on: ubuntu-latest
+    environment: publish
+    permissions:
+      id-token: write
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: ./global.json
+
+      - name: Update release notes and version
+        shell: pwsh
+        run: ./build.ps1
+
+      - name: Verify release version
+        shell: pwsh
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: ./build-system/Verify-Release.ps1 -Tag $env:RELEASE_TAG
+
+      - name: Create packages
+        run: dotnet pack Alpakka.slnx -c Release -o ./output
+
+      - name: Verify package artifacts
+        shell: pwsh
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: ./build-system/Verify-Release.ps1 -Tag $env:RELEASE_TAG -PackageDirectory ./output
+
+      - name: NuGet login (OIDC)
+        uses: NuGet/login@v1
+        id: nuget-login
+        with:
+          user: ${{ secrets.NUGET_USER }}
+
+      - name: Push packages to NuGet
+        run: dotnet nuget push './output/*.nupkg' --api-key '${{ steps.nuget-login.outputs.NUGET_API_KEY }}' --source https://api.nuget.org/v3/index.json --skip-duplicate
+
+      - name: Extract latest release notes
+        shell: pwsh
+        run: |
+          $content = Get-Content RELEASE_NOTES.md -Raw
+          if ($content -notmatch '(?s)(####.+?)(?=\r?\n####|\z)') { throw 'Release notes section missing.' }
+          $Matches[1].Trim() | Set-Content RELEASE_NOTES_LATEST.md
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          args=()
+          [[ "$RELEASE_TAG" == *-* ]] && args+=(--prerelease)
+          gh release create "$RELEASE_TAG" ./output/*.nupkg \
+            --title "Alpakka v$RELEASE_TAG" --notes-file RELEASE_NOTES_LATEST.md "${args[@]}"

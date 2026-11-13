@@ -5,7 +5,6 @@ using System.Collections.Immutable;
 using Akka.IO;
 using Akka.Streams.Csv.Dsl;
 using Akka.Streams.Dsl;
-using FluentAssertions;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -25,7 +24,7 @@ namespace Akka.Streams.Csv.Tests.dsl
                 .Via(CsvFormatting.Format())
                 .RunWith(Sink.First<ByteString>(), Materializer);
 
-            (await CompletedWithin(fut)).Should().BeEquivalentTo(ByteString.FromString("eins,zwei,drei\r\n"), opt => opt.WithStrictOrdering());
+            Assert.Equal(ByteString.FromString("eins,zwei,drei\r\n"), (await CompletedWithin(fut)));
         }
 
         [Fact]
@@ -41,11 +40,11 @@ namespace Akka.Streams.Csv.Tests.dsl
                 .RunWith(Sink.Seq<ByteString>(), Materializer);
 
             var res = (await CompletedWithin(fut));
-            res.Should().NotBeNull();
-            res.Count.Should().Be(3);
-            res[0].Should().BeEquivalentTo(ByteOrderMark.UTF8, opt => opt.WithStrictOrdering());
-            res[1].Should().BeEquivalentTo(ByteString.FromString("eins,zwei,drei\r\n"), opt => opt.WithStrictOrdering());
-            res[2].Should().BeEquivalentTo(ByteString.FromString("uno,dos,tres\r\n"), opt => opt.WithStrictOrdering());
+            Assert.NotNull(res);
+            Assert.Equal(3, res.Count);
+            Assert.Equal(ByteOrderMark.UTF8, res[0]);
+            Assert.Equal(ByteString.FromString("eins,zwei,drei\r\n"), res[1]);
+            Assert.Equal(ByteString.FromString("uno,dos,tres\r\n"), res[2]);
         }
     }
 }

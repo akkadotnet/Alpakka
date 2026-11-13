@@ -3,7 +3,6 @@ using System.Threading.Tasks;
 using Akka.Streams.Dsl;
 using Akka.Streams.Supervision;
 using Akka.Streams.TestKit;
-using FluentAssertions;
 using Azure;
 using Azure.Storage.Queues;
 using Azure.Storage.Queues.Models;
@@ -108,7 +107,7 @@ namespace Akka.Streams.Azure.StorageQueue.Tests
 
             probe.ExpectNoMsg(TimeSpan.FromSeconds(3));
             //Message wouldn't be visible if the source has called GetMessages even if the message wasn't pushed to the stream
-            (await Queue.PeekMessagesAsync(1)).Value[0].MessageText.Should().Be("Test2");
+            Assert.Equal("Test2", (await Queue.PeekMessagesAsync(1)).Value[0].MessageText);
 
             probe.Request(1).ExpectNext("Test2");
         }

@@ -8,9 +8,9 @@ using Akka.IO;
 using Akka.Pattern;
 using Akka.Streams.Dsl;
 using Akka.Streams.Xml.Dsl;
-using FluentAssertions;
 using Xunit;
 using Xunit.Abstractions;
+using static Akka.Streams.Xml.Tests.Dsl.XmlProcessingTest;
 
 namespace Akka.Streams.Xml.Tests.Dsl
 {
@@ -41,11 +41,11 @@ namespace Akka.Streams.Xml.Tests.Dsl
 
 
             var result = (await CompletedWithin(fut));
-            result[0].Should().BeOfType<StartDocument>();
-            (result[1] as StartElement).Should().BeEquivalentTo(new StartElement("doc", new Dictionary<string, string>()));
-            (result[2] as Characters).Should().BeEquivalentTo(new Characters("0123456789"));
-            (result[3] as EndElement).Should().BeEquivalentTo(new EndElement("doc"));
-            result[4].Should().BeOfType<EndDocument>();
+            Assert.IsType<StartDocument>(result[0]);
+            AssertEvent(new StartElement("doc", new Dictionary<string, string>()), result[1]);
+            AssertEvent(new Characters("0123456789"), result[2]);
+            AssertEvent(new EndElement("doc"), result[3]);
+            Assert.IsType<EndDocument>(result[4]);
         }
 
         [Fact]
@@ -58,11 +58,11 @@ namespace Akka.Streams.Xml.Tests.Dsl
 
 
             var result = (await CompletedWithin(fut));
-            result[0].Should().BeOfType<StartDocument>();
-            (result[1] as StartElement).Should().BeEquivalentTo(new StartElement("doc", new Dictionary<string, string>()));
-            (result[2] as Characters).Should().BeEquivalentTo(new Characters("0123456789"));
-            (result[3] as EndElement).Should().BeEquivalentTo(new EndElement("doc"));
-            result[4].Should().BeOfType<EndDocument>();
+            Assert.IsType<StartDocument>(result[0]);
+            AssertEvent(new StartElement("doc", new Dictionary<string, string>()), result[1]);
+            AssertEvent(new Characters("0123456789"), result[2]);
+            AssertEvent(new EndElement("doc"), result[3]);
+            Assert.IsType<EndDocument>(result[4]);
         }
 
         [Fact]
@@ -76,11 +76,11 @@ namespace Akka.Streams.Xml.Tests.Dsl
 
 
             var result = (await CompletedWithin(fut));
-            result[0].Should().BeOfType<StartDocument>();
-            (result[1] as StartElement).Should().BeEquivalentTo(new StartElement("doc", new Dictionary<string, string>()));
-            (result[2] as Characters).Should().BeEquivalentTo(new Characters("0123456789"));
-            (result[3] as EndElement).Should().BeEquivalentTo(new EndElement("doc"));
-            result[4].Should().BeOfType<EndDocument>();
+            Assert.IsType<StartDocument>(result[0]);
+            AssertEvent(new StartElement("doc", new Dictionary<string, string>()), result[1]);
+            AssertEvent(new Characters("0123456789"), result[2]);
+            AssertEvent(new EndElement("doc"), result[3]);
+            Assert.IsType<EndDocument>(result[4]);
         }
 
         [Fact]

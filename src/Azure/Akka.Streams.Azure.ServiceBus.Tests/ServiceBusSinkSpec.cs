@@ -12,7 +12,6 @@ using Akka.Streams.Dsl;
 using Akka.Streams.Supervision;
 using Akka.Streams.TestKit;
 using Azure.Messaging.ServiceBus;
-using FluentAssertions.Extensions;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -36,9 +35,9 @@ public class ServiceBusSinkSpec: ServiceBusSpecBase
             .Grouped(10)
             .ToServiceBus(sender, Materializer);
 
-        await t.WaitAsync(15.Seconds());
+        await t.WaitAsync(TimeSpan.FromSeconds(15));
 
-        var result = await receiver.ReceiveMessagesAsync(10, 15.Seconds());
+        var result = await receiver.ReceiveMessagesAsync(10, TimeSpan.FromSeconds(15));
         Assert.Equal(messages, result.Select(m => Encoding.UTF8.GetString(m.Body)).ToArray());
     }
     

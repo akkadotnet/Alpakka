@@ -7,7 +7,6 @@ using System.Threading.Tasks;
 using Akka.IO;
 using Akka.Streams.Csv.Dsl;
 using Akka.Streams.Dsl;
-using FluentAssertions;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -26,12 +25,12 @@ namespace Akka.Streams.Csv.Tests.dsl
                 .Via(CsvToDictionary.ToDictionary())
                 .RunWith(Sink.First<Dictionary<string, ByteString>>(), Materializer);
 
-            (await CompletedWithin(fut)).Should().BeEquivalentTo(new Dictionary<string, ByteString>
+            Assert.Equal((new Dictionary<string, ByteString>
             {
                 {"eins", ByteString.FromString("1") },
                 {"zwei", ByteString.FromString("2") },
                 {"drei", ByteString.FromString("3") },
-            }, opt => opt.WithStrictOrdering());
+            }).OrderBy(p => p.Key), ((await CompletedWithin(fut))).OrderBy(p => p.Key));
         }
 
         [Fact]
@@ -42,11 +41,11 @@ namespace Akka.Streams.Csv.Tests.dsl
                 .Via(CsvToDictionary.ToDictionary())
                 .RunWith(Sink.First<Dictionary<string, ByteString>>(), Materializer);
 
-            (await CompletedWithin(fut)).Should().BeEquivalentTo(new Dictionary<string, ByteString>
+            Assert.Equal((new Dictionary<string, ByteString>
             {
                 {"eins", ByteString.FromString("1") },
                 {"zwei", ByteString.FromString("2") },
-            }, opt => opt.WithStrictOrdering());
+            }).OrderBy(p => p.Key), ((await CompletedWithin(fut))).OrderBy(p => p.Key));
         }
 
         [Fact]
@@ -57,12 +56,12 @@ namespace Akka.Streams.Csv.Tests.dsl
                 .Via(CsvToDictionary.ToDictionary())
                 .RunWith(Sink.First<Dictionary<string, ByteString>>(), Materializer);
 
-            (await CompletedWithin(fut)).Should().BeEquivalentTo(new Dictionary<string, ByteString>
+            Assert.Equal((new Dictionary<string, ByteString>
             {
                 {"eins", ByteString.FromString("1") },
                 {"zwei", ByteString.FromString("2") },
                 {"drei", ByteString.FromString("3") },
-            }, opt => opt.WithStrictOrdering());
+            }).OrderBy(p => p.Key), ((await CompletedWithin(fut))).OrderBy(p => p.Key));
         }
 
         [Fact]
@@ -73,12 +72,12 @@ namespace Akka.Streams.Csv.Tests.dsl
                 .Via(CsvToDictionary.WithHeaders(new []{ "eins", "zwei", "drei" }.ToImmutableList()))
                 .RunWith(Sink.First<Dictionary<string, ByteString>>(), Materializer);
 
-            (await CompletedWithin(fut)).Should().BeEquivalentTo(new Dictionary<string, ByteString>
+            Assert.Equal((new Dictionary<string, ByteString>
             {
                 {"eins", ByteString.FromString("1") },
                 {"zwei", ByteString.FromString("2") },
                 {"drei", ByteString.FromString("3") },
-            }, opt => opt.WithStrictOrdering());
+            }).OrderBy(p => p.Key), ((await CompletedWithin(fut))).OrderBy(p => p.Key));
 
         }
     }

@@ -11,14 +11,12 @@ using Akka.Streams.Dsl;
 using Akka.Streams.TestKit;
 using Amazon.Kinesis;
 using Amazon.Kinesis.Model;
-using FluentAssertions.Extensions;
 using NSubstitute;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using FluentAssertions;
 using Xunit;
 using Xunit.Abstractions;
 using Record = Amazon.Kinesis.Model.Record;
@@ -39,7 +37,7 @@ namespace Akka.Streams.Kinesis.Tests
             _kinesisClient = NSubstitute.Substitute.For<IAmazonKinesis>();
             _settings = ShardSettings.Create("test-stream", "shard-id")
                 .WithShardIteratorType(ShardIteratorType.TRIM_HORIZON)
-                .WithRefreshInterval(1.Seconds())
+                .WithRefreshInterval(TimeSpan.FromSeconds(1))
                 .WithLimit(500);
         }
 
@@ -105,7 +103,7 @@ namespace Akka.Streams.Kinesis.Tests
             probe.ExpectNext("a");
             probe.ExpectNext("b");
 
-            probe.ExpectNoMsg(1.Seconds());
+            probe.ExpectNoMsg(TimeSpan.FromSeconds(1));
 
             subscription.Request(2);
             probe.ExpectNext("a");
@@ -130,7 +128,7 @@ namespace Akka.Streams.Kinesis.Tests
             probe.ExpectNext("a");
             probe.ExpectNext("b");
 
-            probe.ExpectNoMsg(1.Seconds());
+            probe.ExpectNoMsg(TimeSpan.FromSeconds(1));
 
             subscription.Request(2);
             probe.ExpectNext("a");
@@ -144,7 +142,7 @@ namespace Akka.Streams.Kinesis.Tests
             probe.ExpectNext("c");
             probe.ExpectNext("d");
 
-            probe.ExpectNoMsg(1.Seconds());
+            probe.ExpectNoMsg(TimeSpan.FromSeconds(1));
 
 
             subscription.Request(2);
@@ -230,7 +228,7 @@ namespace Akka.Streams.Kinesis.Tests
             var subscription = probe.ExpectSubscription();
             subscription.Request(1);
             var exception = probe.ExpectError();
-            ExceptionMessageContains(exception, "kinesis-records-error").Should().BeTrue();
+            Assert.True(ExceptionMessageContains(exception, "kinesis-records-error"));
         }
 
         private static bool ExceptionMessageContains(Exception ex, string expected)

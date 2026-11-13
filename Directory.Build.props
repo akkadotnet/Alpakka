@@ -27,7 +27,21 @@
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
   <PropertyGroup>
-    <PackageReleaseNotes>Updated Akka.NET dependencies to 1.5.74. Includes connector fixes and individual NuGet READMEs. See https://github.com/akkadotnet/Alpakka/blob/dev/RELEASE_NOTES.md for details and upstream compatibility guidance.</PackageReleaseNotes>
+    <PackageReleaseNotes>* Bump the minimum Akka.NET dependency to [1.5.74](https://github.com/akkadotnet/akka.net/releases/tag/1.5.74), with aligned Streams and TestKit dependencies.
+* Include an individual README in each of the twelve connector packages, with usage, ownership, delivery semantics, limitations and linked NuGet version/download badges. Expand the repository README and documentation navigation.
+* Update compatible Azure, AWS, AMQP and SignalR dependencies. Package READMEs document remaining SDK support and version limitations.
+* Azure Service Bus JSON sources await successful message completion before emitting values and propagate settlement failures.
+* Fix SQS batch-response correlation when response entries arrive in a different order.
+* Improve SNS and Kinesis completion, cancellation and failure handling.
+* Remove blocking SignalR send waits while preserving sequential delivery and existing materialized values.
+* Propagate AMQP conversion and connection failures through the materialized completion task.
+* Correct CSV parsing across split CRLF/escape sequences and XML parser empty-element/document completion, including reader and feeder cleanup.
+* Improve rotating-file sink cleanup on completion and failures.
+* Add required service integration, package/API, unchanged-consumer and packaged-example validation. Harden Event Hubs startup and Service Bus polling tests.
+* Replace legacy FluentAssertions usages with xUnit assertions, retaining their payload, ordering, exception and deadline checks.
+* Mark the historical `Akka.Streams.Channels`, `Akka.Streams.Azure.EventHub.V5` and `Akka.Streams.SignalR.AspNetCore` packages as Legacy on NuGet. See the [migration guide](https://alpakka.getakka.net/documentation/LegacyPackages.html) for their maintained replacements and compatibility requirements.
+
+**Upstream compatibility:** Alpakka retains its public APIs and library targets. Raising the Akka.NET minimum from 1.5.60 inherits upstream binary changes: the old `RetrySupport.Retry` overload with an `int randomFactor` is replaced by a `double` overload, and `ISourceQueue&lt;T&gt;` requires `OfferAsync(T, CancellationToken)`. Applications using that old compiled overload or custom queue implementations need to update and rebuild against the new dependencies.</PackageReleaseNotes>
   </PropertyGroup>
   <!-- SourceLink support for all Akka.NET projects -->
   <ItemGroup>

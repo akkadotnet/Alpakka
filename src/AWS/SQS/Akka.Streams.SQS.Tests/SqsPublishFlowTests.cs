@@ -17,7 +17,6 @@ using Akka.Streams.Dsl;
 using Akka.Streams.TestKit;
 using Amazon.SQS;
 using Amazon.SQS.Model;
-using FluentAssertions;
 using NSubstitute;
 using Xunit;
 using Xunit.Abstractions;
@@ -171,9 +170,9 @@ namespace Akka.Streams.SQS.Tests
             foreach (var expected in new[] { new[] { "a-1", "a-2" }, new[] { "b-1", "b-2", "b-3" } })
             {
                 var batch = subscriber.ExpectNext();
-                batch.Select(result => result.Request.MessageBody).Should().Equal(expected);
-                batch.Select(result => result.Result.Id).Should().Equal(Enumerable.Range(0, expected.Length).Select(index => index.ToString()));
-                batch.Should().OnlyContain(result => result.Result.MessageId == "id-" + result.Request.MessageBody);
+                Assert.Equal(expected, batch.Select(result => result.Request.MessageBody));
+                Assert.Equal(Enumerable.Range(0, expected.Length).Select(index => index.ToString()), batch.Select(result => result.Result.Id));
+                Assert.All(batch, result => Assert.Equal("id-" + result.Request.MessageBody, result.Result.MessageId));
             }
 
             subscriber.Cancel();

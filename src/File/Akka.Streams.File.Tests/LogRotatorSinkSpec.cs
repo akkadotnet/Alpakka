@@ -16,11 +16,8 @@ using Akka.Streams.Dsl;
 using Akka.Streams.Stage;
 using Akka.Streams.TestKit;
 using Akka.Util;
-using FluentAssertions;
-using FluentAssertions.Extensions;
 using Xunit;
 using Xunit.Abstractions;
-using static FluentAssertions.FluentActions;
 
 namespace Akka.Streams.File.Tests
 {
@@ -82,8 +79,8 @@ namespace Akka.Streams.File.Tests
             var rotatorSink = LogRotatorSink.Create(TriggerCreator);
 
             var completion = Source.Empty<ByteString>().RunWith(rotatorSink, _materializer);
-            await ShouldCompleteWithin(completion, 3.Seconds());
-            (await completion).Should().Be(Done.Instance);
+            await ShouldCompleteWithin(completion, TimeSpan.FromSeconds(3));
+            Assert.Equal(Done.Instance, await completion);
         }
 
         [Fact]
@@ -110,8 +107,8 @@ namespace Akka.Streams.File.Tests
                 .Select(ByteString.FromString)
                 .RunWith(sizeRotatorSink, _materializer);
 
-            await ShouldCompleteWithin(fileSizeCompletion, 3.Seconds());
-            (await fileSizeCompletion).Should().Be(Done.Instance);
+            await ShouldCompleteWithin(fileSizeCompletion, TimeSpan.FromSeconds(3));
+            Assert.Equal(Done.Instance, await fileSizeCompletion);
         }
 
         [Fact]
@@ -137,8 +134,8 @@ namespace Akka.Streams.File.Tests
                 .Select(ByteString.FromString)
                 .RunWith(timeBasedRotatorSink, _materializer);
 
-            await ShouldCompleteWithin(timeBaseCompletion, 3.Seconds());
-            (await timeBaseCompletion).Should().Be(Done.Instance);
+            await ShouldCompleteWithin(timeBaseCompletion, TimeSpan.FromSeconds(3));
+            Assert.Equal(Done.Instance, await timeBaseCompletion);
         }
 
         [Fact]
@@ -159,11 +156,11 @@ namespace Akka.Streams.File.Tests
             }
 
             var completion = Source.From(_testByteStrings).RunWith(LogRotatorSink.Create(TriggerFunctionCreator), _materializer);
-            await ShouldCompleteWithin(completion, 3.Seconds());
+            await ShouldCompleteWithin(completion, TimeSpan.FromSeconds(3));
 
             var (contents, sizes) = await ReadUpFilesAndSizesThenClean(files);
-            sizes.Should().BeEquivalentTo(new List<long> { 6006L });
-            contents.Should().BeEquivalentTo(new List<string> { string.Join("", _testLines) });
+            Assert.Equal(new long[] { 6006L }, sizes.OrderBy(x => x));
+            Assert.Equal(new[] { string.Join("", _testLines) }, contents.OrderBy(x => x));
         }
 
         [Fact]
@@ -171,11 +168,11 @@ namespace Akka.Streams.File.Tests
         {
             var (triggerFunctionCreator, files) = FileLengthTriggerCreator();
             var completion = Source.From(_testByteStrings).RunWith(LogRotatorSink.Create(triggerFunctionCreator), _materializer);
-            await ShouldCompleteWithin(completion, 3.Seconds());
+            await ShouldCompleteWithin(completion, TimeSpan.FromSeconds(3));
 
             var (contents, sizes) = await ReadUpFilesAndSizesThenClean(files());
-            sizes.Should().BeEquivalentTo(new List<long> { 2002L, 2002L, 2002L });
-            contents.Should().BeEquivalentTo(Slide(_testLines).Select(tuple => tuple.Item1 + tuple.Item2));
+            Assert.Equal(new long[] { 2002L, 2002L, 2002L }, sizes.OrderBy(x => x));
+            Assert.Equal(Slide(_testLines).Select(tuple => tuple.Item1 + tuple.Item2).OrderBy(x => x), contents.OrderBy(x => x));
         }
 
         [Fact]
@@ -192,8 +189,8 @@ namespace Akka.Streams.File.Tests
                     _ => Flow.Create<ByteString>()
                         .ToMaterialized(new StrangeSlowSink<ByteString>(Add, TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(200)), Keep.Right)), _materializer);
 
-            await ShouldCompleteWithin(completion, 3.Seconds());
-            @out.Should().BeEquivalentTo(test);
+            await ShouldCompleteWithin(completion, TimeSpan.FromSeconds(3));
+            Assert.Equal(test.OrderBy(x => x), @out.OrderBy(x => x));
         }
 
         [Fact]
@@ -207,9 +204,11 @@ namespace Akka.Streams.File.Tests
             var ex = new Exception("my-exception");
             probe.SendError(ex);
 
-            var exception = await ShouldThrowWithin<Exception>(completion, 3.Seconds());
-            exception.Should().BeEquivalentTo(ex);
-            files().Should().BeEmpty();
+            var exception = await ShouldThrowWithin<Exception>(completion, TimeSpan.FromSeconds(3));
+            Assert.Same(ex, exception);
+            Assert.Equal(ex.GetType(), exception.GetType());
+            Assert.Equal(ex.Message, exception.Message);
+            Assert.Empty(files());
         }
 
         [Fact]
@@ -222,12 +221,14 @@ namespace Akka.Streams.File.Tests
 
             var ex = new Exception("my-exception");
             probe.SendNext(ByteString.FromString("test"));
-            await AwaitAssertAsync(() => Directory.GetFiles(_directory, "*.log").Should().ContainSingle(), 3.Seconds());
+            await AwaitAssertAsync(() => Assert.Single(Directory.GetFiles(_directory, "*.log")), TimeSpan.FromSeconds(3));
             probe.SendError(ex);
 
-            var exception = await ShouldThrowWithin<Exception>(completion, 3.Seconds());
-            exception.Should().BeEquivalentTo(ex);
-            files().Count.Should().Be(1);
+            var exception = await ShouldThrowWithin<Exception>(completion, TimeSpan.FromSeconds(3));
+            Assert.Same(ex, exception);
+            Assert.Equal(ex.GetType(), exception.GetType());
+            Assert.Equal(ex.Message, exception.Message);
+            Assert.Single(files());
             await ReadUpFilesAndSizesThenClean(files());
         }
 
@@ -243,8 +244,10 @@ namespace Akka.Streams.File.Tests
 
             probe.SendNext(ByteString.FromString("test"));
 
-            var exception = await ShouldThrowWithin<Exception>(completion, 3.Seconds());
-            exception.Should().BeEquivalentTo(ex);
+            var exception = await ShouldThrowWithin<Exception>(completion, TimeSpan.FromSeconds(3));
+            Assert.Same(ex, exception);
+            Assert.Equal(ex.GetType(), exception.GetType());
+            Assert.Equal(ex.Message, exception.Message);
         }
 
         [Fact]
@@ -261,7 +264,7 @@ namespace Akka.Streams.File.Tests
             probe.SendNext(ByteString.FromString("test"));
             probe.ExpectCancellation();
 
-            await ShouldThrowWithin<FileNotFoundException>(completion, 3.Seconds());
+            await ShouldThrowWithin<FileNotFoundException>(completion, TimeSpan.FromSeconds(3));
         }
 
         protected override void AfterAll()
@@ -320,17 +323,14 @@ namespace Akka.Streams.File.Tests
             }
         }
 
-        private static Task ShouldCompleteWithin(Task task, TimeSpan timeout)
-            => Awaiting(async () => await task).Should().CompleteWithinAsync(timeout);
-        
-        private static async Task<T> ShouldThrowWithin<T>(Task task, TimeSpan timeout) where T: Exception
+        private static async Task ShouldCompleteWithin(Task task, TimeSpan timeout)
         {
-            var exception = await Awaiting(async () =>
-            {
-                await ShouldCompleteWithin(task, timeout);
-            }).Should().ThrowAsync<T>();
-            return (T) exception.And.Should().Subject;
+            Assert.Same(task, await Task.WhenAny(task, Task.Delay(timeout)));
+            await task;
         }
+
+        private static async Task<T> ShouldThrowWithin<T>(Task task, TimeSpan timeout) where T : Exception
+            => await Assert.ThrowsAsync<T>(async () => await ShouldCompleteWithin(task, timeout));
 
         private class StrangeSlowSink<T> : GraphStageWithMaterializedValue<SinkShape<T>, Task<Done>>
         {

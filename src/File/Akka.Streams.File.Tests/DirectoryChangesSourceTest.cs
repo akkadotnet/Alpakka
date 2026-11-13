@@ -11,7 +11,6 @@ using System.Text;
 using Akka.Streams.Dsl;
 using Akka.Streams.File.Impl;
 using Akka.Streams.TestKit;
-using FluentAssertions;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -41,8 +40,8 @@ namespace Akka.Streams.File.Tests
 
             var createdFile = System.IO.File.Create(Path.Combine(_tempDir, "test1file1.sample"));
             var pair1 = probe.ExpectNext();
-            pair1.Item2.Should().Be(DirectoryChange.Creation);
-            pair1.Item1.Should().Be(createdFile.Name);
+            Assert.Equal(DirectoryChange.Creation, pair1.Item2);
+            Assert.Equal(createdFile.Name, pair1.Item1);
 
             // Flush to disk after writing, otherwise FileSystemWatcher won't pick up the changes
             var data = Encoding.UTF8.GetBytes("Some data");
@@ -51,8 +50,8 @@ namespace Akka.Streams.File.Tests
             createdFile.Close();
 
             var pair2 = probe.RequestNext();
-            pair2.Item2.Should().Be(DirectoryChange.Modification);
-            pair2.Item1.Should().Be(createdFile.Name);
+            Assert.Equal(DirectoryChange.Modification, pair2.Item2);
+            Assert.Equal(createdFile.Name, pair2.Item1);
 
             // Close file before attempting to delete it
             createdFile.Close();
@@ -65,8 +64,8 @@ namespace Akka.Streams.File.Tests
                 pair3 = probe.RequestNext();
             } while (!(pair3.Item2 is DirectoryChange.Deletion));
 
-            pair3.Item2.Should().Be(DirectoryChange.Deletion);
-            pair3.Item1.Should().Be(createdFile.Name);
+            Assert.Equal(DirectoryChange.Deletion, pair3.Item2);
+            Assert.Equal(createdFile.Name, pair3.Item1);
 
             probe.Cancel();
         }

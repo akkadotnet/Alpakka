@@ -1,7 +1,6 @@
 ﻿using System.Text;
 using Akka.IO;
 using Akka.Streams.Csv.Dsl;
-using FluentAssertions;
 using Xunit;
 
 namespace Akka.Streams.Csv.Tests
@@ -128,12 +127,12 @@ namespace Akka.Streams.Csv.Tests
         {
             var formatter = new CsvFormatter(';', '"', '\\', "\r\n", CsvQuotingStyle.Required, Encoding.Unicode);
             var csv = formatter.ToCsv(new[] { "ett", "två", "อักษรไทย" });
-            csv.Should().BeEquivalentTo(ByteString.FromString("ett;två;อักษรไทย\r\n", Encoding.Unicode), opt => opt.WithStrictOrdering());
+            Assert.Equal(ByteString.FromString("ett;två;อักษรไทย\r\n", Encoding.Unicode), csv);
         }
 
         private void ExpectInOut(CsvFormatter formatter, string[] strIn, string strOut)
         {
-            formatter.ToCsv(strIn).ToString().Should().Be(strOut);
+            Assert.Equal(strOut, formatter.ToCsv(strIn).ToString());
         }
     }
 }

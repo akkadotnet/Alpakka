@@ -7,9 +7,9 @@ using System.Threading.Tasks;
 using Akka.IO;
 using Akka.Streams.Dsl;
 using Akka.Streams.Xml.Dsl;
-using FluentAssertions;
 using Xunit;
 using Xunit.Abstractions;
+using static Akka.Streams.Xml.Tests.Dsl.XmlProcessingTest;
 
 namespace Akka.Streams.Xml.Tests.Dsl
 {
@@ -44,9 +44,9 @@ namespace Akka.Streams.Xml.Tests.Dsl
             var fut = Source.Single(doc).RunWith(_parser, _materializer);
 
             var result = (await CompletedWithin(fut));
-            ((Characters) result[0]).Should().BeEquivalentTo(new Characters("i1"));
-            ((Characters) result[1]).Should().BeEquivalentTo(new Characters("i2"));
-            ((Characters) result[2]).Should().BeEquivalentTo(new Characters("i3"));
+            AssertEvent(new Characters("i1"), result[0]);
+            AssertEvent(new Characters("i2"), result[1]);
+            AssertEvent(new Characters("i3"), result[2]);
         }
 
         [Fact]
@@ -64,11 +64,11 @@ namespace Akka.Streams.Xml.Tests.Dsl
             var fut = Source.Single(doc).RunWith(_parser, _materializer);
 
             var result = (await CompletedWithin(fut));
-            ((Characters)result[0]).Should().BeEquivalentTo(new Characters("i1"));
-            ((StartElement) result[1]).Should().BeEquivalentTo(new StartElement("sub", new Dictionary<string, string>()));
-            ((Characters)result[2]).Should().BeEquivalentTo(new Characters("i2"));
-            ((EndElement)result[3]).Should().BeEquivalentTo(new EndElement("sub"));
-            ((Characters)result[4]).Should().BeEquivalentTo(new Characters("i3"));
+            AssertEvent(new Characters("i1"), result[0]);
+            AssertEvent(new StartElement("sub", new Dictionary<string, string>()), result[1]);
+            AssertEvent(new Characters("i2"), result[2]);
+            AssertEvent(new EndElement("sub"), result[3]);
+            AssertEvent(new Characters("i3"), result[4]);
         }
 
         [Fact]
@@ -83,7 +83,7 @@ namespace Akka.Streams.Xml.Tests.Dsl
 
             var fut = Source.Single(doc).RunWith(_parser, _materializer);
 
-            (await CompletedWithin(fut)).Count.Should().Be(0);
+            Assert.Empty(await CompletedWithin(fut));
         }
 
 
@@ -101,7 +101,7 @@ namespace Akka.Streams.Xml.Tests.Dsl
 
             var fut = Source.Single(doc).RunWith(_parser, _materializer);
 
-            (await CompletedWithin(fut)).Count.Should().Be(0);
+            Assert.Empty(await CompletedWithin(fut));
         }
 
         [Fact]
@@ -126,12 +126,12 @@ namespace Akka.Streams.Xml.Tests.Dsl
             var fut = Source.Single(doc).RunWith(_parser, _materializer);
 
             var result = (await CompletedWithin(fut));
-            ((Characters)result[0]).Should().BeEquivalentTo(new Characters("i1"));
-            ((StartElement)result[1]).Should().BeEquivalentTo(new StartElement("sub", new Dictionary<string, string>()));
-            ((Characters)result[2]).Should().BeEquivalentTo(new Characters("i2"));
-            ((EndElement)result[3]).Should().BeEquivalentTo(new EndElement("sub"));
-            ((Characters)result[4]).Should().BeEquivalentTo(new Characters("i3"));
-            ((Characters)result[5]).Should().BeEquivalentTo(new Characters("i4"));
+            AssertEvent(new Characters("i1"), result[0]);
+            AssertEvent(new StartElement("sub", new Dictionary<string, string>()), result[1]);
+            AssertEvent(new Characters("i2"), result[2]);
+            AssertEvent(new EndElement("sub"), result[3]);
+            AssertEvent(new Characters("i3"), result[4]);
+            AssertEvent(new Characters("i4"), result[5]);
 
         }
     }

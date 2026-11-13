@@ -9,9 +9,7 @@ using Akka.Streams.Amqp.RabbitMq;
 using Akka.Streams.Amqp.RabbitMq.Dsl;
 using Akka.Streams.Dsl;
 using Akka.Streams.TestKit;
-using FluentAssertions;
-using FluentAssertions.Extensions;
-using static FluentAssertions.FluentActions;
+using Akka.TestKit.Extensions;
 using Xunit;
 using Xunit.Abstractions;
 using System.Threading;
@@ -42,6 +40,15 @@ namespace Akka.Streams.Amqp.Tests
             _fixture = fixture;
         }
 
+        private static async Task CompleteWithin(Task task, TimeSpan timeout)
+        {
+            Assert.True(await task.AwaitWithTimeout(timeout));
+            await task;
+        }
+
+        private static async Task<T> CompleteWithin<T>(Task<T> task, TimeSpan timeout)
+            => await task.WithTimeout(timeout);
+
         [Fact]
         public async Task Publish_and_consume_elements_through_a_simple_queue_again_in_the_same_process()
         {
@@ -64,18 +71,14 @@ namespace Akka.Streams.Amqp.Tests
 
             //run sink
             var input = new[] {"one", "two", "three", "four", "five"};
-            await Awaiting(() =>
-                Source.From(input).Select(ByteString.FromString).RunWith(amqpSink, _mat)
-            ).Should().CompleteWithinAsync(15.Seconds());
+            await CompleteWithin(Source.From(input).Select(ByteString.FromString).RunWith(amqpSink, _mat), TimeSpan.FromSeconds(15));
 
             //run source
-            var result = await Awaiting(() =>
-                    amqpSource.Select(m => m.Bytes.ToString(Encoding.UTF8))
+            var result = await CompleteWithin(amqpSource.Select(m => m.Bytes.ToString(Encoding.UTF8))
                         .Take(input.Length)
-                        .RunWith(Sink.Seq<string>(), _mat)
-                ).Should().CompleteWithinAsync(3.Seconds());
+                        .RunWith(Sink.Seq<string>(), _mat), TimeSpan.FromSeconds(3));
 
-            result.Subject.Should().Equal(input);
+            Assert.Equal(input, result);
         }
 
         [Fact]
@@ -101,8 +104,8 @@ namespace Akka.Streams.Amqp.Tests
                           .Run(_mat);
 
             //#run-rpc-flow
-            var result = await Awaiting(() => rpcQueueNameTask).Should().CompleteWithinAsync(15.Seconds());
-            result.Subject.Should().NotBeNullOrWhiteSpace("RPC flow materializes into response queue name");
+            var result = await CompleteWithin(rpcQueueNameTask, TimeSpan.FromSeconds(15));
+            Assert.False(string.IsNullOrWhiteSpace(result), "RPC flow materializes into response queue name");
 
             var amqpSink = AmqpSink.ReplyTo(AmqpReplyToSinkSettings.Create(_connectionSettings));
 
@@ -116,7 +119,7 @@ namespace Akka.Streams.Amqp.Tests
                 .ExpectNextUnorderedN(input.Select(s => ByteString.FromString(s + "a")))
                 .ExpectComplete();
 
-            await Awaiting(() => task).Should().CompleteWithinAsync(3.Seconds());
+            await CompleteWithin(task, TimeSpan.FromSeconds(3));
         }
 
         [Fact]
@@ -139,8 +142,8 @@ namespace Akka.Streams.Amqp.Tests
                       .ToMaterialized(this.SinkProbe<ByteString>(), Keep.Both)
                       .Run(_mat);
 
-            var result = await Awaiting(() => rpcQueueFTask).Should().CompleteWithinAsync(15.Seconds());
-            result.Subject.Should().NotBeNullOrWhiteSpace("RPC flow materializes into response queue name");
+            var result = await CompleteWithin(rpcQueueFTask, TimeSpan.FromSeconds(15));
+            Assert.False(string.IsNullOrWhiteSpace(result), "RPC flow materializes into response queue name");
 
             var amqpSink = AmqpSink.ReplyTo(AmqpReplyToSinkSettings.Create(_connectionSettings));
 
@@ -159,7 +162,7 @@ namespace Akka.Streams.Amqp.Tests
                 .ExpectNextUnorderedN(input.SelectMany(s => new[] {ByteString.FromString(s + "a"), ByteString.FromString(s + "aa")}))
                 .ExpectComplete();
 
-            await Awaiting(() => task).Should().CompleteWithinAsync(3.Seconds());
+            await CompleteWithin(task, TimeSpan.FromSeconds(3));
         }
 
         [Fact]
@@ -177,18 +180,16 @@ namespace Akka.Streams.Amqp.Tests
         {
             var outgoingMessage = new OutgoingMessage(ByteString.Empty, false, false);
 
-            await Awaiting(() =>
-                    Source
+            await CompleteWithin(Source
                         .Single(outgoingMessage)
                         .WatchTermination(Keep.Right)
                         .To(AmqpSink.ReplyTo(AmqpReplyToSinkSettings.Create(_connectionSettings)))
-                        .Run(_mat)
-                ).Should().CompleteWithinAsync(3.Seconds());
+                        .Run(_mat), TimeSpan.FromSeconds(3));
 
-            var ex = await Awaiting(() => Source
+            await Assert.ThrowsAnyAsync<Exception>(async () => await Source
                 .Single(outgoingMessage)
                 .ToMaterialized(AmqpSink.ReplyTo(AmqpReplyToSinkSettings.Create(_connectionSettings, failIfReplyToMissing: true)), Keep.Right)
-                .Run(_mat)).Should().ThrowAsync<Exception>();
+                .Run(_mat));
         }
 
         [Fact]
@@ -210,7 +211,7 @@ namespace Akka.Streams.Amqp.Tests
             publisher.EnsureSubscription();
             subscriber.EnsureSubscription();
 
-            publisher.ExpectRequest().Should().Be(1);
+            Assert.Equal(1, publisher.ExpectRequest());
             publisher.SendNext(ByteString.FromString("one"));
 
             publisher.ExpectRequest();
@@ -226,13 +227,13 @@ namespace Akka.Streams.Amqp.Tests
             publisher.SendNext(ByteString.FromString("five"));
 
             subscriber.Request(4);
-            subscriber.ExpectNext().Bytes.ToString().Should().Be("one");
-            subscriber.ExpectNext().Bytes.ToString().Should().Be("two");
-            subscriber.ExpectNext().Bytes.ToString().Should().Be("three");
-            subscriber.ExpectNext().Bytes.ToString().Should().Be("four");
+            Assert.Equal("one", subscriber.ExpectNext().Bytes.ToString());
+            Assert.Equal("two", subscriber.ExpectNext().Bytes.ToString());
+            Assert.Equal("three", subscriber.ExpectNext().Bytes.ToString());
+            Assert.Equal("four", subscriber.ExpectNext().Bytes.ToString());
 
             subscriber.Request(1);
-            subscriber.ExpectNext().Bytes.ToString().Should().Be("five");
+            Assert.Equal("five", subscriber.ExpectNext().Bytes.ToString());
 
             subscriber.Cancel();
             publisher.SendComplete();
@@ -291,8 +292,7 @@ namespace Akka.Streams.Amqp.Tests
             //#create-source-withoutautoack
 
             var input = new[] {"one", "two", "three", "four", "five"};
-            await Awaiting(() => Source.From(input).Select(ByteString.FromString).RunWith(amqpSink, _mat)) 
-                .Should().CompleteWithinAsync(15.Seconds());
+            await CompleteWithin(Source.From(input).Select(ByteString.FromString).RunWith(amqpSink, _mat), TimeSpan.FromSeconds(15));
 
             //#run-source-withoutautoack
             var task = amqpSource
@@ -305,8 +305,8 @@ namespace Akka.Streams.Amqp.Tests
                          .RunWith(Sink.Seq<CommittableIncomingMessage>(), _mat);
 
             //#run-source-withoutautoack
-            var result = await Awaiting(() => task).Should().CompleteWithinAsync(3.Seconds());
-            result.Subject.Select(x => x.Message.Bytes.ToString()).Should().Equal(input);
+            var result = await CompleteWithin(task, TimeSpan.FromSeconds(3));
+            Assert.Equal(input, result.Select(x => x.Message.Bytes.ToString()));
         }
 
         [Fact]
@@ -317,36 +317,31 @@ namespace Akka.Streams.Amqp.Tests
             var amqpSink = AmqpSink.CreateSimple(AmqpSinkSettings.Create(_connectionSettings).WithRoutingKey(queueName).WithDeclarations(queueDeclaration));
 
             var input = new[] {"one", "two", "three", "four", "five"};
-            await Awaiting(() => Source.From(input).Select(ByteString.FromString).RunWith(amqpSink, _mat))
-                .Should().CompleteWithinAsync(15.Seconds());
+            await CompleteWithin(Source.From(input).Select(ByteString.FromString).RunWith(amqpSink, _mat), TimeSpan.FromSeconds(15));
 
             var amqpSource = AmqpSource.CommittableSource(
                 NamedQueueSourceSettings.Create(_connectionSettings, queueName).WithDeclarations(queueDeclaration), bufferSize: 10);
 
             //#run-source-withoutautoack-and-nack
-            await Awaiting(() =>
-                amqpSource
+            await CompleteWithin(amqpSource
                     .Take(input.Length)
                     .SelectAsync(1, async cm =>
                     {
                         await cm.Nack();
                         return cm;
                     })
-                    .RunWith(Sink.Seq<CommittableIncomingMessage>(), _mat)
-            ).Should().CompleteWithinAsync(3.Seconds());
+                    .RunWith(Sink.Seq<CommittableIncomingMessage>(), _mat), TimeSpan.FromSeconds(3));
             //#run-source-withoutautoack-and-nack
 
-            var result = await Awaiting(() =>
-                amqpSource
+            var result = await CompleteWithin(amqpSource
                     .SelectAsync(1, async cm =>
                     {
                         await cm.Ack();
                         return cm;
                     })
                     .Take(input.Length)
-                    .RunWith(Sink.Seq<CommittableIncomingMessage>(), _mat)
-                ).Should().CompleteWithinAsync(3.Seconds());
-            result.Subject.Select(x => x.Message.Bytes.ToString()).Should().Equal(input);
+                    .RunWith(Sink.Seq<CommittableIncomingMessage>(), _mat), TimeSpan.FromSeconds(3));
+            Assert.Equal(input, result.Select(x => x.Message.Bytes.ToString()));
         }
 
         [Fact]
@@ -361,14 +356,12 @@ namespace Akka.Streams.Amqp.Tests
                 NamedQueueSourceSettings.Create(_connectionSettings, queueName).WithDeclarations(queueDeclaration), bufferSize: 10);
 
             var input = new[] {"one", "two", "three", "four", "five"};
-            await Awaiting(() => Source.From(input).Select(ByteString.FromString).RunWith(amqpSink, _mat)) 
-                .Should().CompleteWithinAsync(15.Seconds());
+            await CompleteWithin(Source.From(input).Select(ByteString.FromString).RunWith(amqpSink, _mat), TimeSpan.FromSeconds(15));
 
-            var result = await Awaiting(() => amqpSource.Take(input.Length).RunWith(Sink.Seq<CommittableIncomingMessage>(), _mat))
-                .Should().CompleteWithinAsync(3.Seconds());
-            foreach (var cm in result.Subject)
+            var result = await CompleteWithin(amqpSource.Take(input.Length).RunWith(Sink.Seq<CommittableIncomingMessage>(), _mat), TimeSpan.FromSeconds(3));
+            foreach (var cm in result)
             {
-                await Awaiting(() => cm.Ack()).Should().CompleteWithinAsync(3.Seconds());
+                await CompleteWithin(cm.Ack(), TimeSpan.FromSeconds(3));
             }
         }
 
@@ -379,22 +372,19 @@ namespace Akka.Streams.Amqp.Tests
             var queueDeclaration = QueueDeclaration.Create(queueName);
             var amqpSink = AmqpSink.CreateSimple(AmqpSinkSettings.Create(_connectionSettings).WithRoutingKey(queueName).WithDeclarations(queueDeclaration));
             var input = new[] {"one", "two", "three", "four", "five"};
-            await Awaiting(() => Source.From(input).Select(ByteString.FromString).RunWith(amqpSink, _mat))
-                .Should().CompleteWithinAsync(15.Seconds());
+            await CompleteWithin(Source.From(input).Select(ByteString.FromString).RunWith(amqpSink, _mat), TimeSpan.FromSeconds(15));
 
             var amqpSource = AmqpSource.CommittableSource(
                 NamedQueueSourceSettings.Create(_connectionSettings, queueName).WithDeclarations(queueDeclaration), bufferSize: 10);
 
-            await Awaiting(() =>
-                amqpSource
+            await CompleteWithin(amqpSource
                     .SelectAsync(1, async cm =>
                     {
                         await cm.Nack(requeue: false);
                         return cm;
                     })
                     .Take(input.Length)
-                    .RunWith(Sink.Seq<CommittableIncomingMessage>(), _mat)
-            ).Should().CompleteWithinAsync(3.Seconds());
+                    .RunWith(Sink.Seq<CommittableIncomingMessage>(), _mat), TimeSpan.FromSeconds(3));
 
             var task = amqpSource
                           .SelectAsync(1, async cm =>
@@ -405,8 +395,8 @@ namespace Akka.Streams.Amqp.Tests
                           .Take(input.Length)
                           .RunWith(Sink.Seq<CommittableIncomingMessage>(), _mat);
 
-            await Task.Delay(1.Seconds());
-            task.IsCompleted.Should().BeFalse();
+            await Task.Delay(TimeSpan.FromSeconds(1));
+            Assert.False(task.IsCompleted);
         }
 
         [Fact]
@@ -433,23 +423,21 @@ namespace Akka.Streams.Amqp.Tests
                       .ToMaterialized(this.SinkProbe<IncomingMessage>(), Keep.Both)
                       .Run(_mat);
 
-            await Awaiting(() => rpcQueueFTask).Should().CompleteWithinAsync(15.Seconds());
+            await CompleteWithin(rpcQueueFTask, TimeSpan.FromSeconds(15));
 
             var amqpSink = AmqpSink.ReplyTo(AmqpReplyToSinkSettings.Create(_connectionSettings));
 
             var amqpSource = AmqpSource.AtMostOnceSource(NamedQueueSourceSettings.Create(_connectionSettings, queueName), bufferSize: 1);
 
-            await Awaiting(() =>
-                amqpSource
+            await CompleteWithin(amqpSource
                     .Take(input.Length)
                     .Select(b => new OutgoingMessage(b.Bytes, false, false, b.Properties))
-                    .RunWith(amqpSink, _mat)
-            ).Should().CompleteWithinAsync(15.Seconds());
+                    .RunWith(amqpSink, _mat), TimeSpan.FromSeconds(15));
 
             var results = new System.Collections.Generic.List<IncomingMessage>();
             await foreach (var item in probe.ToStrictAsync(TimeSpan.FromSeconds(3)))
                 results.Add(item);
-            results.Select(x => x.Bytes.ToString()).Should().Equal(input);
+            Assert.Equal(input, results.Select(x => x.Bytes.ToString()));
         }
 
         [Fact]
@@ -475,20 +463,16 @@ namespace Akka.Streams.Amqp.Tests
             var input = new[] {"one", "two", "three", "four", "five"};
             var routingKeys = input.Select(GetRoutingKey);
 
-            await Awaiting(() =>
-                Source.From(input)
+            await CompleteWithin(Source.From(input)
                     .Select(s => new OutgoingMessage(ByteString.FromString(s), false, false, routingKey: GetRoutingKey(s)))
-                    .RunWith(amqpSink, _mat)
-            ).Should().CompleteWithinAsync(15.Seconds());
+                    .RunWith(amqpSink, _mat), TimeSpan.FromSeconds(15));
 
-            var result = await Awaiting(() =>
-                amqpSource
+            var result = await CompleteWithin(amqpSource
                     .Take(input.Length)
-                    .RunWith(Sink.Seq<IncomingMessage>(), _mat)
-            ).Should().CompleteWithinAsync(15.Seconds()); 
+                    .RunWith(Sink.Seq<IncomingMessage>(), _mat), TimeSpan.FromSeconds(15));
 
-            result.Subject.Select(x => x.Envelope.RoutingKey).Should().Equal(routingKeys);
-            result.Subject.Select(x => x.Bytes.ToString()).Should().Equal(input);
+            Assert.Equal(routingKeys, result.Select(x => x.Envelope.RoutingKey));
+            Assert.Equal(input, result.Select(x => x.Bytes.ToString()));
         }
 
         [Fact]
@@ -521,13 +505,11 @@ namespace Akka.Streams.Amqp.Tests
                 return new SourceShape<IncomingMessage>(merge.Out);
             }));
 
-            var result = await Awaiting(() =>
-                mergedSources.Select(x => x.Bytes.ToString()).Take(input.Length).RunWith(Sink.Seq<string>(), _mat)
-            ).Should().CompleteWithinAsync(15.Seconds());
+            var result = await CompleteWithin(mergedSources.Select(x => x.Bytes.ToString()).Take(input.Length).RunWith(Sink.Seq<string>(), _mat), TimeSpan.FromSeconds(15));
             
-            result.Subject.OrderBy(x => x).ToArray().Should().Equal(input.OrderBy(x => x).ToArray());
+            Assert.Equal(input.OrderBy(x => x).ToArray(), result.OrderBy(x => x).ToArray());
 
-            await Awaiting(() => task).Should().CompleteWithinAsync(3.Seconds());
+            await CompleteWithin(task, TimeSpan.FromSeconds(3));
         }
 
         [Fact]
@@ -547,25 +529,21 @@ namespace Akka.Streams.Amqp.Tests
 
             var input = new[] {"one", "two", "three", "four", "five"};
 
-            var passedThrough = await Awaiting(() =>
-                Source.From(input)
+            var passedThrough = await CompleteWithin(Source.From(input)
                     .Select(x => (new OutgoingMessage(ByteString.FromString(x), true, true), x))
                     .Via(amqpFlow)
-                    .RunWith(Sink.Seq<string>(), _mat)
-            ).Should().CompleteWithinAsync(15.Seconds());
+                    .RunWith(Sink.Seq<string>(), _mat), TimeSpan.FromSeconds(15));
 
-            Assert.Equal(input, passedThrough.Subject, StringComparer.InvariantCulture);
+            Assert.Equal(input, passedThrough, StringComparer.InvariantCulture);
 
-            var consumed = await Awaiting(() =>
-                AmqpSource.AtMostOnceSource(
+            var consumed = await CompleteWithin(AmqpSource.AtMostOnceSource(
                         NamedQueueSourceSettings.Create(_connectionSettings, queueName).WithDeclarations(queueDeclaration),
                         bufferSize: 10)
                     .Select(m => m.Bytes.ToString(Encoding.UTF8))
                     .Take(input.Length)
-                    .RunWith(Sink.Seq<string>(), _mat)
-            ).Should().CompleteWithinAsync(15.Seconds());
+                    .RunWith(Sink.Seq<string>(), _mat), TimeSpan.FromSeconds(15));
 
-            Assert.Equal(input, consumed.Subject, StringComparer.InvariantCulture);
+            Assert.Equal(input, consumed, StringComparer.InvariantCulture);
         }
 
         [Fact]
@@ -601,21 +579,17 @@ namespace Akka.Streams.Amqp.Tests
             var input = new[] {"one", "two", "three", "four", "five"};
             var routingKeys = input.Select(GetRoutingKey);
 
-            await Awaiting(() =>
-                Source.From(input)
+            await CompleteWithin(Source.From(input)
                     .Select(s => (new OutgoingMessage(ByteString.FromString(s), false, false, routingKey: GetRoutingKey(s)), s))
                     .Via(amqpFlow)
-                    .RunWith(Sink.Ignore<string>(), _mat)
-            ).Should().CompleteWithinAsync(15.Seconds());
+                    .RunWith(Sink.Ignore<string>(), _mat), TimeSpan.FromSeconds(15));
 
-            var result = await Awaiting(() =>
-                amqpSource
+            var result = await CompleteWithin(amqpSource
                     .Take(input.Length)
-                    .RunWith(Sink.Seq<IncomingMessage>(), _mat)
-            ).Should().CompleteWithinAsync(15.Seconds());
+                    .RunWith(Sink.Seq<IncomingMessage>(), _mat), TimeSpan.FromSeconds(15));
 
-            result.Subject.Select(x => x.Envelope.RoutingKey).Should().Equal(routingKeys);
-            result.Subject.Select(x => x.Bytes.ToString()).Should().Equal(input);
+            Assert.Equal(routingKeys, result.Select(x => x.Envelope.RoutingKey));
+            Assert.Equal(input, result.Select(x => x.Bytes.ToString()));
         }
 
         [Fact]
@@ -635,13 +609,10 @@ namespace Akka.Streams.Amqp.Tests
                 .WithDeclarations(queueDeclaration), bufferSize: 10);
 
             var input = new[] {"one", "two", "three", "four", "five"};
-            await Awaiting(() => Source.From(input).Select(ByteString.FromString).RunWith(amqpSink, _mat))
-                .Should().CompleteWithinAsync(15.Seconds());
+            await CompleteWithin(Source.From(input).Select(ByteString.FromString).RunWith(amqpSink, _mat), TimeSpan.FromSeconds(15));
 
-            var result = await Awaiting(() =>
-                amqpSource.Take(input.Length).RunWith(Sink.Seq<CommittableIncomingMessage>(), _mat)
-            ).Should().CompleteWithinAsync(15.Seconds());
-            result.Subject.Select(x => x.Message.Bytes.ToString(Encoding.UTF8)).Should().Equal(input);
+            var result = await CompleteWithin(amqpSource.Take(input.Length).RunWith(Sink.Seq<CommittableIncomingMessage>(), _mat), TimeSpan.FromSeconds(15));
+            Assert.Equal(input, result.Select(x => x.Message.Bytes.ToString(Encoding.UTF8)));
         }
 
         [Fact]
@@ -667,15 +638,14 @@ namespace Akka.Streams.Amqp.Tests
             var sink = AmqpSink.Create(AmqpSinkSettings.Create(settings)
                 .WithRoutingKey(queue).WithDeclarations(declaration).WithWaitForConfirms(TimeSpan.FromSeconds(5)));
             var expected = new[] { "first", "café", "last" };
-            await Awaiting(() => Source.From(expected).Select(payload =>
+            await CompleteWithin(Source.From(expected).Select(payload =>
                 {
                     var properties = channel.CreateBasicProperties();
                     properties.ContentType = "text/plain;charset=utf-8";
                     properties.MessageId = payload;
                     properties.Persistent = true;
                     return new OutgoingMessage(ByteString.FromString(payload), false, false, properties);
-                }).RunWith(sink, _mat))
-                .Should().CompleteWithinAsync(15.Seconds());
+                }).RunWith(sink, _mat), TimeSpan.FromSeconds(15));
             foreach (var payload in expected)
             {
                 var received = channel.BasicGet(queue, autoAck: false);
@@ -700,7 +670,7 @@ namespace Akka.Streams.Amqp.Tests
                 probe.Cancel();
                 // The existing source contract retains its connection until emitted
                 // deliveries have been explicitly acknowledged or rejected.
-                await Awaiting(() => delivered.Nack(requeue: true)).Should().CompleteWithinAsync(5.Seconds());
+                await CompleteWithin(delivered.Nack(requeue: true), TimeSpan.FromSeconds(5));
                 BasicGetResult? redelivered = null;
                 await AwaitAssertAsync(() =>
                 {

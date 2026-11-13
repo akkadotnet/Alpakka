@@ -6,7 +6,6 @@ using Akka.Event;
 using Akka.Streams.Dsl;
 using Akka.Streams.SignalR.Tests.Infrastructure;
 using Akka.Streams.TestKit;
-using FluentAssertions;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -72,10 +71,10 @@ namespace Akka.Streams.SignalR.Tests
             await _connection.InvokeAsync(nameof(IServerSource.Send), "payload");
 
             // Assert
-            _fromClient.RequestNext().Should().BeOfType<Connected>();
+            Assert.IsType<Connected>(_fromClient.RequestNext());
             var message = _fromClient.RequestNext();
-            message.Should().BeOfType<Received>();
-            ((Received)message).Data.ToString().Should().Be("payload");
+            Assert.IsType<Received>(message);
+            Assert.Equal("payload", ((Received)message).Data.ToString());
         }
 
         [Fact]
@@ -91,17 +90,17 @@ namespace Akka.Streams.SignalR.Tests
             // Assert
             await AwaitAssertAsync(() => Assert.True(tcs.Task.IsCompleted));
             var result = await tcs.Task;
-            result.Should().Be("payload");
+            Assert.Equal("payload", result);
         }
 
         [Fact]
         public async Task Websocket_stream_should_work_when_client_closes()
         {
             await ConnectAsync(msg => Log.Info(msg));
-            _fromClient.RequestNext().Should().BeOfType<Connected>();
+            Assert.IsType<Connected>(_fromClient.RequestNext());
 
             await _connection.InvokeAsync(nameof(IServerSource.Send), "payload");
-            _fromClient.RequestNext().Should().BeOfType<Received>();
+            Assert.IsType<Received>(_fromClient.RequestNext());
 
             // Client-initiated disconnect
             _connected = false;
@@ -111,7 +110,7 @@ namespace Akka.Streams.SignalR.Tests
             _connection = null;
 
             // Server should know
-            _fromClient.RequestNext().Should().BeOfType<Disconnected>();
+            Assert.IsType<Disconnected>(_fromClient.RequestNext());
 
             // Client reconnects to server
             var connection = CreateConnection();
@@ -119,12 +118,12 @@ namespace Akka.Streams.SignalR.Tests
             await connection.StartAsync();
 
             // Server should see new connection
-            _fromClient.RequestNext().Should().BeOfType<Connected>();
+            Assert.IsType<Connected>(_fromClient.RequestNext());
 
             // Send new message
             await connection.InvokeAsync(nameof(IServerSource.Send), "payload");
 
-            _fromClient.RequestNext().Should().BeOfType<Received>();
+            Assert.IsType<Received>(_fromClient.RequestNext());
         }
 
         [Fact]
@@ -142,19 +141,19 @@ namespace Akka.Streams.SignalR.Tests
             var data1 = _fromClient.RequestNext();
             var data2 = _fromClient2.RequestNext();
 
-            data1.Should().BeOfType<Connected>();
-            data2.Should().BeOfType<Connected>();
+            Assert.IsType<Connected>(data1);
+            Assert.IsType<Connected>(data2);
 
             await _connection.InvokeAsync(nameof(IServerSource.Send), "payload");
 
             data1 = _fromClient.RequestNext();
             data2 = _fromClient2.RequestNext();
 
-            data1.Should().BeOfType<Received>();
-            data2.Should().BeOfType<Received>();
+            Assert.IsType<Received>(data1);
+            Assert.IsType<Received>(data2);
 
-            ((Received)data1).Data.ToString().Should().Be("payload");
-            ((Received)data2).Data.ToString().Should().Be("payload");
+            Assert.Equal("payload", ((Received)data1).Data.ToString());
+            Assert.Equal("payload", ((Received)data2).Data.ToString());
 
         }
 

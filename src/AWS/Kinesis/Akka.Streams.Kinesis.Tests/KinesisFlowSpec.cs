@@ -20,8 +20,6 @@ using System.Threading.Tasks;
 using Akka.Event;
 using Amazon;
 using Amazon.Runtime;
-using FluentAssertions;
-using FluentAssertions.Extensions;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -183,10 +181,9 @@ namespace Akka.Streams.Kinesis.Tests
 
             source.SendNext("apple");
 
-            _sinkProbe.ExpectEvent(1.Minutes())
-                .Should().BeOfType<TestSubscriber.OnError>().Subject
-                .Cause.Should().BeOfType<PublishingRecordsException>().Subject
-                .Attempt.Should().Be(KinesisFlowSettings.Default.MaxRetries + 1);
+            var error = Assert.IsType<TestSubscriber.OnError>(_sinkProbe.ExpectEvent(TimeSpan.FromMinutes(1)));
+            var failure = Assert.IsType<PublishingRecordsException>(error.Cause);
+            Assert.Equal(KinesisFlowSettings.Default.MaxRetries + 1, failure.Attempt);
         }
 
         [Fact]
@@ -201,7 +198,7 @@ namespace Akka.Streams.Kinesis.Tests
             source.SendNext("apple");
 
             var exception = _sinkProbe.ExpectError();
-            ExceptionMessageContains(exception, "kinesis-error").Should().BeTrue();
+            Assert.True(ExceptionMessageContains(exception, "kinesis-error"));
         }
 
         private static bool ExceptionMessageContains(Exception ex, string expected)

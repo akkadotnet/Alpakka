@@ -7,7 +7,6 @@ using Akka.Streams.Dsl;
 using Akka.Streams.TestKit;
 using Amazon.SimpleNotificationService;
 using Amazon.SimpleNotificationService.Model;
-using FluentAssertions;
 using NSubstitute;
 using Xunit;
 using Xunit.Abstractions;
@@ -41,7 +40,7 @@ namespace Akka.Streams.Sns.Tests
 
             probe.SendNext("sns-message").SendComplete();
             var actualResult = (await task).FirstOrDefault();
-            actualResult.Should().Be(publishResult);
+            Assert.Same(publishResult, actualResult);
             await snsService.Received(1).PublishAsync(Arg.Any<PublishRequest>());
         }
 
@@ -62,7 +61,8 @@ namespace Akka.Streams.Sns.Tests
             }
             val.Item1.SendComplete();
             await AwaitAssertAsync(() => Assert.True(val.Item2.IsCompleted), TimeSpan.FromSeconds(1));
-            (await val.Item2).Should().BeEquivalentTo(expectedResponseMessages);
+            Assert.Equal(expectedResponseMessages.OrderBy(response => response.MessageId, StringComparer.Ordinal),
+                (await val.Item2).OrderBy(response => response.MessageId, StringComparer.Ordinal));
             await snsService.Received(3).PublishAsync(Arg.Any<PublishRequest>());
         }
 
@@ -82,7 +82,7 @@ namespace Akka.Streams.Sns.Tests
             probe.SendNext("sns-message").SendComplete();
             await AwaitAssertAsync(() => Assert.True(task.IsCompleted), TimeSpan.FromSeconds(1));
             var error = await Assert.ThrowsAsync<AmazonSimpleNotificationServiceException>(() => task);
-            error.Message.Should().Be("test");
+            Assert.Equal("test", error.Message);
             await snsService.Received(1).PublishAsync(Arg.Any<PublishRequest>());
         }
 
@@ -100,7 +100,7 @@ namespace Akka.Streams.Sns.Tests
 
             await AwaitAssertAsync(() => Assert.True(task.IsCompleted), TimeSpan.FromSeconds(1));
             var error = await Assert.ThrowsAsync<Exception>(() => task);
-            error.Message.Should().Be("upstream failure");
+            Assert.Equal("upstream failure", error.Message);
             await snsService.DidNotReceive().PublishAsync(Arg.Any<PublishRequest>());
         }
 

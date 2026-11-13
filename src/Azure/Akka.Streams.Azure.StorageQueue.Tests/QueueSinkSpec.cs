@@ -5,11 +5,9 @@ using System.Threading.Tasks;
 using Akka.Streams.Dsl;
 using Akka.Streams.Supervision;
 using Akka.Streams.TestKit;
-using FluentAssertions;
+using Akka.TestKit.Extensions;
 using Azure.Storage.Queues;
 using Azure.Storage.Queues.Models;
-using FluentAssertions.Extensions;
-using static FluentAssertions.FluentActions;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -28,10 +26,10 @@ namespace Akka.Streams.Azure.StorageQueue.Tests
             var t = Source.From(messages)
                 //.Select(x => new QueueMessage(x))
                 .ToStorageQueue(Queue, Materializer);
-            await Awaiting(() => t).Should().CompleteWithinAsync(15.Seconds());
-            var result = await Awaiting(() => Queue.ReceiveMessagesAsync(2))
-                .Should().CompleteWithinAsync(15.Seconds());
-            result.Subject.Value.Select(x => x.MessageText).Should().BeEquivalentTo(messages);
+            Assert.True(await t.AwaitWithTimeout(TimeSpan.FromSeconds(15)));
+            await t;
+            var result = await Queue.ReceiveMessagesAsync(2).WithTimeout(TimeSpan.FromSeconds(15));
+            Assert.Equal(messages.OrderBy(x => x), result.Value.Select(x => x.MessageText).OrderBy(x => x));
         }
 
         [Fact]
@@ -43,7 +41,7 @@ namespace Akka.Streams.Azure.StorageQueue.Tests
                 .Run(Materializer);
 
             probe.SendError(new Exception("Boom"));
-            await Awaiting(() => task).Should().ThrowAsync<Exception>().WithMessage("Boom");
+            Assert.Equal("Boom", (await Assert.ThrowsAnyAsync<Exception>(async () => await task)).Message);
         }
 
         [Fact]
@@ -61,10 +59,10 @@ namespace Akka.Streams.Azure.StorageQueue.Tests
             await Task.Delay(1000);
             await Queue.CreateAsync();
 
-            await Awaiting(() => t).Should().CompleteWithinAsync(15.Seconds());
-            var result = await Awaiting(() => Queue.ReceiveMessagesAsync(2))
-                .Should().CompleteWithinAsync(15.Seconds());
-            result.Subject.Value.Select(x => x.MessageText).Should().BeEquivalentTo(messages);
+            Assert.True(await t.AwaitWithTimeout(TimeSpan.FromSeconds(15)));
+            await t;
+            var result = await Queue.ReceiveMessagesAsync(2).WithTimeout(TimeSpan.FromSeconds(15));
+            Assert.Equal(messages.OrderBy(x => x), result.Value.Select(x => x.MessageText).OrderBy(x => x));
         }
 
         [Fact]
@@ -90,7 +88,7 @@ namespace Akka.Streams.Azure.StorageQueue.Tests
             await task;
             var msg = (await Queue.ReceiveMessagesAsync()).Value;
             Assert.NotEmpty(msg);
-            msg[0].MessageText.Should().Be("2");
+            Assert.Equal("2", msg[0].MessageText);
         }
     }
 }

@@ -14,7 +14,6 @@ using Akka.IO;
 using Akka.Streams.Amqp.RabbitMq;
 using Akka.Streams.Amqp.RabbitMq.Dsl;
 using Akka.Streams.Dsl;
-using FluentAssertions;
 using Nito.AsyncEx;
 using Xunit;
 using Xunit.Abstractions;
@@ -65,7 +64,7 @@ public class AmqpPublisherConfirmsSpecs : Akka.TestKit.Xunit2.TestKit
         return task.WaitAsync(cts.Token);
 #else
 #pragma warning disable xUnit1031
-        task.Wait(TimeSpan.FromSeconds(5)).Should().BeTrue();
+        Assert.True(task.Wait(TimeSpan.FromSeconds(5)));
 #pragma warning restore xUnit1031
         return Task.CompletedTask;
 #endif
@@ -149,7 +148,7 @@ public class AmqpPublisherConfirmsSpecs : Akka.TestKit.Xunit2.TestKit
         return task.WaitAsync(cts.Token);
 #else
 #pragma warning disable xUnit1031
-        task.Wait(TimeSpan.FromSeconds(5)).Should().BeTrue();
+        Assert.True(task.Wait(TimeSpan.FromSeconds(5)));
 #pragma warning restore xUnit1031
         return Task.CompletedTask;
 #endif

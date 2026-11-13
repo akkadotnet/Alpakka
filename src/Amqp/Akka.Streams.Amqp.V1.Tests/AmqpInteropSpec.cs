@@ -71,7 +71,7 @@ public sealed class AmqpInteropSpec : Akka.TestKit.Xunit2.TestKit
 
             var actual = await Dsl.AmqpSource.Create(source).Take(expected.Length)
                 .RunWith(Sink.Seq<string>(), Sys.Materializer())
-                .ShouldCompleteWithin(TimeSpan.FromSeconds(10));
+                .WithTimeout(TimeSpan.FromSeconds(10));
             Assert.Equal(expected, actual);
             await AwaitAssertAsync(() => Assert.True(source.Link?.IsClosed));
             Assert.False(session.IsClosed);
@@ -82,8 +82,9 @@ public sealed class AmqpInteropSpec : Akka.TestKit.Xunit2.TestKit
             Assert.Null(await observer.ReceiveAsync(TimeSpan.FromSeconds(5)));
             await observer.CloseAsync();
 
-            await StreamSource.From(expected).RunWith(Dsl.AmqpSink.Create(sink), Sys.Materializer())
-                .ShouldCompleteWithin(TimeSpan.FromSeconds(10));
+            var sinkCompletion = StreamSource.From(expected).RunWith(Dsl.AmqpSink.Create(sink), Sys.Materializer());
+            Assert.True(await sinkCompletion.AwaitWithTimeout(TimeSpan.FromSeconds(10)));
+            await sinkCompletion;
             await AwaitAssertAsync(() => Assert.True(sink.Link?.IsClosed));
             Assert.False(session.IsClosed);
             Assert.False(connection.IsClosed);

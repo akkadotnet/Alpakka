@@ -10,8 +10,6 @@ using Akka.Streams.Csv.Dsl;
 using Akka.Streams.Dsl;
 using Akka.Streams.TestKit;
 using Akka.TestKit;
-using FluentAssertions;
-using FluentAssertions.Equivalency;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -31,7 +29,7 @@ namespace Akka.Streams.Csv.Tests.dsl
                 .Via(CsvParsing.LineScanner())
                 .RunWith(Sink.First<ImmutableList<ByteString>>(), Materializer);
 
-            (await CompletedWithin(fut)).Should().BeEquivalentTo(new[] { ByteString.FromString("eins"), ByteString.FromString("zwei"), ByteString.FromString("drei") }, opt => opt.WithStrictOrdering());
+            Assert.Equal(new[] { ByteString.FromString("eins"), ByteString.FromString("zwei"), ByteString.FromString("drei") }, (await CompletedWithin(fut)));
         }
 
         [Fact]
@@ -44,8 +42,8 @@ namespace Akka.Streams.Csv.Tests.dsl
 
             var res = (await CompletedWithin(fut));
 
-            res[0].Should().BeEquivalentTo(new[] { ByteString.FromString("eins"), ByteString.FromString("zwei"), ByteString.FromString("drei") }, opt => opt.WithStrictOrdering());
-            res[1].Should().BeEquivalentTo(new[] { ByteString.FromString("uno"), ByteString.FromString("dos"), ByteString.FromString("tres") }, opt => opt.WithStrictOrdering());
+            Assert.Equal(new[] { ByteString.FromString("eins"), ByteString.FromString("zwei"), ByteString.FromString("drei") }, res[0]);
+            Assert.Equal(new[] { ByteString.FromString("uno"), ByteString.FromString("dos"), ByteString.FromString("tres") }, res[1]);
         }
 
         [Fact]
@@ -57,8 +55,8 @@ namespace Akka.Streams.Csv.Tests.dsl
                 .RunWith(Sink.Seq<ImmutableList<ByteString>>(), Materializer);
 
             var res = (await CompletedWithin(fut));
-            res[0].Should().BeEquivalentTo(new[] { ByteString.FromString("eins"), ByteString.FromString("zwei"), ByteString.FromString("drei") }, opt => opt.WithStrictOrdering());
-            res[1].Should().BeEquivalentTo(new[] { ByteString.FromString("uno"), ByteString.FromString("dos"), ByteString.FromString("tres") }, opt => opt.WithStrictOrdering());
+            Assert.Equal(new[] { ByteString.FromString("eins"), ByteString.FromString("zwei"), ByteString.FromString("drei") }, res[0]);
+            Assert.Equal(new[] { ByteString.FromString("uno"), ByteString.FromString("dos"), ByteString.FromString("tres") }, res[1]);
         }
 
         [Fact]
@@ -71,8 +69,8 @@ namespace Akka.Streams.Csv.Tests.dsl
                 .RunWith(Sink.Seq<string[]>(), Materializer);
 
             var res = (await CompletedWithin(fut));
-            res[0].Should().BeEquivalentTo(new[] { "eins", "zwei", "drei" }, opt => opt.WithStrictOrdering());
-            res[1].Should().BeEquivalentTo(new[] { "ein”s", "zw ei", "dr\\ei" }, opt => opt.WithStrictOrdering());
+            Assert.Equal(new[] { "eins", "zwei", "drei" }, res[0]);
+            Assert.Equal(new[] { "ein”s", "zw ei", "dr\\ei" }, res[1]);
         }
 
         [Fact]
@@ -90,8 +88,8 @@ namespace Akka.Streams.Csv.Tests.dsl
                 .Select(list => list.Select(bs => bs.ToString()).ToArray())
                 .RunWith(Sink.Seq<string[]>(), Materializer);
             var res = (await CompletedWithin(fut));
-            res[0].Should().BeEquivalentTo(new[] { "eins", "zwei", "drei" }, opt => opt.WithStrictOrdering());
-            res[1].Should().BeEquivalentTo(new[] { "uno", "dos", "tres" }, opt => opt.WithStrictOrdering());
+            Assert.Equal(new[] { "eins", "zwei", "drei" }, res[0]);
+            Assert.Equal(new[] { "uno", "dos", "tres" }, res[1]);
         }
 
         [Fact]
@@ -107,11 +105,11 @@ namespace Akka.Streams.Csv.Tests.dsl
 
             source.SendNext(ByteString.FromString("eins,zwei,drei\nuno,dos,tres\n1,2,3"));
             sink.Request(3);
-            sink.ExpectNext().Should().BeEquivalentTo(new[] { "eins", "zwei", "drei" }, opt => opt.WithStrictOrdering());
-            sink.ExpectNext().Should().BeEquivalentTo(new[] { "uno", "dos", "tres" }, opt => opt.WithStrictOrdering());
+            Assert.Equal(new[] { "eins", "zwei", "drei" }, sink.ExpectNext());
+            Assert.Equal(new[] { "uno", "dos", "tres" }, sink.ExpectNext());
             sink.ExpectNoMsg(TimeSpan.FromMilliseconds(100));
             source.SendComplete();
-            sink.ExpectNext().Should().BeEquivalentTo(new[] { "1", "2", "3" }, opt => opt.WithStrictOrdering());
+            Assert.Equal(new[] { "1", "2", "3" }, sink.ExpectNext());
             sink.ExpectComplete();
         }
 
@@ -124,8 +122,8 @@ namespace Akka.Streams.Csv.Tests.dsl
                 .RunWith(Sink.Seq<string[]>(), Materializer);
 
             var res = (await CompletedWithin(fut));
-            res[0].Should().BeEquivalentTo(new[] { "abc", "def", "ghi", "", "", "", "" }, opt => opt.WithStrictOrdering());
-            res[1].Should().BeEquivalentTo(new[] { "\"", "\\\\;", "a\"\nb\"\"c", "", "", "", "" }, opt => opt.WithStrictOrdering());
+            Assert.Equal(new[] { "abc", "def", "ghi", "", "", "", "" }, res[0]);
+            Assert.Equal(new[] { "\"", "\\\\;", "a\"\nb\"\"c", "", "", "", "" }, res[1]);
         }
 
         [Fact]
@@ -137,8 +135,8 @@ namespace Akka.Streams.Csv.Tests.dsl
             .RunWith(Sink.Seq<string[]>(), Materializer);
 
             var res = (await CompletedWithin(fut));
-            res[0].Should().BeEquivalentTo(new[] { "abc", "def", "ghi" }, opt => opt.WithStrictOrdering());
-            res[1].Should().BeEquivalentTo(new[] { "\"", "\\\\,", "a\"\nb\"\"c" }, opt => opt.WithStrictOrdering());
+            Assert.Equal(new[] { "abc", "def", "ghi" }, res[0]);
+            Assert.Equal(new[] { "\"", "\\\\,", "a\"\nb\"\"c" }, res[1]);
         }
 
         [Fact]
@@ -160,46 +158,46 @@ namespace Akka.Streams.Csv.Tests.dsl
                 .RunWith(Sink.Seq<Dictionary<string, string>>(), Materializer);
 
             var res = (await CompletedWithin(fut));
-            res[0].Should().BeEquivalentTo(new Dictionary<string, string>()
+            Assert.Equal((new Dictionary<string, string>()
             {
                 { "Year", "1997" },
                 { "Make" , "Ford" },
                 { "Model" , "E350" },
                 { "Description" , "ac, abs, moon" },
                 { "Price" , "3000.00" },
-            }, opt => opt.WithStrictOrdering());
-            res[1].Should().BeEquivalentTo(new Dictionary<string, string>()
+            }).OrderBy(p => p.Key), (res[0]).OrderBy(p => p.Key));
+            Assert.Equal((new Dictionary<string, string>()
             {
                 { "Year", "1999" },
                 { "Make" , "Chevy" },
                 { "Model" , "Venture \"Extended Edition\"" },
                 { "Description" , "" },
                 { "Price" , "4900.00" },
-            }, opt => opt.WithStrictOrdering());
-            res[2].Should().BeEquivalentTo(new Dictionary<string, string>()
+            }).OrderBy(p => p.Key), (res[1]).OrderBy(p => p.Key));
+            Assert.Equal((new Dictionary<string, string>()
             {
                 { "Year", "1996" },
                 { "Make" , "Jeep" },
                 { "Model" , "Grand Cherokee" },
                 { "Description" , "MUST SELL!\nair, moon roof, loaded" },
                 { "Price" , "4799.00" },
-            }, opt => opt.WithStrictOrdering());
-            res[3].Should().BeEquivalentTo(new Dictionary<string, string>()
+            }).OrderBy(p => p.Key), (res[2]).OrderBy(p => p.Key));
+            Assert.Equal((new Dictionary<string, string>()
             {
                 { "Year", "1999" },
                 { "Make" , "Chevy" },
                 { "Model" , "Venture \"Extended Edition, Very Large\"" },
                 { "Description" , "" },
                 { "Price" , "5000.00" },
-            }, opt => opt.WithStrictOrdering());
-            res[4].Should().BeEquivalentTo(new Dictionary<string, string>()
+            }).OrderBy(p => p.Key), (res[3]).OrderBy(p => p.Key));
+            Assert.Equal((new Dictionary<string, string>()
             {
                 { "Year", "" },
                 { "Make" , "" },
                 { "Model" , "Venture \"Extended Edition\"" },
                 { "Description" , "" },
                 { "Price" , "4900.00" },
-            }, opt => opt.WithStrictOrdering());
+            }).OrderBy(p => p.Key), (res[4]).OrderBy(p => p.Key));
         }
     }
 }

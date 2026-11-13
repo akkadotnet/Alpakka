@@ -17,7 +17,6 @@ using Akka.Streams.Dsl;
 using Akka.Streams.TestKit;
 using Amazon.SQS;
 using Amazon.SQS.Model;
-using FluentAssertions.Extensions;
 using NSubstitute;
 using Xunit;
 using Xunit.Abstractions;
@@ -83,13 +82,13 @@ namespace Akka.Streams.SQS.Tests
 
             subscriber.Request(3);
 
-            publisher.SendNext(MessageAction.ChangeVisibility(Message("a-1"), 10.Seconds()));
-            publisher.SendNext(MessageAction.ChangeVisibility(Message("a-2"), 13.Seconds()));
+            publisher.SendNext(MessageAction.ChangeVisibility(Message("a-1"), TimeSpan.FromSeconds(10)));
+            publisher.SendNext(MessageAction.ChangeVisibility(Message("a-2"), TimeSpan.FromSeconds(13)));
 
             subscriber.ExpectNext<ISqsAckResult>(ack => ack is SqsChangeMessageVisibilityResult r &&
-                r.Action.Message.ReceiptHandle == "a-1" && r.Action.VisibilityTimeout == 10.Seconds());
+                r.Action.Message.ReceiptHandle == "a-1" && r.Action.VisibilityTimeout == TimeSpan.FromSeconds(10));
             subscriber.ExpectNext<ISqsAckResult>(ack => ack is SqsChangeMessageVisibilityResult r &&
-                r.Action.Message.ReceiptHandle == "a-2" && r.Action.VisibilityTimeout == 13.Seconds());
+                r.Action.Message.ReceiptHandle == "a-2" && r.Action.VisibilityTimeout == TimeSpan.FromSeconds(13));
 
             subscriber.Cancel();
         }
@@ -170,13 +169,13 @@ namespace Akka.Streams.SQS.Tests
 
             subscriber.Request(3);
 
-            publisher.SendNext(MessageAction.ChangeVisibility(Message("a-1"), 10.Seconds()));
-            publisher.SendNext(MessageAction.ChangeVisibility(Message("a-2"), 13.Seconds()));
+            publisher.SendNext(MessageAction.ChangeVisibility(Message("a-1"), TimeSpan.FromSeconds(10)));
+            publisher.SendNext(MessageAction.ChangeVisibility(Message("a-2"), TimeSpan.FromSeconds(13)));
 
             subscriber.ExpectNext<ISqsAckResultEntry>(ack => ack is SqsChangeMessageVisibilityResultEntry r &&
-                r.Action.Message.ReceiptHandle == "a-1" && r.Action.VisibilityTimeout == 10.Seconds());
+                r.Action.Message.ReceiptHandle == "a-1" && r.Action.VisibilityTimeout == TimeSpan.FromSeconds(10));
             subscriber.ExpectNext<ISqsAckResultEntry>(ack => ack is SqsChangeMessageVisibilityResultEntry r &&
-                r.Action.Message.ReceiptHandle == "a-2" && r.Action.VisibilityTimeout == 13.Seconds());
+                r.Action.Message.ReceiptHandle == "a-2" && r.Action.VisibilityTimeout == TimeSpan.FromSeconds(13));
 
             subscriber.Cancel();
         }

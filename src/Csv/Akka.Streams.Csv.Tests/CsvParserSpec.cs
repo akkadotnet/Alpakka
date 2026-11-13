@@ -2,7 +2,6 @@
 using System.Text;
 using Akka.IO;
 using Akka.Streams.Csv.Dsl;
-using FluentAssertions;
 using Xunit;
 
 namespace Akka.Streams.Csv.Tests
@@ -38,7 +37,7 @@ namespace Akka.Streams.Csv.Tests
         {
             var parser = new CsvParser(CsvParsing.Comma, 0x2d, 0x2e);
             parser.Offer(ByteString.Empty);
-            parser.Poll(true).Should().BeEquivalentTo(null);
+            Assert.Null(parser.Poll(true));
         }
 
         [Fact]
@@ -119,9 +118,7 @@ namespace Akka.Streams.Csv.Tests
         {
             var parser = new CsvParser(CsvParsing.Comma, CsvParsing.DoubleQuote, CsvParsing.Backslash);
             parser.Offer(ByteString.FromString("a,\\\",c\n"));
-            parser.Invoking(p => p.Poll(true))
-                .Should().ThrowExactly<MalformedCsvException>()
-                .WithMessage("wrong escaping at 1:2, only escape or delimiter may be escaped");
+            Assert.Equal("wrong escaping at 1:2, only escape or delimiter may be escaped", Assert.Throws<MalformedCsvException>(() => parser.Poll(true)).Message);
         }
 
         [Fact]
@@ -129,9 +126,7 @@ namespace Akka.Streams.Csv.Tests
         {
             var parser = new CsvParser(CsvParsing.Comma, CsvParsing.DoubleQuote, CsvParsing.Backslash);
             parser.Offer(ByteString.FromString("a,\\"));
-            parser.Invoking(p => p.Poll(true))
-                .Should().ThrowExactly<MalformedCsvException>()
-                .WithMessage("wrong escaping at 1:2, no character after escape");
+            Assert.Equal("wrong escaping at 1:2, no character after escape", Assert.Throws<MalformedCsvException>(() => parser.Poll(true)).Message);
         }
 
         [Fact]
@@ -139,9 +134,7 @@ namespace Akka.Streams.Csv.Tests
         {
             var parser = new CsvParser(CsvParsing.Comma, CsvParsing.DoubleQuote, CsvParsing.Backslash);
             parser.Offer(ByteString.FromString("a,b\\"));
-            parser.Invoking(p => p.Poll(true))
-                .Should().ThrowExactly<MalformedCsvException>()
-                .WithMessage("wrong escaping at 1:3, no character after escape");
+            Assert.Equal("wrong escaping at 1:3, no character after escape", Assert.Throws<MalformedCsvException>(() => parser.Poll(true)).Message);
         }
 
         [Fact]
@@ -149,9 +142,7 @@ namespace Akka.Streams.Csv.Tests
         {
             var parser = new CsvParser(CsvParsing.Comma, CsvParsing.DoubleQuote, CsvParsing.Backslash);
             parser.Offer(ByteString.FromString("a,\"\\"));
-            parser.Invoking(p => p.Poll(true))
-                .Should().ThrowExactly<MalformedCsvException>()
-                .WithMessage("wrong escaping at 1:3, no character after escape");
+            Assert.Equal("wrong escaping at 1:3, no character after escape", Assert.Throws<MalformedCsvException>(() => parser.Poll(true)).Message);
         }
 
         [Fact]
@@ -183,10 +174,10 @@ namespace Akka.Streams.Csv.Tests
         {
             var parser = new CsvParser(CsvParsing.Comma, CsvParsing.DoubleQuote, CsvParsing.Backslash);
             parser.Offer(ByteString.FromString("abc\u2028"));
-            parser.Poll(true).Should().BeNull();
+            Assert.Null(parser.Poll(true));
             parser.Offer(ByteString.FromString("\n"));
             var res = parser.Poll(true);
-            res[0].ToString().Should().Be("abc\u2028");
+            Assert.Equal("abc\u2028", res[0].ToString());
         }
 
         [Fact]
@@ -251,32 +242,28 @@ namespace Akka.Streams.Csv.Tests
         public void Csv_parsing_with_Byte_Order_Mark_should_fail_for_UTF16_LE_BOM()
         {
             var bsIn = ByteOrderMark.UTF16_LE + ByteString.FromString("one,two,three\n", Encoding.Unicode);
-            this.Invoking(t => t.ExpectBsInOut(bsIn, new[,] {{"one", "two", "three"}}))
-                .Should().ThrowExactly<UnsupportedCharsetException>();
+            Assert.Throws<UnsupportedCharsetException>(() => ExpectBsInOut(bsIn, new[,] {{"one", "two", "three"}}));
         }
 
         [Fact]
         public void Csv_parsing_with_Byte_Order_Mark_should_fail_for_UTF16_BE_BOM()
         {
             var bsIn = ByteOrderMark.UTF16_BE + ByteString.FromString("one,two,three\n", Encoding.BigEndianUnicode);
-            this.Invoking(t => t.ExpectBsInOut(bsIn, new[,] { { "one", "two", "three" } }))
-                .Should().ThrowExactly<UnsupportedCharsetException>();
+            Assert.Throws<UnsupportedCharsetException>(() => ExpectBsInOut(bsIn, new[,] { { "one", "two", "three" } }));
         }
 
         [Fact]
         public void Csv_parsing_with_Byte_Order_Mark_should_fail_for_UTF32_LE_BOM()
         {
             var bsIn = ByteOrderMark.UTF32_LE + ByteString.FromString("one,two,three\n", Encoding.UTF32);
-            this.Invoking(t => t.ExpectBsInOut(bsIn, new[,] { { "one", "two", "three" } }))
-                .Should().ThrowExactly<UnsupportedCharsetException>();
+            Assert.Throws<UnsupportedCharsetException>(() => ExpectBsInOut(bsIn, new[,] { { "one", "two", "three" } }));
         }
 
         [Fact]
         public void Csv_parsing_with_Byte_Order_Mark_should_fail_for_UTF32_BE_BOM()
         {
             var bsIn = ByteOrderMark.UTF32_BE + ByteString.FromString("one,two,three\n", Encoding.UTF32);
-            this.Invoking(t => t.ExpectBsInOut(bsIn, new[,] { { "one", "two", "three" } }))
-                .Should().ThrowExactly<UnsupportedCharsetException>();
+            Assert.Throws<UnsupportedCharsetException>(() => ExpectBsInOut(bsIn, new[,] { { "one", "two", "three" } }));
         }
 
         private void ExpectInOut(string strIn, 
@@ -305,17 +292,17 @@ namespace Akka.Streams.Csv.Tests
                 for (int i = 0; i < expected.GetLength(0); ++i)
                 {
                     res = parser.Poll(requireLineEnd);
-                    res.Count.Should().Be(expected.GetLength(1));
+                    Assert.Equal(expected.GetLength(1), res.Count);
 
                     for (int j = 0; j < expected.GetLength(1); ++j)
                     {
                         var resStr = res[j].ToString();
-                        resStr.Should().BeEquivalentTo(expected[i, j]);
+                        Assert.Equal(expected[i, j], resStr);
                     }
                 }
             }
 
-            parser.Poll(true).Should().BeEquivalentTo(null);
+            Assert.Null(parser.Poll(true));
         }
     }
 }

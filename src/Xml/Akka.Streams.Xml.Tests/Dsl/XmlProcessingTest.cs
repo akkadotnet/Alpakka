@@ -7,7 +7,6 @@ using System.Threading.Tasks;
 using Akka.IO;
 using Akka.Streams.Dsl;
 using Akka.Streams.Xml.Dsl;
-using FluentAssertions;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -28,6 +27,34 @@ namespace Akka.Streams.Xml.Tests.Dsl
                 .ToMaterialized(Sink.Seq<IParseEvent>(), Keep.Right);
         }
 
+        internal static void AssertEvent(IParseEvent expected, IParseEvent actual)
+        {
+            Assert.NotNull(actual);
+            Assert.Equal(expected.GetType(), actual.GetType());
+            switch (expected)
+            {
+                case StartElement element:
+                    var start = (StartElement)actual;
+                    Assert.Equal(element.LocalName, start.LocalName);
+                    Assert.Equal(element.Attributes.OrderBy(p => p.Key), start.Attributes.OrderBy(p => p.Key));
+                    break;
+                case EndElement element:
+                    Assert.Equal(element.LocalName, ((EndElement)actual).LocalName);
+                    break;
+                case TextEvent text:
+                    Assert.Equal(text.Text, ((TextEvent)actual).Text);
+                    break;
+                case Comment comment:
+                    Assert.Equal(comment.Text, ((Comment)actual).Text);
+                    break;
+                case ProcessingInstruction instruction:
+                    var actualInstruction = (ProcessingInstruction)actual;
+                    Assert.Equal(instruction.Target, actualInstruction.Target);
+                    Assert.Equal(instruction.Data, actualInstruction.Data);
+                    break;
+            }
+        }
+
         [Fact]
         public async Task XmlParser_must_properly_parse_simple_XML()
         {
@@ -36,16 +63,16 @@ namespace Akka.Streams.Xml.Tests.Dsl
             
             var result = (await CompletedWithin(fut));
 
-            result[0].Should().BeOfType<StartDocument>();
-            (result[1] as StartElement).Should().BeEquivalentTo(new StartElement("doc", new Dictionary<string, string>()));
-            (result[2] as StartElement).Should().BeEquivalentTo(new StartElement("elem", new Dictionary<string, string>()));
-            (result[3] as Characters).Should().BeEquivalentTo(new Characters("elem1"));
-            (result[4] as EndElement).Should().BeEquivalentTo(new EndElement("elem"));
-            (result[5] as StartElement).Should().BeEquivalentTo(new StartElement("elem", new Dictionary<string, string>()));
-            (result[6] as Characters).Should().BeEquivalentTo(new Characters("elem2"));
-            (result[7] as EndElement).Should().BeEquivalentTo(new EndElement("elem"));
-            (result[8] as EndElement).Should().BeEquivalentTo(new EndElement("doc"));
-            result[9].Should().BeOfType<EndDocument>();
+            Assert.IsType<StartDocument>(result[0]);
+            AssertEvent(new StartElement("doc", new Dictionary<string, string>()), result[1]);
+            AssertEvent(new StartElement("elem", new Dictionary<string, string>()), result[2]);
+            AssertEvent(new Characters("elem1"), result[3]);
+            AssertEvent(new EndElement("elem"), result[4]);
+            AssertEvent(new StartElement("elem", new Dictionary<string, string>()), result[5]);
+            AssertEvent(new Characters("elem2"), result[6]);
+            AssertEvent(new EndElement("elem"), result[7]);
+            AssertEvent(new EndElement("doc"), result[8]);
+            Assert.IsType<EndDocument>(result[9]);
         }
 
         [Fact]
@@ -59,20 +86,20 @@ namespace Akka.Streams.Xml.Tests.Dsl
 
             var result = (await CompletedWithin(fut));
 
-            result[0].Should().BeOfType<StartDocument>();
-            (result[1] as StartElement).Should().BeEquivalentTo(new StartElement("doc", new Dictionary<string, string>()));
-            (result[2] as StartElement).Should().BeEquivalentTo(new StartElement("elem", new Dictionary<string, string>()));
-            (result[3] as Characters).Should().BeEquivalentTo(new Characters("elem1"));
-            (result[4] as EndElement).Should().BeEquivalentTo(new EndElement("elem"));
-            (result[5] as EndElement).Should().BeEquivalentTo(new EndElement("doc"));
-            result[6].Should().BeOfType<EndDocument>();
-            result[7].Should().BeOfType<StartDocument>();
-            (result[8] as StartElement).Should().BeEquivalentTo(new StartElement("doc", new Dictionary<string, string>()));
-            (result[9] as StartElement).Should().BeEquivalentTo(new StartElement("elem", new Dictionary<string, string>()));
-            (result[10] as Characters).Should().BeEquivalentTo(new Characters("elem1"));
-            (result[11] as EndElement).Should().BeEquivalentTo(new EndElement("elem"));
-            (result[12] as EndElement).Should().BeEquivalentTo(new EndElement("doc"));
-            result[13].Should().BeOfType<EndDocument>();
+            Assert.IsType<StartDocument>(result[0]);
+            AssertEvent(new StartElement("doc", new Dictionary<string, string>()), result[1]);
+            AssertEvent(new StartElement("elem", new Dictionary<string, string>()), result[2]);
+            AssertEvent(new Characters("elem1"), result[3]);
+            AssertEvent(new EndElement("elem"), result[4]);
+            AssertEvent(new EndElement("doc"), result[5]);
+            Assert.IsType<EndDocument>(result[6]);
+            Assert.IsType<StartDocument>(result[7]);
+            AssertEvent(new StartElement("doc", new Dictionary<string, string>()), result[8]);
+            AssertEvent(new StartElement("elem", new Dictionary<string, string>()), result[9]);
+            AssertEvent(new Characters("elem1"), result[10]);
+            AssertEvent(new EndElement("elem"), result[11]);
+            AssertEvent(new EndElement("doc"), result[12]);
+            Assert.IsType<EndDocument>(result[13]);
         }
 
         [Fact]
@@ -83,11 +110,11 @@ namespace Akka.Streams.Xml.Tests.Dsl
 
             var result = (await CompletedWithin(fut));
 
-            result[0].Should().BeOfType<StartDocument>();
-            (result[1] as StartElement).Should().BeEquivalentTo(new StartElement("doc", new Dictionary<string, string>()));
-            (result[2] as Comment).Should().BeEquivalentTo(new Comment("comment"));
-            (result[3] as EndElement).Should().BeEquivalentTo(new EndElement("doc"));
-            result[4].Should().BeOfType<EndDocument>();
+            Assert.IsType<StartDocument>(result[0]);
+            AssertEvent(new StartElement("doc", new Dictionary<string, string>()), result[1]);
+            AssertEvent(new Comment("comment"), result[2]);
+            AssertEvent(new EndElement("doc"), result[3]);
+            Assert.IsType<EndDocument>(result[4]);
         }
 
         [Fact]
@@ -98,11 +125,11 @@ namespace Akka.Streams.Xml.Tests.Dsl
 
             var result = (await CompletedWithin(fut));
 
-            result[0].Should().BeOfType<StartDocument>();
-            (result[1] as ProcessingInstruction).Should().BeEquivalentTo(new ProcessingInstruction("target", "content"));
-            (result[2] as StartElement).Should().BeEquivalentTo(new StartElement("doc", new Dictionary<string, string>()));
-            (result[3] as EndElement).Should().BeEquivalentTo(new EndElement("doc"));
-            result[4].Should().BeOfType<EndDocument>();
+            Assert.IsType<StartDocument>(result[0]);
+            AssertEvent(new ProcessingInstruction("target", "content"), result[1]);
+            AssertEvent(new StartElement("doc", new Dictionary<string, string>()), result[2]);
+            AssertEvent(new EndElement("doc"), result[3]);
+            Assert.IsType<EndDocument>(result[4]);
         }
 
         [Fact]
@@ -113,13 +140,13 @@ namespace Akka.Streams.Xml.Tests.Dsl
 
             var result = (await CompletedWithin(fut));
 
-            result[0].Should().BeOfType<StartDocument>();
-            (result[1] as StartElement).Should().BeEquivalentTo(new StartElement("doc", new Dictionary<string, string> {{"good", "yes"}}));
-            (result[2] as StartElement).Should().BeEquivalentTo(new StartElement("elem", new Dictionary<string, string> {{"nice", "yes"}, {"very", "true"}}));
-            (result[3] as Characters).Should().BeEquivalentTo(new Characters("elem1"));
-            (result[4] as EndElement).Should().BeEquivalentTo(new EndElement("elem"));
-            (result[5] as EndElement).Should().BeEquivalentTo(new EndElement("doc"));
-            result[6].Should().BeOfType<EndDocument>();
+            Assert.IsType<StartDocument>(result[0]);
+            AssertEvent(new StartElement("doc", new Dictionary<string, string> {{"good", "yes"}}), result[1]);
+            AssertEvent(new StartElement("elem", new Dictionary<string, string> {{"nice", "yes"}, {"very", "true"}}), result[2]);
+            AssertEvent(new Characters("elem1"), result[3]);
+            AssertEvent(new EndElement("elem"), result[4]);
+            AssertEvent(new EndElement("doc"), result[5]);
+            Assert.IsType<EndDocument>(result[6]);
         }
 
         [Fact]
@@ -130,11 +157,11 @@ namespace Akka.Streams.Xml.Tests.Dsl
 
             var result = (await CompletedWithin(fut));
 
-            result[0].Should().BeOfType<StartDocument>();
-            (result[1] as StartElement).Should().BeEquivalentTo(new StartElement("doc", new Dictionary<string, string>()));
-            (result[2] as CData).Should().BeEquivalentTo(new CData("<not>even</valid>"));
-            (result[3] as EndElement).Should().BeEquivalentTo(new EndElement("doc"));
-            result[4].Should().BeOfType<EndDocument>();
+            Assert.IsType<StartDocument>(result[0]);
+            AssertEvent(new StartElement("doc", new Dictionary<string, string>()), result[1]);
+            AssertEvent(new CData("<not>even</valid>"), result[2]);
+            AssertEvent(new EndElement("doc"), result[3]);
+            Assert.IsType<EndDocument>(result[4]);
         }
 
         // I'm not sure what the original very convoluted code does
@@ -155,7 +182,7 @@ namespace Akka.Streams.Xml.Tests.Dsl
                 .Select(evt => ((Characters)evt).Text)
                 .RunWith(Sink.Seq<string>(), _materializer);
 
-            (await CompletedWithin(fut)).Should().BeEquivalentTo(elements);
+            Assert.Equal(elements.OrderBy(x => x), (await CompletedWithin(fut)).OrderBy(x => x));
         }
 
         [Fact]

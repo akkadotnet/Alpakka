@@ -87,6 +87,10 @@ The [test guide](docs/community/Testing.md) lists every suite, Docker requiremen
 
 ## Compatibility and upgrades
 
+Packages built from this revision require Akka.Streams 1.5.74 or later. Streams and TestKit package versions are aligned centrally.
+
+The Akka.NET upgrade from the previous 1.5.60 minimum inherits upstream binary changes involving the `RetrySupport.Retry` overload with an `int randomFactor` and custom implementations of `ISourceQueue<T>`. See the [unreleased compatibility notes](RELEASE_NOTES.md) before upgrading an existing application.
+
 Changes follow extend-only design: preserve public signatures, shipped targets, wire formats, documented defaults and client ownership. Add overloads or new types for new behavior. A dependency upgrade also needs source, binary and behavior checks; a compatible-looking NuGet framework badge is not sufficient evidence.
 
 Required checks compare against a released package, execute an unchanged consumer against the candidate, inspect the actual NuGet archive and compile its README examples. Integration coverage uses Aspire.Hosting.Testing or Testcontainers where a real service boundary is needed, with owned resources, discovered endpoints, bounded readiness and visible failures. CSV, XML and local filesystem tests use the actual local operations they exercise.

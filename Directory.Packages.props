@@ -4,7 +4,7 @@
     <AspireVersion>13.6.5</AspireVersion>
   </PropertyGroup>
   <PropertyGroup Label="SharedVersions">
-    <AkkaVersion>1.5.60</AkkaVersion>
+    <AkkaVersion>1.5.74</AkkaVersion>
     <AmqpNetLiteVersion>2.5.1</AmqpNetLiteVersion>
     <RabbitMqConsumerPackageVersion Condition="'$(RabbitMqConsumerPackageVersion)' == ''">1.5.59</RabbitMqConsumerPackageVersion>
     <StorageQueueConsumerPackageVersion Condition="'$(StorageQueueConsumerPackageVersion)' == ''">1.5.59</StorageQueueConsumerPackageVersion>

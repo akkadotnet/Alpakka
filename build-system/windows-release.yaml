@@ -1,6 +1,0 @@
-# Retired: NuGet releases are published by .github/workflows/publish_nuget.yml.
-# Keep this pipeline inert until the Azure DevOps pipeline is disabled or deleted.
-trigger: none
-pr: none
-steps:
-  - script: echo The Azure DevOps release pipeline is retired.

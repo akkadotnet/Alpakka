@@ -27,9 +27,11 @@ namespace Akka.Streams.Csv
         private readonly byte _delimiter;
         private readonly byte _quoteChar;
         private readonly byte _escapeChar;
+        private readonly bool _allowIncompleteEscapes;
 
         private ByteString _buffer = ByteString.Empty;
         private bool _firstData = true;
+        private bool _pendingLfAfterCr;
         private long _currentLineNo = 1L;
 
         private int _position;
@@ -42,10 +44,16 @@ namespace Akka.Streams.Csv
         /// <param name="quoteChar"></param>
         /// <param name="escapeChar"></param>
         public CsvParser(byte delimiter, byte quoteChar, byte escapeChar)
+            : this(delimiter, quoteChar, escapeChar, false)
+        {
+        }
+
+        internal CsvParser(byte delimiter, byte quoteChar, byte escapeChar, bool allowIncompleteEscapes)
         {
             _delimiter = delimiter;
             _quoteChar = quoteChar;
             _escapeChar = escapeChar;
+            _allowIncompleteEscapes = allowIncompleteEscapes;
         }
 
         public void Offer(ByteString input)
@@ -55,6 +63,11 @@ namespace Akka.Streams.Csv
 
         public List<ByteString> Poll(bool requireLineEnd)
         {
+            if (_pendingLfAfterCr && !_buffer.IsEmpty)
+            {
+                if (_buffer[0] == Lf) _buffer = _buffer.Slice(1);
+                _pendingLfAfterCr = false;
+            }
             if (!_buffer.IsEmpty)
             {
                 var preFirstData = _firstData;
@@ -162,6 +175,10 @@ namespace Akka.Streams.Csv
                 {
                     _position++;
                 }
+                else if (_position == buffer.Count)
+                {
+                    _pendingLfAfterCr = true;
+                }
             }
 
             void CheckForByteOrderMark()
@@ -249,7 +266,10 @@ namespace Akka.Streams.Csv
                         if (b == _escapeChar)
                         {
                             if (_position + 1 >= buffer.Count)
+                            {
+                                if (requireLineEnd && _allowIncompleteEscapes) return null;
                                 NoCharEscaped();
+                            }
 
                             if (buffer[_position + 1] != _escapeChar && buffer[_position + 1] != _delimiter)
                                 WrongCharEscaped();
@@ -296,7 +316,10 @@ namespace Akka.Streams.Csv
                         if (b == _escapeChar)
                         {
                             if (_position + 1 >= buffer.Count)
+                            {
+                                if (requireLineEnd && _allowIncompleteEscapes) return null;
                                 NoCharEscaped();
+                            }
 
                             if (buffer[_position + 1] != _escapeChar && buffer[_position + 1] != _delimiter)
                                 WrongCharEscaped();
@@ -343,7 +366,10 @@ namespace Akka.Streams.Csv
                         if (b == _escapeChar && _escapeChar != _quoteChar)
                         {
                             if (_position + 1 >= buffer.Count)
+                            {
+                                if (requireLineEnd && _allowIncompleteEscapes) return null;
                                 NoCharEscaped();
+                            }
 
                             if (buffer[_position + 1] != _escapeChar && buffer[_position + 1] != _quoteChar)
                                 WrongCharEscapedWithinQuotes();
@@ -407,7 +433,10 @@ namespace Akka.Streams.Csv
                         if (b == _escapeChar && _escapeChar != _quoteChar)
                         {
                             if (_position + 1 >= buffer.Count)
+                            {
+                                if (requireLineEnd && _allowIncompleteEscapes) return null;
                                 NoCharEscaped();
+                            }
 
                             if (buffer[_position + 1] != _escapeChar && buffer[_position + 1] != _quoteChar)
                                 WrongCharEscapedWithinQuotes();

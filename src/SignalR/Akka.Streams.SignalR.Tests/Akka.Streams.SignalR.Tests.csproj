@@ -7,7 +7,9 @@
     <ItemGroup>
         <PackageReference Include="Akka.Streams.TestKit" />
         <PackageReference Include="Akka.TestKit.Xunit2" />
+        <PackageReference Include="Aspire.Hosting.Testing" />
         <PackageReference Include="Microsoft.NET.Test.Sdk" />
+        <PackageReference Include="NSubstitute" />
         <PackageReference Include="xunit" />
         <PackageReference Include="xunit.runner.visualstudio" />
         <PackageReference Include="coverlet.collector" />
@@ -17,6 +19,7 @@
     
     <ItemGroup>
     <ProjectReference Include="..\Akka.Streams.SignalR\Akka.Streams.SignalR.csproj" />
+    <ProjectReference Include="..\Examples\SignalR.AppHost\SignalR.AppHost.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,17 +1,33 @@
 <Project>
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
-    <AspireVersion>13.0.0</AspireVersion>
+    <AspireVersion>13.6.5</AspireVersion>
   </PropertyGroup>
   <PropertyGroup Label="SharedVersions">
-    <AkkaVersion>1.5.68</AkkaVersion>
+    <AkkaVersion>1.5.60</AkkaVersion>
+    <AmqpNetLiteVersion>2.5.1</AmqpNetLiteVersion>
+    <RabbitMqConsumerPackageVersion Condition="'$(RabbitMqConsumerPackageVersion)' == ''">1.5.59</RabbitMqConsumerPackageVersion>
+    <StorageQueueConsumerPackageVersion Condition="'$(StorageQueueConsumerPackageVersion)' == ''">1.5.59</StorageQueueConsumerPackageVersion>
+    <XmlConsumerPackageVersion Condition="'$(XmlConsumerPackageVersion)' == ''">1.5.59</XmlConsumerPackageVersion>
+    <CsvConsumerPackageVersion Condition="'$(CsvConsumerPackageVersion)' == ''">1.5.59</CsvConsumerPackageVersion>
+    <FileConsumerPackageVersion Condition="'$(FileConsumerPackageVersion)' == ''">1.5.59</FileConsumerPackageVersion>
+    <KinesisConsumerPackageVersion Condition="'$(KinesisConsumerPackageVersion)' == ''">1.5.59</KinesisConsumerPackageVersion>
+    <ServiceBusConsumerPackageVersion Condition="'$(ServiceBusConsumerPackageVersion)' == ''">1.5.59</ServiceBusConsumerPackageVersion>
+    <EventHubConsumerPackageVersion Condition="'$(EventHubConsumerPackageVersion)' == ''">1.5.59</EventHubConsumerPackageVersion>
+    <AmqpV1ConsumerPackageVersion Condition="'$(AmqpV1ConsumerPackageVersion)' == ''">1.5.59</AmqpV1ConsumerPackageVersion>
+    <SignalRConsumerPackageVersion Condition="'$(SignalRConsumerPackageVersion)' == ''">1.5.59</SignalRConsumerPackageVersion>
+    <SnsConsumerPackageVersion Condition="'$(SnsConsumerPackageVersion)' == ''">1.5.59</SnsConsumerPackageVersion>
+    <SqsConsumerPackageVersion Condition="'$(SqsConsumerPackageVersion)' == ''">1.5.59</SqsConsumerPackageVersion>
   </PropertyGroup>
   <ItemGroup>
-    <PackageVersion Include="Aspire.Azure.Messaging.EventHubs" Version="13.0.2" />
-    <PackageVersion Include="Aspire.Hosting.Azure.EventHubs" Version="13.0.2" />
-    <PackageVersion Include="Aspire.Hosting.Azure.ServiceBus" Version="13.0.0" />
-    <PackageVersion Include="Aspire.Hosting.Azure.Storage" Version="13.0.2" />
-    <PackageVersion Include="Microsoft.AspNetCore.SignalR" Version="1.2.0" />
+    <PackageVersion Include="Akka.Streams.Azure.StorageQueue" Version="$(StorageQueueConsumerPackageVersion)" />
+    <PackageVersion Include="Akka.Streams.Amqp.RabbitMq" Version="$(RabbitMqConsumerPackageVersion)" />
+    <PackageVersion Include="Aspire.Azure.Messaging.EventHubs" Version="$(AspireVersion)" />
+    <PackageVersion Include="Aspire.Hosting.Azure.EventHubs" Version="$(AspireVersion)" />
+    <PackageVersion Include="Aspire.Hosting.Azure.ServiceBus" Version="$(AspireVersion)" />
+    <PackageVersion Include="Aspire.Hosting.Azure.Storage" Version="$(AspireVersion)" />
+    <PackageVersion Include="Microsoft.AspNetCore.SignalR" Version="1.2.14" />
+    <PackageVersion Include="Testcontainers.MsSql" Version="4.16.0" />
     <PackageVersion Include="xunit" Version="2.9.2" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.0" />
     <PackageVersion Include="NBench" Version="2.0.1" />
@@ -22,27 +38,43 @@
     <PackageVersion Include="Hocon" Version="2.0.3" />
     <PackageVersion Include="ConfigurationManager" Version="4.7.0" />
     <PackageVersion Include="Docker.DotNet" Version="3.125.15" />
-    <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="8.0.0" />
+    <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="10.0.303" />
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />
     <PackageVersion Include="Akka.Streams" Version="$(AkkaVersion)" />
     <PackageVersion Include="Akka.Streams.TestKit" Version="$(AkkaVersion)" />
     <PackageVersion Include="Akka.TestKit.Xunit2" Version="$(AkkaVersion)" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.13.0" />
-    <PackageVersion Include="Microsoft.AspNetCore.SignalR.Client" Version="9.0.4" />
-    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="9.0.4" />
+    <PackageVersion Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.15" />
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.15" />
     <PackageVersion Include="NSubstitute" Version="5.1.0" />
-    <PackageVersion Include="Testcontainers.RabbitMq" Version="3.8.0" />
-    <PackageVersion Include="AWSSDK.SQS" Version="3.7.400.136" />
+    <PackageVersion Include="Testcontainers.RabbitMq" Version="4.16.0" />
+    <PackageVersion Include="AWSSDK.SQS" Version="3.7.501.2" />
     <PackageVersion Include="AWSSDK.SimpleNotificationService" Version="4.0.0" />
     <PackageVersion Include="AWSSDK.Kinesis" Version="4.0.1.1" />
-    <PackageVersion Include="Azure.Storage.Queues" Version="12.18.0" />
-    <PackageVersion Include="Azure.Messaging.ServiceBus" Version="7.17.4" />
-    <PackageVersion Include="Azure.Messaging.EventHubs.Processor" Version="5.11.3" />
+    <PackageVersion Include="Azure.Storage.Queues" Version="12.28.1" />
+    <PackageVersion Include="Azure.Messaging.ServiceBus" Version="7.21.0" />
+    <PackageVersion Include="Azure.Messaging.EventHubs.Processor" Version="5.11.6" />
     <PackageVersion Include="BenchmarkDotNet" Version="0.14.0" />
-    <PackageVersion Include="AMQPNetLite.Core" Version="2.4.11" />
-    <PackageVersion Include="AMQPNetLite.Serialization" Version="2.4.11" />
+    <PackageVersion Include="AMQPNetLite.Core" Version="$(AmqpNetLiteVersion)" />
+    <PackageVersion Include="AMQPNetLite.Serialization" Version="$(AmqpNetLiteVersion)" />
     <PackageVersion Include="RabbitMQ.Client" Version="6.8.1" />
-    <PackageVersion Include="Testcontainers.ServiceBus" Version="4.6.0" />
+    <PackageVersion Include="Testcontainers.ServiceBus" Version="4.16.0" />
     <PackageVersion Include="Aspire.Hosting.AppHost" Version="$(AspireVersion)" />
+    <PackageVersion Include="Testcontainers.Azurite" Version="4.16.0" />
+    <PackageVersion Include="Akka.Streams.Xml" Version="$(XmlConsumerPackageVersion)" />
+    <PackageVersion Include="Akka.Streams.Csv" Version="$(CsvConsumerPackageVersion)" />
+    <PackageVersion Include="Akka.Streams.File" Version="$(FileConsumerPackageVersion)" />
+    <PackageVersion Include="Akka.Streams.Kinesis" Version="$(KinesisConsumerPackageVersion)" />
+    <PackageVersion Include="Akka.Streams.Azure.ServiceBus" Version="$(ServiceBusConsumerPackageVersion)" />
+    <PackageVersion Include="Akka.Streams.Azure.EventHub" Version="$(EventHubConsumerPackageVersion)" />
+    <PackageVersion Include="Akka.Streams.Amqp.V1" Version="$(AmqpV1ConsumerPackageVersion)" />
+    <PackageVersion Include="Testcontainers.ActiveMq" Version="4.16.0" />
+    <PackageVersion Include="Akka.Streams.SignalR" Version="$(SignalRConsumerPackageVersion)" />
+    <PackageVersion Include="Aspire.Hosting.Testing" Version="13.6.5" />
+    <PackageVersion Include="Microsoft.AspNetCore.Http.Connections" Version="1.2.14" />
+    <PackageVersion Include="Microsoft.AspNetCore.WebUtilities" Version="2.3.14" />
+    <PackageVersion Include="Akka.Streams.Sns" Version="$(SnsConsumerPackageVersion)" />
+    <PackageVersion Include="Akka.Streams.SQS" Version="$(SqsConsumerPackageVersion)" />
+    <PackageVersion Include="Testcontainers.Floci" Version="4.16.0" />
   </ItemGroup>
 </Project>

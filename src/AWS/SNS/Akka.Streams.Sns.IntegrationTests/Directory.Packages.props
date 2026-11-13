@@ -1,0 +1,8 @@
+<Project>
+  <Import Project="../../../../Directory.Packages.props" />
+  <ItemGroup>
+    <!-- The observer runs with SNS's SDK 4 graph; the shipped SQS adapter keeps SDK 3. -->
+    <PackageVersion Remove="AWSSDK.SQS" />
+    <PackageVersion Include="AWSSDK.SQS" Version="4.1.0" />
+  </ItemGroup>
+</Project>

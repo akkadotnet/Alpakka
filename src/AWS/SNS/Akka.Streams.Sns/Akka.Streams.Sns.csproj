@@ -4,11 +4,17 @@
         <Description>Amazon SNS adapter for Akka.NET Streams</Description>
         <TargetFrameworks>$(NetStandardLibVersion);$(NetLibVersion)</TargetFrameworks>
         <PackageTags>$(AkkaPackageTags);Amazon;AWS;SNS</PackageTags>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <EnablePackageValidation>true</EnablePackageValidation>
+        <PackageValidationBaselineVersion>1.5.59</PackageValidationBaselineVersion>
     </PropertyGroup>
 
     <ItemGroup>
         <PackageReference Include="Akka.Streams" />
         <PackageReference Include="AWSSDK.SimpleNotificationService" />
+    </ItemGroup>
+    <ItemGroup>
+        <None Include="README.md" Pack="true" PackagePath="" />
     </ItemGroup>
 
 </Project>

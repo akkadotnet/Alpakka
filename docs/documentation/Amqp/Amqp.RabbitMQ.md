@@ -1,45 +1,7 @@
-# Akka.NET Streams connectors for RabbitMQ AMQP brokers
+# RabbitMQ
 
-## RabbitMQ V 0.9.1 Brokers
+RabbitMQ sources, sinks and RPC stages, including caller-controlled acknowledgments.
 
-Example:
-```
-var connectionSettings = AmqpConnectionDetails
-    .Create("localhost", 5672)
-    .WithCredentials(AmqpCredentials.Create("username", "password"))
-    .WithAutomaticRecoveryEnabled(true)
-    .WithNetworkRecoveryInterval(TimeSpan.FromSeconds(1));
+Install [Akka.Streams.Amqp.RabbitMq](https://www.nuget.org/packages/Akka.Streams.Amqp.RabbitMq). The [package README](https://github.com/akkadotnet/Alpakka/blob/dev/src/Amqp/Akka.Streams.Amqp.RabbitMq/README.md) contains the maintained usage examples, materialized values, defaults, ownership rules and known limits. Packages built from current source include that README; older published releases may omit it.
 
-var queueName = "myQueue";
-//queue declaration
-var queueDeclaration = QueueDeclaration
-    .Create(queueName)
-    .WithDurable(false)
-    .WithAutoDelete(true);
-
-//create sink
-var amqpSink = AmqpSink.CreateSimple( 
-    AmqpSinkSettings
-        .Create(connectionSettings)
-        .WithRoutingKey(queueName)
-        .WithDeclarations(queueDeclaration));
-
-//create source
-var amqpSource = AmqpSource.AtMostOnceSource( 
-    NamedQueueSourceSettings
-        .Create(connectionSettings, queueName)
-        .WithDeclarations(queueDeclaration),bufferSize: 10);
-
-//run sink
-var input = new[] {"one", "two", "three", "four", "five"};
-Source
-    .From(input)
-    .Select(ByteString.FromString)
-    .RunWith(amqpSink, _mat).Wait();
-
-//run source
-var result = await amqpSource
-    .Select(m => m.Bytes.ToString(Encoding.UTF8))
-    .Take(input.Length)
-    .RunWith(Sink.Seq<string>(), _mat);
-```
+See [local test instructions](https://github.com/akkadotnet/Alpakka/blob/dev/docs/community/Testing.md) for the service boundary and platform coverage.

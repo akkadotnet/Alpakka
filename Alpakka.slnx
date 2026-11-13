@@ -6,6 +6,9 @@
     <Project Path="src/Amqp/Akka.Streams.Amqp.V1/Akka.Streams.Amqp.V1.csproj" />
     <Project Path="src/Amqp/Akka.Streams.RabbitMq.Amqp.Benchmarks/Akka.Streams.RabbitMq.Amqp.Benchmarks.csproj" />
   </Folder>
+  <Folder Name="/Amqp/Compatibility/">
+    <Project Path="compatibility/AmqpV1Consumer/AmqpV1CompatibilityConsumer.csproj" />
+  </Folder>
   <Folder Name="/Amqp/Examples/">
     <Project Path="src/Amqp/Examples/Amqp.V1.Sink/Amqp.V1.Sink.csproj" />
     <Project Path="src/Amqp/Examples/Amqp.V1.Source/Amqp.V1.Source.csproj" />
@@ -16,6 +19,7 @@
     <Project Path="src/AWS/Kinesis/Akka.Streams.Kinesis/Akka.Streams.Kinesis.csproj" />
   </Folder>
   <Folder Name="/AWS/SNS/">
+    <Project Path="src/AWS/SNS/Akka.Streams.Sns.IntegrationTests/Akka.Streams.Sns.IntegrationTests.csproj" />
     <Project Path="src/AWS/SNS/Akka.Streams.Sns.Tests/Akka.Streams.Sns.Tests.csproj" />
     <Project Path="src/AWS/SNS/Akka.Streams.Sns/Akka.Streams.Sns.csproj" />
   </Folder>
@@ -24,11 +28,16 @@
     <Project Path="src/AWS/SQS/Akka.Streams.SQS/Akka.Streams.SQS.csproj" />
   </Folder>
   <Folder Name="/Azure/">
+    <Project Path="src/Azure/Akka.Streams.Azure.EventHub.Tests/Akka.Streams.Azure.EventHub.Tests.csproj" />
     <Project Path="src/Azure/Akka.Streams.Azure.EventHub/Akka.Streams.Azure.EventHub.csproj" />
     <Project Path="src/Azure/Akka.Streams.Azure.ServiceBus/Akka.Streams.Azure.ServiceBus.csproj" />
     <Project Path="src/Azure/Akka.Streams.Azure.StorageQueue.Tests/Akka.Streams.Azure.StorageQueue.Tests.csproj" />
     <Project Path="src/Azure/Akka.Streams.Azure.StorageQueue/Akka.Streams.Azure.StorageQueue.csproj" />
     <Project Path="src\Azure\Akka.Streams.Azure.ServiceBus.Tests\Akka.Streams.Azure.ServiceBus.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Azure/Compatibility/">
+    <Project Path="compatibility/ServiceBusConsumer/ServiceBusCompatibilityConsumer.csproj" />
+    <Project Path="compatibility/StorageQueueConsumer/StorageQueueCompatibilityConsumer.csproj" />
   </Folder>
   <Folder Name="/Azure/Examples/">
     <Project Path="src/Azure/Examples/Akka.Streams.Azure.EventHub.Examples/Akka.Streams.Azure.EventHub.Examples.csproj" />

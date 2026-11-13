@@ -1,34 +1,22 @@
-﻿using System;
+using System.Threading.Tasks;
 using Akka.Actor;
 using Akka.Streams;
-using Akka.Configuration;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore;
+using Microsoft.Extensions.Hosting;
 
-namespace SignalRSample
+namespace SignalRSample;
+
+internal static class Program
 {
-    class Program
+    private static async Task Main(string[] args)
     {
-        static void Main(string[] args)
-        {
-            Config config = @"
-                akka.loglevel = DEBUG
-            ";
-
-            using var system = ActorSystem.Create("web-system", config);
-            using var materializer = system.Materializer();
-            using var host = BuildWebHost(args);
-            App.System = system;
-            App.Materializer = materializer;
-
-            host.Run();
-        }
-
-        public static IWebHost BuildWebHost(string[] args)
-        {
-            return WebHost.CreateDefaultBuilder(args)
-                .UseStartup<Startup>()
-                .Build();
-        }
+        using var system = ActorSystem.Create("web-system", "akka.loglevel = DEBUG");
+        using var materializer = system.Materializer();
+        App.System = system;
+        App.Materializer = materializer;
+        using var host = Host.CreateDefaultBuilder(args)
+            .ConfigureWebHostDefaults(web => web.UseStartup<Startup>()).Build();
+        try { await host.RunAsync(); }
+        finally { await system.Terminate(); }
     }
 }

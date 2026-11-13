@@ -3,7 +3,20 @@
     {
       "src": [
         {
-          "files": [ "**/*.csproj" ],
+          "files": [
+            "Amqp/Akka.Streams.Amqp.V1/Akka.Streams.Amqp.V1.csproj",
+            "Amqp/Akka.Streams.Amqp.RabbitMq/Akka.Streams.Amqp.RabbitMq.csproj",
+            "Azure/Akka.Streams.Azure.EventHub/Akka.Streams.Azure.EventHub.csproj",
+            "Azure/Akka.Streams.Azure.ServiceBus/Akka.Streams.Azure.ServiceBus.csproj",
+            "Azure/Akka.Streams.Azure.StorageQueue/Akka.Streams.Azure.StorageQueue.csproj",
+            "AWS/Kinesis/Akka.Streams.Kinesis/Akka.Streams.Kinesis.csproj",
+            "AWS/SNS/Akka.Streams.Sns/Akka.Streams.Sns.csproj",
+            "AWS/SQS/Akka.Streams.SQS/Akka.Streams.SQS.csproj",
+            "Csv/Akka.Streams.Csv/Akka.Streams.Csv.csproj",
+            "File/Akka.Streams.File/Akka.Streams.File.csproj",
+            "SignalR/Akka.Streams.SignalR/Akka.Streams.SignalR.csproj",
+            "Xml/Akka.Streams.Xml/Akka.Streams.Xml.csproj"
+          ],
           "exclude": [
             "**/obj/**",
             "**/bin/**",
@@ -19,10 +32,7 @@
         }
       ],
       "dest": "api",
-      "filter": "filterConfig.yml",
-      "properties": {
-        "TargetFramework": "netstandard2.0"
-      }
+      "filter": "filterConfig.yml"
     }
   ],
   "build": {
@@ -44,7 +54,7 @@
         ],
         "exclude": [
           "obj/**",
-          "_site/**",
+          "_site/**"
         ]
       }
     ],
@@ -73,7 +83,7 @@
       }
     ],
     "xref": [
-      "../tools/msdn.4.5.2/content/msdn.4.5.2.zip"
+      "https://learn.microsoft.com/en-us/dotnet/.xrefmap.json"
     ],
     "globalMetadata": {
       "_appTitle": "Akka.NET Alpakka Documentation",
